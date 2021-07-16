@@ -118,20 +118,22 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             } else {
                 StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
                 for (ResponsePath responsePath : ghResponse.getAll()) {
-                    List<String> pathStableEdgeIds = responsePath.getPathDetails().get("stable_edge_ids").stream()
-                            .map(pathDetail -> (String) pathDetail.getValue())
-                            .collect(Collectors.toList());
+                    if (responsePath.getPathDetails().containsKey("stable_edge_ids")) {
+                        List<String> pathStableEdgeIds = responsePath.getPathDetails().get("stable_edge_ids").stream()
+                                .map(pathDetail -> (String) pathDetail.getValue())
+                                .collect(Collectors.toList());
 
-                    List<Long> edgeTimes = responsePath.getPathDetails().get("time").stream()
-                            .map(pathDetail -> (Long) pathDetail.getValue())
-                            .collect(Collectors.toList());
+                        List<Long> edgeTimes = responsePath.getPathDetails().get("time").stream()
+                                .map(pathDetail -> (Long) pathDetail.getValue())
+                                .collect(Collectors.toList());
 
-                    replyBuilder.addPaths(StreetPath.newBuilder()
-                            .setDurationMillis(responsePath.getTime())
-                            .setDistanceMeters(responsePath.getDistance())
-                            .addAllStableEdgeIds(pathStableEdgeIds)
-                            .addAllEdgeDurationsMillis(edgeTimes)
-                    );
+                        replyBuilder.addPaths(StreetPath.newBuilder()
+                                .setDurationMillis(responsePath.getTime())
+                                .setDistanceMeters(responsePath.getDistance())
+                                .addAllStableEdgeIds(pathStableEdgeIds)
+                                .addAllEdgeDurationsMillis(edgeTimes)
+                        );
+                    }
                 }
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
@@ -305,6 +307,12 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 List<Trip.Leg> walkLegs = path.getLegs().stream()
                         .filter(leg -> leg.type.equals("walk"))
                         .collect(toList());
+
+                // For now, only allow responses that have explicit ACCESS + EGRESS walking legs
+                // todo: support other cases where ACCESS/EGRESS legs (/both) don't exist
+                if (walkLegs.size() != 2) {
+                    continue;
+                }
 
                 Trip.WalkLeg firstLeg = (Trip.WalkLeg) walkLegs.get(0);
                 Trip.WalkLeg lastLeg = (Trip.WalkLeg) walkLegs.get(1);
