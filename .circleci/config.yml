@@ -28,6 +28,20 @@ jobs:
           name: Build base image
           command: docker build --build-arg GRAPHHOPPER_TOKEN=$GRAPHHOPPER_TOKEN --build-arg GIT_USER_ID=$GIT_USER_ID --build-arg GIT_PERSONAL_ACCESS=$GIT_PERSONAL_ACCESS . -f Dockerfile.build -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build
       - run:
+          name: Download Mini Norcal Test Files
+          command: |
+            set -o errexit
+            set -o nounset
+            set -o pipefail
+            set -o xtrace
+
+            gsutil -m cp $MININORCAL_OSM_PATH ./test_data/mini_nor_cal.osm.pbf
+            mkdir /test_data/gtfs/
+            gsutil -m cp $MININORCAL_GTFS_PATH - | tar -C /test_data/gtfs/ -xvf -
+            sed -i -e 's/TEST_OSM/test_data\/mini_nor_cal.osm.pbf/g' ./test_gh_config.yaml
+            sed -i -e 's/TEST_GTFS/$(find /test_data/gtfs/ -type f -printf '%p,' | head -c -1)/g' ./test_gh_config.yaml
+            cat ./test_gh_config.yaml
+      - run:
           name: Run Tests
           command: docker run us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash -c "mvn test"
       - run:
