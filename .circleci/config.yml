@@ -41,7 +41,6 @@ jobs:
             sed -i -e "s/TEST_OSM/.\/test-data\/mini_nor_cal.osm.pbf/g" ./test_gh_config.yaml
             export GTFS_FILE_LIST=$(find ./test-data/gtfs/ -type f -printf '%p,' | head -c -1)
             sed -i -e "s/TEST_GTFS/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
-            cat ./test_gh_config.yaml
       - run:
           name: Run Tests
           command: docker run us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash -c "mvn test"
