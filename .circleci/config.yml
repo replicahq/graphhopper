@@ -35,11 +35,11 @@ jobs:
             set -o pipefail
             set -o xtrace
 
-            gsutil -m cp $MININORCAL_OSM_PATH ./test_data/mini_nor_cal.osm.pbf
-            mkdir /test_data/gtfs/
-            gsutil -m cp $MININORCAL_GTFS_PATH - | tar -C /test_data/gtfs/ -xvf -
-            sed -i -e 's/TEST_OSM/test_data\/mini_nor_cal.osm.pbf/g' ./test_gh_config.yaml
-            sed -i -e 's/TEST_GTFS/$(find /test_data/gtfs/ -type f -printf '%p,' | head -c -1)/g' ./test_gh_config.yaml
+            gsutil -m cp $MININORCAL_OSM_PATH ./test-data/mini_nor_cal.osm.pbf
+            mkdir /test-data/gtfs/
+            gsutil -m cp $MININORCAL_GTFS_PATH - | tar -C /test-data/gtfs/ -xvf -
+            sed -i -e 's/TEST_OSM/test-data\/mini_nor_cal.osm.pbf/g' ./test_gh_config.yaml
+            sed -i -e 's/TEST_GTFS/$(find /test-data/gtfs/ -type f -printf '%p,' | head -c -1)/g' ./test_gh_config.yaml
             cat ./test_gh_config.yaml
       - run:
           name: Run Tests
