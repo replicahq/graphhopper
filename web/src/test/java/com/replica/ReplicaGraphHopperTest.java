@@ -30,7 +30,7 @@ public class ReplicaGraphHopperTest {
     protected static final String GRAPH_FILES_DIR = "transit_data/graphhopper/";
     protected static final String TRANSIT_DATA_DIR = "transit_data/";
     protected static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../test_gh_config.yaml";
-    protected static final String TEST_REGION_NAME = "mini_kc";
+    protected static final String TEST_REGION_NAME = "mini_nor_cal";
     protected static final String TEST_GTFS_FILE_NAME = "mini_kc_gtfs.tar";
 
     protected static Bootstrap<GraphHopperServerConfiguration> bootstrap;

@@ -29,21 +29,15 @@ jobs:
           command: docker build --build-arg GRAPHHOPPER_TOKEN=$GRAPHHOPPER_TOKEN --build-arg GIT_USER_ID=$GIT_USER_ID --build-arg GIT_PERSONAL_ACCESS=$GIT_PERSONAL_ACCESS . -f Dockerfile.build -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build
       - run:
           name: Download Mini Norcal Test Files
-          command: |
-            set -o errexit
-            set -o nounset
-            set -o pipefail
-            set -o xtrace
-
-            gsutil -m cp $MININORCAL_OSM_PATH ./test-data/mini_nor_cal.osm.pbf
-            mkdir ./test-data/gtfs/
-            gsutil -m cp $MININORCAL_GTFS_PATH - | tar -C ./test-data/gtfs/ -xvf -
-            sed -i -e "s/TEST_OSM/.\/test-data\/mini_nor_cal.osm.pbf/g" ./test_gh_config.yaml
-            export GTFS_FILE_LIST=$(find ./test-data/gtfs/ -type f -printf '%p,' | head -c -1)
-            sed -i -e "s/TEST_GTFS/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
+          command: ./setup_tests.sh
       - run:
           name: Run Tests
-          command: docker run us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash -c "mvn test"
+          command: |
+            docker run us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash -name testrunner
+            docker cp test_gh_config.yaml testrunner
+            docker cp test-data/mini_nor_cal.osm.pbf testrunner:test-data
+            for f in test-data/gtfs; do docker cp $f testrunner:test-data/gtfs; done
+            docker exec -it testrunner /bin/bash -c "mvn test"
       - run:
           name: Build server image
           command: docker build --build-arg BASE_IMAGE=us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build . -f Dockerfile.server -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)
