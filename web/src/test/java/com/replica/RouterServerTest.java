@@ -53,12 +53,12 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @ExtendWith(DropwizardExtensionsSupport.class)
 public class RouterServerTest extends ReplicaGraphHopperTest {
-    // Departure time + ODs are chosen for mini_kc test area, with a validity start date of
-    // 2018-02-04, and a bbox of -94.83546491344568,-94.57853983145668,38.88341685123928,39.102208929558294
+    // Departure time + ODs are chosen for mini_nor_cal test area, with a validity start date of
+    // 2019-10-13, and a bbox of -123.63141772072206,-118.51285476638797,36.38044695661471,42.42739232094718
     private static final Timestamp EARLIEST_DEPARTURE_TIME =
-            Timestamp.newBuilder().setSeconds(Instant.parse("2018-02-04T08:25:00Z").toEpochMilli() / 1000).build();
+            Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-13T13:30:00Z").toEpochMilli() / 1000).build();
     private static final double[] REQUEST_ODS =
-            {38.96637569955874, -94.70833304570988, 38.959204519370815, -94.69174071738964};
+            {38.661324206674585,-121.56347159296277, 38.4141222248432,-121.40774220228198};
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST = createPtRequest();
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST =
             createStreetRequest("car", false);
