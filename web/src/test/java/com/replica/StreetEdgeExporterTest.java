@@ -26,7 +26,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
 
     @Test
     public void testExportEndToEnd() throws IOException {
-        cli.run("export", GRAPHHOPPER_CONFIG_PATH);
+        cli.run("export", TEST_GRAPHHOPPER_CONFIG_PATH);
         CSVFormat format = StreetEdgeExporter.CSV_FORMAT;
         File expectedOutputLocation = new File(GRAPH_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);

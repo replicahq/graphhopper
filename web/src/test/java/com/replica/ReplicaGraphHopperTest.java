@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
 public class ReplicaGraphHopperTest {
     protected static final String GRAPH_FILES_DIR = "transit_data/graphhopper/";
     protected static final String TRANSIT_DATA_DIR = "transit_data/";
-    protected static final String GRAPHHOPPER_CONFIG_PATH = "../default_gh_config.yaml";
+    protected static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../test_gh_config.yaml";
     protected static final String TEST_REGION_NAME = "mini_kc";
     protected static final String TEST_GTFS_FILE_NAME = "mini_kc_gtfs.tar";
 
@@ -57,8 +57,8 @@ public class ReplicaGraphHopperTest {
 
         // Run commands to build graph and GTFS link mappings for test region
         cli = new Cli(location, bootstrap, System.out, System.err);
-        cli.run("import", GRAPHHOPPER_CONFIG_PATH);
-        cli.run("gtfs_links", GRAPHHOPPER_CONFIG_PATH);
+        cli.run("import", TEST_GRAPHHOPPER_CONFIG_PATH);
+        cli.run("gtfs_links", TEST_GRAPHHOPPER_CONFIG_PATH);
 
         loadGraphhopper();
     }
@@ -73,7 +73,7 @@ public class ReplicaGraphHopperTest {
     private static void loadGraphhopper() throws Exception {
         ObjectMapper yaml = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
         yaml.registerModule(new GraphHopperConfigModule());
-        JsonNode yamlNode = yaml.readTree(new File(GRAPHHOPPER_CONFIG_PATH));
+        JsonNode yamlNode = yaml.readTree(new File(TEST_GRAPHHOPPER_CONFIG_PATH));
         graphHopperConfiguration = yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
         ObjectMapper json = Jackson.newObjectMapper();
         graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration, json);
