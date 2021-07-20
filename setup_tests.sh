@@ -21,4 +21,4 @@ sed -i -e "s/TEST_GTFS/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
 
 echo "Download successful! Test config test_gh_config.yaml can now be used"
 echo "printing contents of /web/test_data"
-ls -lar /web/test_data
+ls -lar ./web/test_data
