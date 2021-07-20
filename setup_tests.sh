@@ -1,6 +1,5 @@
 #!/bin/sh
 set -o errexit
-set -o pipefail
 set -o xtrace
 
 if [[ -z "${MININORCAL_OSM_PATH}" || -z "${MININORCAL_GTFS_PATH}" ]]; then
