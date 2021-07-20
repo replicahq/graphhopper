@@ -33,7 +33,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            docker run -d --name testrunner us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash
+            docker run -t -d --name testrunner us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash
             docker exec -it testrunner /bin/bash -c "pwd"
             docker cp test_gh_config.yaml testrunner:/
             docker cp test-data/mini_nor_cal.osm.pbf testrunner:/test-data/
