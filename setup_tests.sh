@@ -20,5 +20,5 @@ export GTFS_FILE_LIST=$(ls ./web/test-data/gtfs/ | awk '{print "./web/test-data/
 sed -i -e "s/TEST_GTFS/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
 
 echo "Download successful! Test config test_gh_config.yaml can now be used"
-echo "printing contents of /web/test_data"
-ls -lar ./web/test_data
+echo "printing contents of /web/test-data"
+ls -lar ./web/test-data
