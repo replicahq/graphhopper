@@ -12,11 +12,13 @@ fi
 
 echo "Downloading OSM + GTFS data for mini_nor_cal test region"
 
-gsutil -m cp $MININORCAL_OSM_PATH ./test-data/mini_nor_cal.osm.pbf
-mkdir ./test-data/gtfs/
-gsutil -m cp $MININORCAL_GTFS_PATH - | tar -C ./test-data/gtfs/ -xvf -
-sed -i -e "s/TEST_OSM/.\/test-data\/mini_nor_cal.osm.pbf/g" ./test_gh_config.yaml
-export GTFS_FILE_LIST=$(ls ./test-data/gtfs/ | awk '{print "./test-data/gtfs/"$1}' | paste -s -d, -)
+gsutil -m cp $MININORCAL_OSM_PATH ./web/test-data/mini_nor_cal.osm.pbf
+mkdir ./web/test-data/gtfs/
+gsutil -m cp $MININORCAL_GTFS_PATH - | tar -C ./web/test-data/gtfs/ -xvf -
+sed -i -e "s/TEST_OSM/.\/web/test-data\/mini_nor_cal.osm.pbf/g" ./test_gh_config.yaml
+export GTFS_FILE_LIST=$(ls ./web/test-data/gtfs/ | awk '{print "./web/test-data/gtfs/"$1}' | paste -s -d, -)
 sed -i -e "s/TEST_GTFS/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
 
 echo "Download successful! Test config test_gh_config.yaml can now be used"
+echo "printing contents of /web/test_data"
+ls -lar /web/test_data
