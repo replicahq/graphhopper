@@ -34,9 +34,9 @@ jobs:
           name: Run Tests
           command: |
             docker run -d --name testrunner us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash
-            docker cp test_gh_config.yaml testrunner
-            docker cp test-data/mini_nor_cal.osm.pbf testrunner:test-data
-            for f in test-data/gtfs; do docker cp $f testrunner:test-data/gtfs; done
+            docker cp test_gh_config.yaml testrunner:/
+            docker cp test-data/mini_nor_cal.osm.pbf testrunner:/test-data
+            for f in test-data/gtfs; do docker cp $f testrunner:/test-data/gtfs; done
             docker exec -it testrunner /bin/bash -c "mvn test"
       - run:
           name: Build server image
