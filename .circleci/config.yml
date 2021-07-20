@@ -38,8 +38,10 @@ jobs:
             docker exec -it testrunner /bin/bash -c "mkdir -p ./web/test-data/gtfs"
             docker exec -it testrunner /bin/bash -c "ls -lar"
             docker cp test_gh_config.yaml testrunner:/graphhopper
-            docker cp web/test-data/mini_nor_cal.osm.pbf testrunner:/graphhopper/web/test-data/
-            for f in web/test-data/gtfs; do docker cp $f testrunner:/graphhopper/web/test-data/gtfs/; done
+            docker cp web/test-data/mini_nor_cal.osm.pbf testrunner:/graphhopper/web/test-data/mini_nor_cal.osm.pbf
+            for f in web/test-data/gtfs; do docker cp $f testrunner:/graphhopper/$f; done
+            docker exec -it testrunner /bin/bash -c "ls -lar ./web/test-data"
+            docker exec -it testrunner /bin/bash -c "ls -lar ./web/test-data/gtfs"
             docker exec -it testrunner /bin/bash -c "mvn test"
       - run:
           name: Build server image
