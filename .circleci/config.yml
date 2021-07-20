@@ -35,7 +35,7 @@ jobs:
           command: |
             docker run -t -d --name testrunner us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash
             docker exec -it testrunner /bin/bash -c "pwd"
-            docker exec -it testrunner /bin/bash -c "mkdir -p /test-data/gtfs"
+            docker exec -it testrunner /bin/bash -c "mkdir -p ./test-data/gtfs"
             docker exec -it testrunner /bin/bash -c "ls -lar"
             docker cp test_gh_config.yaml testrunner:/graphhopper
             docker cp test-data/mini_nor_cal.osm.pbf testrunner:/graphhopper/test-data/
