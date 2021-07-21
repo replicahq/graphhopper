@@ -13,6 +13,16 @@ echo "Checking if OSM + GTFS test files exist; downloading if needed"
 if [[ ! -f "./web/test-data/mini_nor_cal.osm.pbf" ]]; then
   echo "Downloading OSM data for mini_nor_cal test region"
   gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_OSM_PATH ./web/test-data/mini_nor_cal.osm.pbf
+  echo "Cutting down downloaded mini_nor_cal OSM to smaller cutout"
+  if ! command -v osmconvert; then
+    if [[ $OSTYPE == 'darwin'* ]]; then
+      brew install osmfilter
+    else
+      wget -O - http://m.m.i24.cc/osmconvert.c | cc -x c - -lz -O3 -o osmconvert
+    fi
+  fi
+  osmconvert ./web/test-data/mini_nor_cal.osm.pbf -b=-122.30986499194101,37.91724446910281,-120.68388843649487,39.42040570561121 --complete-ways --out-pbf > ./web/test-data/micro_nor_cal.osm.pbf
+  rm ./web/test-data/mini_nor_cal.osm.pbf
 fi
 
 if [[ -z "$(ls -A ./web/test-data/gtfs)" ]]; then
@@ -32,7 +42,7 @@ done
 
 echo "Checking test_gh_config.yaml; updating paths to test OSM/GTFS if needed"
 if grep -q TEST_OSM ./test_gh_config.yaml; then
-  sed -i -e "s/TEST_OSM/.\/test-data\/mini_nor_cal.osm.pbf/g" ./test_gh_config.yaml
+  sed -i -e "s/TEST_OSM/.\/test-data\/micro_nor_cal.osm.pbf/g" ./test_gh_config.yaml
 fi
 
 if grep -q TEST_GTFS ./test_gh_config.yaml; then
