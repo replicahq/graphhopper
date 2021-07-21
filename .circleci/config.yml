@@ -34,14 +34,10 @@ jobs:
           name: Run Tests
           command: |
             docker run -t -d --name testrunner us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash
-            docker exec -it testrunner /bin/bash -c "pwd"
             docker exec -it testrunner /bin/bash -c "mkdir -p ./web/test-data/gtfs"
-            docker exec -it testrunner /bin/bash -c "ls -lar"
             docker cp test_gh_config.yaml testrunner:/graphhopper
             docker cp web/test-data/mini_nor_cal.osm.pbf testrunner:/graphhopper/web/test-data/mini_nor_cal.osm.pbf
-            for f in web/test-data/gtfs; do docker cp $f testrunner:/graphhopper/$f; done
-            docker exec -it testrunner /bin/bash -c "ls -lar ./web/test-data"
-            docker exec -it testrunner /bin/bash -c "ls -lar ./web/test-data/gtfs"
+            for f in web/test-data/gtfs/*; do docker cp $f testrunner:/graphhopper/$f; done
             docker exec -it testrunner /bin/bash -c "mvn test"
       - run:
           name: Build server image
