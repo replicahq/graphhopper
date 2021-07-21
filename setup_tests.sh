@@ -17,9 +17,7 @@ fi
 
 if [[ -z "$(ls -A ./web/test-data/gtfs)" ]]; then
   echo "Downloading GTFS data for mini_nor_cal test region"
-  if [[ -z "./web/test-data/gtfs" ]]; then
-    mkdir ./web/test-data/gtfs/
-  fi
+  mkdir -p ./web/test-data/gtfs/
   gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_GTFS_PATH - | tar -C ./web/test-data/gtfs/ -xvf -
 fi
 
