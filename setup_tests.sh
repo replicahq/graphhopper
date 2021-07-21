@@ -1,6 +1,5 @@
 #!/bin/bash
 set -o errexit
-set -o xtrace
 
 if [[ -z "${MININORCAL_OSM_PATH}" || -z "${MININORCAL_GTFS_PATH}" ]]; then
   echo "MININORCAL_OSM_PATH or MININORCAL_GTFS_PATH env vars are not set! Set these appropraitely and try again"
@@ -18,9 +17,20 @@ fi
 
 if [[ -z "$(ls -A ./web/test-data/gtfs)" ]]; then
   echo "Downloading GTFS data for mini_nor_cal test region"
-  mkdir ./web/test-data/gtfs/
+  if [[ -z "./web/test-data/gtfs" ]]; then
+    mkdir ./web/test-data/gtfs/
+  fi
   gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_GTFS_PATH - | tar -C ./web/test-data/gtfs/ -xvf -
 fi
+
+echo "Removing GTFS files to create transit network defined in test_gtfs_files.txt"
+for file in ./web/test-data/gtfs/*.zip; do
+  filename="$(basename $file)"
+  if ! grep -qxe "$filename" ./web/test-data/test_gtfs_files.txt; then
+      echo "Deleting $filename"
+      rm "./web/test-data/gtfs/$filename"
+  fi
+done
 
 echo "Checking test_gh_config.yaml; updating paths to test OSM/GTFS if needed"
 if grep -q TEST_OSM ./test_gh_config.yaml; then
