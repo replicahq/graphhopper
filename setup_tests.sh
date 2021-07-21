@@ -10,7 +10,7 @@ else
 fi
 
 echo "Checking if OSM + GTFS test files exist; downloading if needed"
-if [[ -z "./web/test-data/mini_nor_cal.osm.pbf" ]]; then
+if [[ ! -f "./web/test-data/mini_nor_cal.osm.pbf" ]]; then
   echo "Downloading OSM data for mini_nor_cal test region"
   gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_OSM_PATH ./web/test-data/mini_nor_cal.osm.pbf
 fi
