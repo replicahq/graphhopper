@@ -18,7 +18,7 @@ if [[ ! -f "./web/test-data/mini_nor_cal.osm.pbf" ]]; then
     if [[ $OSTYPE == 'darwin'* ]]; then
       brew install osmfilter
     else
-      apt install osmctools
+      apt install -y osmctools
     fi
   fi
   osmconvert ./web/test-data/mini_nor_cal.osm.pbf -b=-122.30986499194101,37.91724446910281,-120.68388843649487,39.42040570561121 --complete-ways --out-pbf > ./web/test-data/micro_nor_cal.osm.pbf
