@@ -10,13 +10,26 @@ else
   MININORCAL_GTFS_PATH="${MININORCAL_GTFS_PATH}"
 fi
 
-echo "Downloading OSM + GTFS data for mini_nor_cal test region"
+echo "Checking if OSM + GTFS test files exist; downloading if needed"
+if [[ -z "./web/test-data/mini_nor_cal.osm.pbf" ]]; then
+  echo "Downloading OSM data for mini_nor_cal test region"
+  gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_OSM_PATH ./web/test-data/mini_nor_cal.osm.pbf
+fi
 
-gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_OSM_PATH ./web/test-data/mini_nor_cal.osm.pbf
-mkdir ./web/test-data/gtfs/
-gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_GTFS_PATH - | tar -C ./web/test-data/gtfs/ -xvf -
-sed -i -e "s/TEST_OSM/.\/test-data\/mini_nor_cal.osm.pbf/g" ./test_gh_config.yaml
-export GTFS_FILE_LIST=$(ls ./web/test-data/gtfs/ | awk '{print "./test-data/gtfs/"$1}' | paste -s -d, -)
-sed -i -e "s/TEST_GTFS/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
+if [[ -z "$(ls -A ./web/test-data/gtfs)" ]]; then
+  echo "Downloading GTFS data for mini_nor_cal test region"
+  mkdir ./web/test-data/gtfs/
+  gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_GTFS_PATH - | tar -C ./web/test-data/gtfs/ -xvf -
+fi
 
-echo "Download successful! Test config test_gh_config.yaml can now be used"
+echo "Checking test_gh_config.yaml; updating paths to test OSM/GTFS if needed"
+if grep -q TEST_OSM ./test_gh_config.yaml; then
+  sed -i -e "s/TEST_OSM/.\/test-data\/mini_nor_cal.osm.pbf/g" ./test_gh_config.yaml
+fi
+
+if grep -q TEST_GTFS ./test_gh_config.yaml; then
+  export GTFS_FILE_LIST=$(ls ./web/test-data/gtfs/ | awk '{print "./test-data/gtfs/"$1}' | paste -s -d, -)
+  sed -i -e "s/TEST_GTFS/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
+fi
+
+echo "Setup complete! Tests can now be run with 'mvn test'"
