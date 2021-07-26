@@ -43,10 +43,10 @@ docker run --rm --name functional_test_server -p 50051:50051 -p 8998:8998 -v "$T
     "$DOCKER_IMAGE_TAG" &
 
 echo "Waiting for graphhopper server to start up"
-sleep 30 # should we implement a trie mechanism with time threshold instead of sleep?
+sleep 30
 
 # greb the server ip:
-SERVER= ` docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' functional_test_server }}`
+SERVER= $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' functional_test_server }})
 
 # Make a request for a couple of points in the minikc region
 grpcurl  -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/street_response.json <<EOM
