@@ -50,11 +50,11 @@ jobs:
             ${{ runner.os }}-graphhopper-buildx
 
         # Build image for unit tests
-      - name: Build test image and push to GCR
+      - name: Build test image
         uses: docker/build-push-action@v2
         with:
           context: .
-          push: true
+          push: false
           file: Dockerfile.build
           tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-dev"
           build-args: |

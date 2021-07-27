@@ -60,7 +60,7 @@ EOM
 
 if [ $? != 0 ]
     then
-        echo "ERROR: Make a request for a couple of points in the minikc region FAILED"
+        echo "ERROR: Car request FAILED"
         docker kill functional_test_server
         exit 1
 fi
