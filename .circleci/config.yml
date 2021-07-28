@@ -29,7 +29,10 @@ jobs:
           command: docker build --build-arg GRAPHHOPPER_TOKEN=$GRAPHHOPPER_TOKEN --build-arg GIT_USER_ID=$GIT_USER_ID --build-arg GIT_PERSONAL_ACCESS=$GIT_PERSONAL_ACCESS . -f Dockerfile.build -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build
       - run:
           name: Download Mini Norcal Test Files
-          command: ./setup_tests.sh
+          command: |
+            export MININORCAL_OSM_PATH
+            export MININORCAL_GTFS_PATH
+            ./setup_tests.sh
       - run:
           name: Run Tests
           command: |
