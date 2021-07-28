@@ -53,7 +53,7 @@
                 <executions>
                     <execution>
                         <id>Setup tests</id>
-                        <phase>process-test-resources</phase>
+                        <phase>test</phase>
                         <goals>
                             <goal>exec</goal>
                         </goals>
