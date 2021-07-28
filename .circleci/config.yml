@@ -30,7 +30,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            docker run -t -d --name testrunner us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash
+            docker run -t -d --name testrunner -e MININORCAL_OSM_PATH=$MININORCAL_OSM_PATH -e MININORCAL_GTFS_PATH=$MININORCAL_GTFS_PATH us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build /bin/bash
             docker exec -it testrunner /bin/bash -c "mvn test"
       - run:
           name: Build server image
