@@ -30,8 +30,8 @@ jobs:
       - run:
           name: Download Mini Norcal Test Files
           command: |
-            export MININORCAL_OSM_PATH
-            export MININORCAL_GTFS_PATH
+            export MININORCAL_OSM_PATH=$MININORCAL_OSM_PATH
+            export MININORCAL_GTFS_PATH=$MININORCAL_GTFS_PATH
             ./setup_tests.sh
       - run:
           name: Run Tests
