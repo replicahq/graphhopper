@@ -72,6 +72,7 @@ jobs:
   functional-tests:
     name: "Build server image and run functional tests"
     needs: unit-tests
+    if: ${{ github.ref == 'refs/heads/original-direction' }}
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: model-159019
