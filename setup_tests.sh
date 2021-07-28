@@ -1,6 +1,8 @@
 #!/bin/bash
 set -o errexit
 
+echo $MININORCAL_OSM_PATH
+
 if [[ -z "${MININORCAL_OSM_PATH}" || -z "${MININORCAL_GTFS_PATH}" ]]; then
   echo "MININORCAL_OSM_PATH or MININORCAL_GTFS_PATH env vars are not set! Set these appropraitely and try again"
   exit 1
