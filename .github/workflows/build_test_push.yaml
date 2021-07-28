@@ -71,6 +71,7 @@ jobs:
   
   functional-tests:
     name: "Build server image and run functional tests"
+    needs: unit-tests
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: model-159019
