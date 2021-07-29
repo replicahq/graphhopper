@@ -1,6 +1,11 @@
 #!/bin/bash
 set -o errexit
 
+# bbox used to cut down mini_nor_cal's OSM to just north bay + Sacramento area, aka "micro_nor_cal"
+# micro_nor_cal is large enough to meaningfully test routing, but reduces build time by ~75%
+MICRO_NOR_CAL_BBOX="-122.30986499194101,37.91724446910281,-120.68388843649487,39.42040570561121"
+
+# This script assumes that the following env vars are set, holding GCS paths to mini_nor_cal OSM + GTFS
 if [[ -z "${MININORCAL_OSM_PATH}" || -z "${MININORCAL_GTFS_PATH}" ]]; then
   echo "MININORCAL_OSM_PATH or MININORCAL_GTFS_PATH env vars are not set! Set these appropraitely and try again"
   exit 1
@@ -10,7 +15,7 @@ else
 fi
 
 echo "Checking if OSM + GTFS test files exist; downloading if needed"
-if [[ ! -f "./web/test-data/mini_nor_cal.osm.pbf" ]]; then
+if [[ ! -f "./web/test-data/micro_nor_cal.osm.pbf" ]]; then
   echo "Downloading OSM data for mini_nor_cal test region"
   gsutil -m -o "GSUtil:parallel_process_count=1" cp $MININORCAL_OSM_PATH ./web/test-data/mini_nor_cal.osm.pbf
   echo "Cutting down downloaded mini_nor_cal OSM to smaller cutout"
@@ -21,7 +26,7 @@ if [[ ! -f "./web/test-data/mini_nor_cal.osm.pbf" ]]; then
       apt install -y osmctools
     fi
   fi
-  osmconvert ./web/test-data/mini_nor_cal.osm.pbf -b=-122.30986499194101,37.91724446910281,-120.68388843649487,39.42040570561121 --complete-ways --out-pbf > ./web/test-data/micro_nor_cal.osm.pbf
+  osmconvert ./web/test-data/mini_nor_cal.osm.pbf -b=$MICRO_NOR_CAL_BBOX --complete-ways --out-pbf > ./web/test-data/micro_nor_cal.osm.pbf
   rm ./web/test-data/mini_nor_cal.osm.pbf
 fi
 
