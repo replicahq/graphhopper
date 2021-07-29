@@ -68,8 +68,10 @@ jobs:
           export MININORCAL_GTFS_PATH=${{ secrets.MININORCAL_GTFS_PATH}}
           ./setup_tests.sh
 
+      # see https://github.com/docker/compose/issues/5696 for info on COMPOSE_INTERACTIVE_NO_CLI env var
       - name: run unit tests
         run: |
+          export COMPOSE_INTERACTIVE_NO_CLI=1
           docker run -t -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-dev /bin/bash
           docker exec -it testrunner /bin/bash -c "mkdir -p ./web/test-data/gtfs"
           docker cp test_gh_config.yaml testrunner:/graphhopper
