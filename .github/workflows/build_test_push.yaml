@@ -63,7 +63,10 @@ jobs:
             GIT_USER_ID=${{ secrets.GIT_USER_ID }}
 
       - name: Download + setup micro norcal test files
-        run: ./setup_tests.sh
+        run: |
+          export MININORCAL_OSM_PATH=${{ secrets.MININORCAL_OSM_PATH}}
+          export MININORCAL_GTFS_PATH=${{ secrets.MININORCAL_GTFS_PATH}}
+          ./setup_tests.sh
 
       - name: run unit tests
         run: |
@@ -73,7 +76,7 @@ jobs:
           docker cp web/test-data/micro_nor_cal.osm.pbf testrunner:/graphhopper/web/test-data/micro_nor_cal.osm.pbf
           for f in web/test-data/gtfs/*; do docker cp $f testrunner:/graphhopper/$f; done
           docker exec -it testrunner /bin/bash -c "mvn test"
-          
+
       - name: build the server
         uses: docker/build-push-action@v2
         with:
