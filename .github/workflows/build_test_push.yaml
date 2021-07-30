@@ -150,13 +150,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: functional-tests
     steps:
-    - name: Bump version and push tag
-      id: create_tag_step
-      uses: anothrNick/github-tag-action@1.26.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        WITH_V: true
-        INITIAL_VERSION: 1.0.0
-        RELEASE_BRANCHES: original-direction
-    - name: "Use tag. example: could reuse git tag as docker image tag"
-      run: echo ">> ${{ steps.create_tag_step.outputs.new_tag }}"
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: '0'
+    - name: Compute new tag
+      id: compute_new_tag
+      run: |
+        current_tag=$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' |  grep -E "^v[0-9]+$" | cut -c 2- | head -n1)
+        new_tag="v$(echo "$current_tag+1" | bc)"
+        echo ::set-output name=tag::$new_tag
+    - name: Push tag
+      run: |
+        git config user.name "Replica Robots"
+        git config user.email "robots@replicahq.com"
+        git tag "${{ steps.compute_new_tag.outputs.tag }}"
+        git push origin "${{ steps.compute_new_tag.outputs.tag }}"
