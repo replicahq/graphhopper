@@ -156,7 +156,7 @@ jobs:
     - name: Compute new tag
       id: compute_new_tag
       run: |
-        current_tag=$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' |  grep -E "^v[0-9]+$" | cut -c 2- | head -n1)
+        current_tag=$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' |  grep -E '^v[0-9]+$' | cut -c 2- | head -n1)
         new_tag="v$(echo "$current_tag+1" | bc)"
         echo ::set-output name=tag::$new_tag
     - name: Push tag
