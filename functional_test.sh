@@ -25,18 +25,16 @@ docker run \
     -v "$TMPDIR:/graphhopper/transit_data/"\
     --rm \
      "$DOCKER_IMAGE_TAG" \
-     java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-     -Ddw.graphhopper.datareader.file=test-data/kansas-city-extract-mini.osm.pbf \
-     -Ddw.graphhopper.gtfs.file=test-data/mini_kc_gtfs.tar \
-     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import default_gh_config.yaml
+     java -Xmx4g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
+     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import test_gh_config.yaml
 
 # Run link-mapping step
 docker run \
     -v "$TMPDIR:/graphhopper/transit_data/"\
     --rm \
     "$DOCKER_IMAGE_TAG" \
-    java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links default_gh_config.yaml
+    java -Xmx4g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
+    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links test_gh_config.yaml
 
 # Run server in background
 docker run --rm --name functional_test_server -p 50051:50051 -p 8998:8998 -v "$TMPDIR:/graphhopper/transit_data/" \
@@ -48,10 +46,10 @@ sleep 30
 # greb the server ip:
 SERVER= $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' functional_test_server }})
 
-# Make a request for a couple of points in the minikc region
+# Make a request for a couple of points in the micro_nor_cal region
 grpcurl  -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/street_response.json <<EOM
 {
-"points":[{"lat":38.96637569955874,"lon":-94.70833304570988},{"lat":38.959204519370815,"lon":-94.69174071738964}],
+"points":[{"lat":38.74891667931467,"lon":-121.29023848101498},{"lat":38.55518457319914,"lon":-121.43714698730038}],
 "profile": "car"
 }
 EOM
@@ -75,7 +73,7 @@ fi
 # Make a PT request too
 grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_response.json <<EOM
 {
-"points":[{"lat":38.96637569955874,"lon":-94.70833304570988},{"lat":38.959204519370815,"lon":-94.69174071738964}],
+"points":[{"lat":38.74891667931467,"lon":-121.29023848101498},{"lat":38.55518457319914,"lon":-121.43714698730038}],
 "earliest_departure_time":"2018-02-04T08:25:00Z",
 "limit_solutions":4,
 "max_profile_duration":10,
