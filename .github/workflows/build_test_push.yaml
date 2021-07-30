@@ -73,9 +73,9 @@ jobs:
         run: |
           export COMPOSE_INTERACTIVE_NO_CLI=1
           echo hi1
-          docker run -t -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-dev /bin/bash
+          docker run -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-dev /bin/bash
           echo hi2
-          docker exec -it testrunner /bin/bash -c "mkdir -p ./web/test-data/gtfs"
+          docker exec -i testrunner /bin/bash -c "mkdir -p ./web/test-data/gtfs"
           echo hi3
           docker cp test_gh_config.yaml testrunner:/graphhopper
           echo hi4
@@ -83,7 +83,7 @@ jobs:
           echo hi5
           for f in web/test-data/gtfs/*; do docker cp $f testrunner:/graphhopper/$f; done
           echo hi6
-          docker exec -it testrunner /bin/bash -c "mvn test"
+          docker exec -i testrunner /bin/bash -c "mvn test"
           echo hi7
 
       - name: build the server
