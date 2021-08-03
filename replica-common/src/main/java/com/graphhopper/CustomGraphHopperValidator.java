@@ -15,10 +15,7 @@ public class CustomGraphHopperValidator extends GraphHopperGtfs {
 
     public CustomGraphHopperValidator(GraphHopperConfig ghConfig) {
         super(ghConfig);
-        System.out.println(ghConfig.getString("validation", ""));
-        // System.out.println(ghConfig.getBool("validation", false));
         this.validate = ghConfig.getString("validation", "").equals("true");
-        System.out.println("validate is " + this.validate);
     }
 
     @Override
