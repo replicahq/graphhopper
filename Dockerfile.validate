@@ -3,15 +3,12 @@ FROM $BASE_IMAGE as base
 
 COPY ./full_usa.osm.pbf ./
 
-RUN java -Xmx6g -XX:+UseG1GC \
-  -Ddw.graphhopper.datareader.file=full_usa.osm.pbf \
+RUN java -Xmx13g -Ddw.graphhopper.datareader.file=full_usa.osm.pbf \
   -Ddw.graphhopper.validation=false -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar \
   com.graphhopper.http.GraphHopperApplication validate-gtfs gtfs_validation_gh_config.yaml \
   && rm ./full_usa.osm.pbf
 
-ENV GTFS_PATHS ./
+ENV GTFS_FOLDER "./"
+COPY ${GTFS_FOLDER} ./gtfs
 
-CMD ["sh", "-c", "java -Xmx16g -XX:+UseG1GC \
-                  -Ddw.graphhopper.gtfs.file=${GTFS_PATHS} \
-                  -Ddw.graphhopper.validation=true -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar \
-                  com.graphhopper.http.GraphHopperApplication validate-gtfs gtfs_validation_gh_config.yaml"]
+CMD ./run_gtfs_validation.sh

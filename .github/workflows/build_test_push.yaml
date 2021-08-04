@@ -88,16 +88,3 @@ jobs:
 
       - name: run functional test
         run:  bash functional_test.sh ${{ github.sha }}-server-dev
-
-      - name: Download USA OSM cutout
-        run: gsutil -m -o "GSUtil:parallel_process_count=1" cp ${{ secrets.USA_OSM_PATH }} ./full_usa.osm.pbf
-
-      - name: Build + push the GTFS validator image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          file: Dockerfile.validate
-          tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-gtfs-validator"
-          build-args: |
-            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev
