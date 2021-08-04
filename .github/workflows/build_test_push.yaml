@@ -88,3 +88,12 @@ jobs:
 
       - name: run functional test
         run:  bash functional_test.sh ${{ github.sha }}-server-dev
+
+      - name: Download USA OSM cutout
+        run: gsutil -m -o "GSUtil:parallel_process_count=1" cp ${{ secrets.USA_OSM_PATH }} ./full_usa.osm.pbf
+
+      - run: |-
+          gcloud builds submit \
+          --config=gtfs_validator_build.yaml \
+          --gcs-log-dir=gs://model_bigquery_tmp/cloud-build-{uuid4()}/ \
+          --substitutions=_IMAGE_TAG=us.gcr.io/model-159019/gh:${{ github.sha }}-gtfs-validator,BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev \

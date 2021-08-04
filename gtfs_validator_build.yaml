@@ -1,0 +1,6 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-validator'
+    args: ['build', '-f', 'Dockerfile.validate', '-t', '${_IMAGE_TAG}', '--build-arg', 'BASE_IMAGE=${BASE_IMAGE}', '.']
+options:
+  machineType: 'N1_HIGHCPU_32'
