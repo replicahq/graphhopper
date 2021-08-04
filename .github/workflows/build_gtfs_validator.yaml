@@ -19,5 +19,4 @@ jobs:
       - run: |-
           gcloud builds submit \
           --config=gtfs_validator_build.yaml \
-          --gcs-log-dir=gs://model_bigquery_tmp/cloud-build-{uuid4()}/ \
           --substitutions=_IMAGE_TAG=us.gcr.io/model-159019/gh:${{ github.sha }}-gtfs-validator,BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev \
