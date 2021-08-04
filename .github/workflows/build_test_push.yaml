@@ -90,7 +90,7 @@ jobs:
         run:  bash functional_test.sh ${{ github.sha }}-server-dev
 
       - name: Download USA OSM cutout
-        run: gsutil -m -o "GSUtil:parallel_process_count=1" cp $USA_OSM_PATH ./full_usa.osm.pbf
+        run: gsutil -m -o "GSUtil:parallel_process_count=1" cp ${{ secrets.USA_OSM_PATH }} ./full_usa.osm.pbf
 
       - name: Build + push the GTFS validator image
         uses: docker/build-push-action@v2
