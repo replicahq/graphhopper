@@ -1,13 +1,16 @@
 name: CI
 on: [push]
 jobs:
-  build:
-    name: build test and push Graphhoper images
+  unit-tests:
+    name: "Build test image and run unit tests"
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: model-159019
     steps:
 
+      # ---------------------
+      # Common steps that we repeat between workflows.
+      # I couldn't find an equivalent of CircleCI's templates; can we consolidate by turning this into an action?
       - name: Code Checkout
         uses: actions/checkout@v2
 
@@ -48,6 +51,7 @@ jobs:
           key: ${{ runner.os }}-graphhopper-buildx-${{ github.sha}}
           restore-keys: |
             ${{ runner.os }}-graphhopper-buildx
+      # ---------------------
 
         # Build image for unit tests
       - name: Build test image
@@ -76,6 +80,60 @@ jobs:
           docker cp web/test-data/micro_nor_cal.osm.pbf testrunner:/graphhopper/web/test-data/micro_nor_cal.osm.pbf
           for f in web/test-data/gtfs/*; do docker cp $f testrunner:/graphhopper/$f; done
           docker exec -i testrunner /bin/bash -c "mvn test"
+  
+  functional-tests:
+    name: "Build server image and run functional tests"
+    needs: unit-tests
+    if: ${{ github.ref == 'refs/heads/original-direction' }}
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: model-159019
+    steps:
+
+      # ---------------------
+      # Common steps that we repeat between workflows.
+      # I couldn't find an equivalent of CircleCI's templates; can we consolidate by turning this into an action?
+      - name: Code Checkout
+        uses: actions/checkout@v2
+
+      - name: Sub modules checkout
+        env:
+          SSH_KEY_FOR_SUBMODULE: ${{secrets.SUBMODULE_GITHUB_KEY}}
+        #the step below set the ssh key for the run
+        run: |
+          mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo "$SSH_KEY_FOR_SUBMODULE" > $HOME/.ssh/id_rsa && chmod 600 $HOME/.ssh/id_rsa &&  git submodule sync && git submodule --quiet update --init && echo `git rev-parse --short=8 HEAD ` > TAG.txt
+
+      - name: Login to GCP
+        # Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
+          version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+      # Configure Docker to use the gcloud command-line tool as a credential
+      # helper for authentication
+      - run: |-
+          gcloud --quiet auth configure-docker
+
+      - name: Login to GCR
+        uses: docker/login-action@v1
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-graphhopper-buildx-${{ github.sha}}
+          restore-keys: |
+            ${{ runner.os }}-graphhopper-buildx
+      # ---------------------
 
       - name: build the server
         uses: docker/build-push-action@v2
@@ -100,3 +158,45 @@ jobs:
 
       - name: run functional test
         run:  bash functional_test.sh ${{ github.sha }}-server-dev
+  update-tags:
+    runs-on: ubuntu-latest
+    needs: functional-tests
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: '0'
+    - name: Compute new tag
+      id: compute_new_tag
+      run: |
+        current_tag=$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' |  grep -E '^v[0-9]+$' | cut -c 2- | head -n1)
+        new_tag="v$(echo "$current_tag+1" | bc)"
+        echo ::set-output name=tag::$new_tag
+    - name: Push git tag
+      run: |
+        git config user.name "Replica Robots"
+        git config user.email "robots@replicahq.com"
+        git tag "${{ steps.compute_new_tag.outputs.tag }}"
+        git push origin "${{ steps.compute_new_tag.outputs.tag }}"
+    - name: Login to GCP
+      # Setup gcloud CLI
+      uses: google-github-actions/setup-gcloud@v0.2.0
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+        service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
+        version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+    # Configure Docker to use the gcloud command-line tool as a credential
+    # helper for authentication
+    - run: |-
+        gcloud --quiet auth configure-docker
+    - name: Login to GCR
+      uses: docker/login-action@v1
+      with:
+        registry: gcr.io
+        username: _json_key
+        password: ${{ secrets.GOOGLE_CREDENTIALS }}
+    - name: Update docker tags
+      run: |
+        docker pull us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev
+        docker tag us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}
+        docker push us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}
+
