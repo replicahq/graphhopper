@@ -1,6 +1,9 @@
 ARG BASE_IMAGE
 FROM $BASE_IMAGE as base
 
+RUN pwd
+RUN ls -la
+
 COPY ./full_usa.osm.pbf ./
 
 RUN java -Xmx28g -Ddw.graphhopper.datareader.file=full_usa.osm.pbf \
