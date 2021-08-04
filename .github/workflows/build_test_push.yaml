@@ -92,6 +92,8 @@ jobs:
       - name: Download USA OSM cutout and build GTFS validator image
         run: |-
           gsutil -m -o "GSUtil:parallel_process_count=1" cp ${{ secrets.USA_OSM_PATH }} ./full_usa.osm.pbf
+          pwd
+          ls -la .
           gcloud builds submit \
           --config=gtfs_validator_build.yaml \
           --substitutions=_IMAGE_TAG=us.gcr.io/model-159019/gh:${{ github.sha }}-gtfs-validator,_BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev \
