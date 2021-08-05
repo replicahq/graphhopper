@@ -43,10 +43,12 @@ ARG MININORCAL_GTFS_PATH
 
 RUN ls -la
 WORKDIR /graphhopper
-COPY --from=node-build ./graphhopper ./
+COPY . .
 RUN ls -la
 
 RUN ./setup_tests.sh
+
+RUN ls -la
 
 # Build java code with Maven
 FROM maven:3.6.3-adoptopenjdk-14 as maven-build
