@@ -80,6 +80,30 @@ jobs:
           docker cp web/test-data/micro_nor_cal.osm.pbf testrunner:/graphhopper/web/test-data/micro_nor_cal.osm.pbf
           for f in web/test-data/gtfs/*; do docker cp $f testrunner:/graphhopper/$f; done
           docker exec -i testrunner /bin/bash -c "mvn test"
+
+      - name: build the server
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          file: Dockerfile.server
+          tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev"
+          build-args: |
+            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
+
+      - name: Install golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.6'
+
+      - name: Install grpcurl
+        run: |
+          go get github.com/fullstorydev/grpcurl/...
+          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+          grpcurl -version
+
+      - name: run functional test
+        run:  bash functional_test.sh ${{ github.sha }}-server-dev
   
   functional-tests:
     name: "Build server image and run functional tests"
