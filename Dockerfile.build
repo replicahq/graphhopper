@@ -46,6 +46,7 @@ RUN ls -la
 WORKDIR /graphhopper
 COPY . .
 RUN ls -la
+RUN gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
 
 RUN ./setup_tests.sh
 
