@@ -38,7 +38,7 @@ jobs:
       - run: |-
           echo $GOOGLE_APPLICATION_CREDENTIALS
           echo "test 1"
-          ls -la $GOOGLE_APPLICATION_CREDENTIALS
+          ls -lar $GOOGLE_APPLICATION_CREDENTIALS
           echo "test 2"
           export GOOGLE_CREDENTIALS_FILE=$(basename $GOOGLE_APPLICATION_CREDENTIALS)
           export GOOGLE_CREDENTIALS_FOLDER=$(dirname $GOOGLE_APPLICATION_CREDENTIALS | xargs basename)
