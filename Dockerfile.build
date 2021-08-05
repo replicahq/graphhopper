@@ -35,23 +35,19 @@ COPY --from=protoc-build ./graphhopper/grpc ./grpc
 RUN npm install
 RUN npm run build -- --config grpc/src/main/resources/assets/pt/webpack.config.js
 
+
 # Download + set up files needed for tests
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:latest as test-build
 
 ARG MININORCAL_OSM_PATH
 ARG MININORCAL_GTFS_PATH
 ARG GOOGLE_CREDENTIALS_FILE
-RUN echo $GOOGLE_CREDENTIALS_FILE
 
-RUN ls -la
 WORKDIR /graphhopper
 COPY . .
-RUN ls -la
 RUN gcloud auth activate-service-account --key-file=$GOOGLE_CREDENTIALS_FILE
-
 RUN ./setup_tests.sh
 
-RUN ls -la
 
 # Build java code with Maven
 FROM maven:3.6.3-adoptopenjdk-14 as maven-build
@@ -62,13 +58,10 @@ ARG GIT_PERSONAL_ACCESS
 
 WORKDIR /graphhopper
 COPY . .
-RUN ls -la
 RUN rm -r grpc && rm test_gh_config.yaml
-RUN ls -la
 COPY --from=node-build ./graphhopper/grpc ./grpc
 COPY --from=test-build ./graphhopper/web/test-data ./web/test-data
 COPY --from=test-build ./graphhopper/test_gh_config.yaml ./test_gh_config.yaml
-RUN ls -la
 
 RUN mvn -s maven_settings.xml --projects grpc -am -DskipTests=true package && \
     mvn -s maven_settings.xml --projects web -am -DskipTests=true package
