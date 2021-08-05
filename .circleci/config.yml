@@ -19,6 +19,7 @@ jobs:
             echo ${GCLOUD_SERVICE_KEY} | base64 -d > ${HOME}/gcp-key.json
             gcloud auth activate-service-account --key-file ${HOME}/gcp-key.json
             gcloud --quiet config set project model-159019
+            cp ${HOME}/gcp-key.json /graphhopper
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
@@ -26,7 +27,7 @@ jobs:
           command: git rev-parse --short=8 HEAD > /tmp/tag
       - run:
           name: Build base image
-          command: docker build --build-arg GRAPHHOPPER_TOKEN=$GRAPHHOPPER_TOKEN --build-arg GIT_USER_ID=$GIT_USER_ID --build-arg GIT_PERSONAL_ACCESS=$GIT_PERSONAL_ACCESS --build-arg MININORCAL_OSM_PATH=$MININORCAL_OSM_PATH --build-arg MININORCAL_GTFS_PATH=$MININORCAL_GTFS_PATH --build-arg GOOGLE_CREDENTIALS_FILE=${HOME}/gcp-key.json . -f Dockerfile.build -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build
+          command: docker build --build-arg GRAPHHOPPER_TOKEN=$GRAPHHOPPER_TOKEN --build-arg GIT_USER_ID=$GIT_USER_ID --build-arg GIT_PERSONAL_ACCESS=$GIT_PERSONAL_ACCESS --build-arg MININORCAL_OSM_PATH=$MININORCAL_OSM_PATH --build-arg MININORCAL_GTFS_PATH=$MININORCAL_GTFS_PATH --build-arg GOOGLE_CREDENTIALS_FILE=gcp-key.json . -f Dockerfile.build -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build
       - run:
           name: Run Tests
           command: |
