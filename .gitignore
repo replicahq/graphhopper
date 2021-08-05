@@ -23,6 +23,7 @@ debug.sh
 *.pbf
 !/web/test-data/*.pbf
 !/web/test-data/*.osm
+!full_usa.osm.pbf
 *.dem
 *.log
 srtmprovider/
