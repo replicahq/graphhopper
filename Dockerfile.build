@@ -40,13 +40,14 @@ FROM gcr.io/google.com/cloudsdktool/cloud-sdk:latest as test-build
 
 ARG MININORCAL_OSM_PATH
 ARG MININORCAL_GTFS_PATH
-ARG GOOGLE_APPLICATION_CREDENTIALS
+ARG GOOGLE_CREDENTIALS_PATH
+RUN echo $GOOGLE_CREDENTIALS_PATH
 
 RUN ls -la
 WORKDIR /graphhopper
 COPY . .
 RUN ls -la
-RUN gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+RUN gcloud auth activate-service-account --key-file=$GOOGLE_CREDENTIALS_PATH
 
 RUN ./setup_tests.sh
 
