@@ -40,6 +40,7 @@ FROM gcr.io/google.com/cloudsdktool/cloud-sdk:latest as test-build
 
 ARG MININORCAL_OSM_PATH
 ARG MININORCAL_GTFS_PATH
+ARG GOOGLE_APPLICATION_CREDENTIALS
 
 RUN ls -la
 WORKDIR /graphhopper
