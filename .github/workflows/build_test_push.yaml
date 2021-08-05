@@ -37,9 +37,11 @@ jobs:
 
       - run: |-
           echo $GOOGLE_APPLICATION_CREDENTIALS
-          ls $GOOGLE_APPLICATION_CREDENTIALS
+          echo "test 1"
+          ls -la $GOOGLE_APPLICATION_CREDENTIALS
+          echo "test 2"
           export GOOGLE_CREDENTIALS_FILE=$(basename $GOOGLE_APPLICATION_CREDENTIALS)
-          export GOOGLE_CREDENTIALS_FOLDER=$(dirname $GOOGLE_APPLICATION_CREDENTIALS | basename)
+          export GOOGLE_CREDENTIALS_FOLDER=$(dirname $GOOGLE_APPLICATION_CREDENTIALS | xargs basename)
           export GOOGLE_CREDENTIALS_PATH="${GOOGLE_CREDENTIALS_FOLDER}/${GOOGLE_CREDENTIALS_FILE}"
           echo $GOOGLE_CREDENTIALS_PATH
 
