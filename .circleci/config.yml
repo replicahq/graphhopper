@@ -20,6 +20,7 @@ jobs:
             gcloud auth activate-service-account --key-file ${HOME}/gcp-key.json
             gcloud --quiet config set project model-159019
             cp ${HOME}/gcp-key.json /graphhopper
+            cd /graphhopper && ls -la && cd ..
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
