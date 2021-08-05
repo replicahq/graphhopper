@@ -65,20 +65,12 @@ jobs:
             GRAPHHOPPER_TOKEN=${{ secrets.GRAPHHOPPER_TOKEN}}
             GIT_PERSONAL_ACCESS=${{ secrets.GIT_PERSONAL_ACCESS }}
             GIT_USER_ID=${{ secrets.GIT_USER_ID }}
-
-      - name: Download + setup micro norcal test files
-        run: |
-          export MININORCAL_OSM_PATH=${{ secrets.MININORCAL_OSM_PATH}}
-          export MININORCAL_GTFS_PATH=${{ secrets.MININORCAL_GTFS_PATH}}
-          ./setup_tests.sh
+            MININORCAL_OSM_PATH=${{ secrets.MININORCAL_OSM_PATH}}
+            MININORCAL_GTFS_PATH=${{ secrets.MININORCAL_GTFS_PATH}}
 
       - name: run unit tests
         run: |
           docker run -t -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-dev /bin/bash
-          docker exec -i testrunner /bin/bash -c "mkdir -p ./web/test-data/gtfs"
-          docker cp test_gh_config.yaml testrunner:/graphhopper
-          docker cp web/test-data/micro_nor_cal.osm.pbf testrunner:/graphhopper/web/test-data/micro_nor_cal.osm.pbf
-          for f in web/test-data/gtfs/*; do docker cp $f testrunner:/graphhopper/$f; done
           docker exec -i testrunner /bin/bash -c "mvn test"
   
   functional-tests:
@@ -158,6 +150,7 @@ jobs:
 
       - name: run functional test
         run:  bash functional_test.sh ${{ github.sha }}-server-dev
+
   update-tags:
     runs-on: ubuntu-latest
     needs: functional-tests
