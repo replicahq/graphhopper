@@ -16,8 +16,8 @@ jobs:
       - run: &setup_gcloud
           name: Setup gcloud
           command: |
-            echo ${GCLOUD_SERVICE_KEY} | base64 -d > ${HOME}/gcp-key.json
-            gcloud auth activate-service-account --key-file ${HOME}/gcp-key.json
+            echo ${GCLOUD_SERVICE_KEY} | base64 -d > ${HOME}/repo/gcp-key.json
+            gcloud auth activate-service-account --key-file ${HOME}/repo/gcp-key.json
             gcloud --quiet config set project model-159019
             pwd
             ls -la
