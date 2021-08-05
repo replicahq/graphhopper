@@ -10,7 +10,7 @@ COPY --from=base /graphhopper/grpc/target/*.jar ./grpc/target/
 COPY --from=base /graphhopper/web/target/*.jar ./web/target/
 COPY --from=base /graphhopper/grpc/src/main/resources ./grpc/src/main/resources
 # pom.xml is used to get the jar file version. see https://github.com/graphhopper/graphhopper/pull/1990#discussion_r409438806
-COPY ./pom.xml ./default_gh_config.yaml ./nationwide_gh_config.yaml ./config-proxy.yaml ./
+COPY ./pom.xml ./default_gh_config.yaml ./test_gh_config.yaml ./nationwide_gh_config.yaml ./config-proxy.yaml ./
 
 VOLUME [ "/data" ]
 
