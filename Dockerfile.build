@@ -45,7 +45,8 @@ ARG GOOGLE_CREDENTIALS_FILE
 
 WORKDIR /graphhopper
 COPY . .
-RUN gcloud auth activate-service-account --key-file=$GOOGLE_CREDENTIALS_FILE
+# Only run gcloud authentication when appropriate (in GH actions, not circle CI)
+RUN if [ ! -z "$GOOGLE_CREDENTIALS_FILE" ] ; then gcloud auth activate-service-account --key-file=$GOOGLE_CREDENTIALS_FILE ; fi
 RUN ./setup_tests.sh
 
 
