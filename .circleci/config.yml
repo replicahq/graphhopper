@@ -16,14 +16,14 @@ jobs:
       - run: &setup_gcloud
           name: Setup gcloud
           command: |
-            echo ${GCLOUD_SERVICE_KEY} | base64 -d > ${HOME}/gcp-key.json
-            gcloud auth activate-service-account --key-file ${HOME}/gcp-key.json
+            echo ${GCLOUD_SERVICE_KEY} | base64 -d > ${HOME}/repo/gcp-key.json
+            gcloud auth activate-service-account --key-file ${HOME}/repo/gcp-key.json
             gcloud --quiet config set project model-159019
             pwd
             ls -la
             echo ${HOME}
-            cp /root/.config/gcloud/configurations/config_default /root/repo/
             ls -la
+            gcloud --quiet auth configure-docker
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
@@ -34,7 +34,7 @@ jobs:
           command: |
             pwd
             ls -la
-            docker build --build-arg GRAPHHOPPER_TOKEN=$GRAPHHOPPER_TOKEN --build-arg GIT_USER_ID=$GIT_USER_ID --build-arg GIT_PERSONAL_ACCESS=$GIT_PERSONAL_ACCESS --build-arg MININORCAL_OSM_PATH=$MININORCAL_OSM_PATH --build-arg MININORCAL_GTFS_PATH=$MININORCAL_GTFS_PATH --build-arg GOOGLE_CREDENTIALS_FILE=config_default . -f Dockerfile.build -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build
+            docker build --build-arg GRAPHHOPPER_TOKEN=$GRAPHHOPPER_TOKEN --build-arg GIT_USER_ID=$GIT_USER_ID --build-arg GIT_PERSONAL_ACCESS=$GIT_PERSONAL_ACCESS --build-arg MININORCAL_OSM_PATH=$MININORCAL_OSM_PATH --build-arg MININORCAL_GTFS_PATH=$MININORCAL_GTFS_PATH --build-arg GOOGLE_CREDENTIALS_FILE=gcp-key.json . -f Dockerfile.build -t us.gcr.io/model-159019/gh:$(cat /tmp/tag)_build
       - run:
           name: Run Tests
           command: |
