@@ -52,20 +52,26 @@ import static org.junit.jupiter.api.Assertions.*;
  * of stuff (which is different for PT than for the rest) is under test, too.
  */
 @ExtendWith(DropwizardExtensionsSupport.class)
+@ExtendWith({ReplicaGraphHopperTestExtention.class})
 public class RouterServerTest extends ReplicaGraphHopperTest {
-    // Departure time + ODs are chosen for mini_kc test area, with a validity start date of
-    // 2018-02-04, and a bbox of -94.83546491344568,-94.57853983145668,38.88341685123928,39.102208929558294
+    // Departure time + ODs are chosen for micro_nor_cal test area, with a validity start date of
+    // 2019-10-13, and a bbox of -122.41229018000416,-120.49584285533076,37.75738096439945,39.52415953258036
+
     private static final Timestamp EARLIEST_DEPARTURE_TIME =
-            Timestamp.newBuilder().setSeconds(Instant.parse("2018-02-04T08:25:00Z").toEpochMilli() / 1000).build();
-    private static final double[] REQUEST_ODS =
-            {38.96637569955874, -94.70833304570988, 38.959204519370815, -94.69174071738964};
-    private static final RouterOuterClass.PtRouteRequest PT_REQUEST = createPtRequest();
+            Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-13T13:30:00Z").toEpochMilli() / 1000).build();
+    private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467,-121.29023848101498}; // Roseville area
+    private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281,-121.48746937746185}; // Sacramento area
+    private static final double[] REQUEST_DESTINATION = {38.55518457319914,-121.43714698730038}; // Sacramento area
+    // PT_REQUEST_1 should force a transfer between routes from 2 distinct feeds
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_1 = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+    // PT_REQUEST_2 should force a transfer between routes from the same feed
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_2 = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION);
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST =
-            createStreetRequest("car", false);
+            createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST_WITH_ALTERNATIVES =
-            createStreetRequest("car", true);
+            createStreetRequest("car", true,REQUEST_ORIGIN_1, REQUEST_DESTINATION);
     private static final RouterOuterClass.StreetRouteRequest WALK_REQUEST =
-            createStreetRequest("foot", false);
+            createStreetRequest("foot", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
 
     private static router.RouterGrpc.RouterBlockingStub routerStub = null;
 
@@ -112,15 +118,16 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         routerStub = router.RouterGrpc.newBlockingStub(channel);
     }
 
-    private static RouterOuterClass.StreetRouteRequest createStreetRequest(String mode, boolean alternatives) {
+    private static RouterOuterClass.StreetRouteRequest createStreetRequest(String mode, boolean alternatives,
+                                                                           double[] from, double[] to) {
         return RouterOuterClass.StreetRouteRequest.newBuilder()
                 .addPoints(0, RouterOuterClass.Point.newBuilder()
-                        .setLat(REQUEST_ODS[0])
-                        .setLon(REQUEST_ODS[1])
+                        .setLat(from[0])
+                        .setLon(from[1])
                         .build())
                 .addPoints(1, RouterOuterClass.Point.newBuilder()
-                        .setLat(REQUEST_ODS[2])
-                        .setLon(REQUEST_ODS[3])
+                        .setLat(to[0])
+                        .setLon(to[1])
                         .build())
                 .setProfile(mode)
                 .setAlternateRouteMaxPaths(alternatives ? 5 : 0)
@@ -129,15 +136,15 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .build();
     }
 
-    private static RouterOuterClass.PtRouteRequest createPtRequest() {
+    private static RouterOuterClass.PtRouteRequest createPtRequest(double[] from, double[] to) {
         return RouterOuterClass.PtRouteRequest.newBuilder()
                 .addPoints(0, RouterOuterClass.Point.newBuilder()
-                        .setLat(REQUEST_ODS[0])
-                        .setLon(REQUEST_ODS[1])
+                        .setLat(from[0])
+                        .setLon(from[1])
                         .build())
                 .addPoints(1, RouterOuterClass.Point.newBuilder()
-                        .setLat(REQUEST_ODS[2])
-                        .setLon(REQUEST_ODS[3])
+                        .setLat(to[0])
+                        .setLon(to[1])
                         .build())
                 .setEarliestDepartureTime(EARLIEST_DEPARTURE_TIME)
                 .setLimitSolutions(4)
@@ -150,13 +157,13 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     }
 
     @Test
-    public void testPublicTransitQuery() {
-        final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST);
+    public void testInterFeedPublicTransitQuery() {
+        final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST_1);
 
         // Check details of Path are set correctly
         assertEquals(1, response.getPathsList().size());
         RouterOuterClass.PtPath path = response.getPaths(0);
-        assertEquals(1, path.getPtLegsList().size());
+        assertEquals(2, path.getPtLegsList().size());
         assertEquals(2, path.getFootLegsList().size());
         assertTrue(path.getDistanceMeters() > 0);
         assertTrue(path.getDurationMillis() > 0);
@@ -194,7 +201,58 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         assertTrue(ptLeg.getStopsList().size() > 0);
         for (RouterOuterClass.Stop stop : ptLeg.getStopsList()) {
             assertFalse(stop.getStopId().isEmpty());
-            assertTrue(stop.getStopId().startsWith(TEST_GTFS_FILE_NAME));
+            assertEquals(1, TEST_GTFS_FILE_NAMES.stream().filter(f -> stop.getStopId().startsWith(f)).count());
+            assertFalse(stop.getStopName().isEmpty());
+            assertTrue(stop.hasPoint());
+        }
+    }
+
+    @Test
+    public void testIntraFeedPublicTransitQuery() {
+        final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST_2);
+
+        // Check details of Path are set correctly
+        assertEquals(1, response.getPathsList().size());
+        RouterOuterClass.PtPath path = response.getPaths(0);
+        assertEquals(2, path.getPtLegsList().size());
+        assertEquals(2, path.getFootLegsList().size());
+        assertTrue(path.getDistanceMeters() > 0);
+        assertTrue(path.getDurationMillis() > 0);
+
+        // Check that foot legs contain proper info
+        List<String> observedTravelSegmentTypes = Lists.newArrayList();
+        List<String> expectedTravelSegmentTypes = Lists.newArrayList("ACCESS", "EGRESS");
+        double observedDistanceMeters = 0;
+        for (RouterOuterClass.FootLeg footLeg : path.getFootLegsList()) {
+            assertTrue(footLeg.getStableEdgeIdsCount() > 0);
+            assertTrue(footLeg.getArrivalTime().getSeconds() > footLeg.getDepartureTime().getSeconds());
+            assertTrue(footLeg.getDistanceMeters() > 0);
+            assertFalse(footLeg.getTravelSegmentType().isEmpty());
+            observedTravelSegmentTypes.add(footLeg.getTravelSegmentType());
+            observedDistanceMeters += footLeg.getDistanceMeters();
+        }
+        assertEquals(expectedTravelSegmentTypes, observedTravelSegmentTypes);
+        // todo: once PT legs have distances, incorporate those in this check
+        assertEquals(path.getDistanceMeters(), observedDistanceMeters);
+
+        // Check that PT leg contains proper info
+        RouterOuterClass.PtLeg ptLeg = path.getPtLegs(0);
+        assertTrue(ptLeg.getArrivalTime().getSeconds() > ptLeg.getDepartureTime().getSeconds());
+        assertTrue(ptLeg.getStableEdgeIdsCount() > 0); // check that the GTFS link mapper worked
+
+        assertFalse(ptLeg.getTripId().isEmpty());
+        assertFalse(ptLeg.getRouteId().isEmpty());
+        assertFalse(ptLeg.getAgencyName().isEmpty());
+        assertFalse(ptLeg.getRouteShortName().isEmpty());
+        assertFalse(ptLeg.getRouteLongName().isEmpty());
+        assertFalse(ptLeg.getRouteType().isEmpty());
+        assertFalse(ptLeg.getDirection().isEmpty());
+
+        // Check stops in PT leg
+        assertTrue(ptLeg.getStopsList().size() > 0);
+        for (RouterOuterClass.Stop stop : ptLeg.getStopsList()) {
+            assertFalse(stop.getStopId().isEmpty());
+            assertEquals(1, TEST_GTFS_FILE_NAMES.stream().filter(f -> stop.getStopId().startsWith(f)).count());
             assertFalse(stop.getStopName().isEmpty());
             assertTrue(stop.hasPoint());
         }
@@ -248,22 +306,19 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
     @Test
     public void testBadPointsTransit() {
-        RouterOuterClass.PtRouteRequest badPtRequest = PT_REQUEST.toBuilder()
+        RouterOuterClass.PtRouteRequest badPtRequest = PT_REQUEST_1.toBuilder()
                 .setPoints(0, RouterOuterClass.Point.newBuilder().setLat(38.0).setLon(-94.0).build()).build();
         StatusRuntimeException exception =
                 assertThrows(StatusRuntimeException.class, () -> {routerStub.routePt(badPtRequest);});
         assertSame(exception.getStatus().getCode(), Status.NOT_FOUND.getCode());
     }
 
-    // todo: uncomment this when fix is made so badly-timed PT requests fail fast
-    /*
     @Test
     public void testBadTimeTransit() {
-        RouterOuterClass.PtRouteRequest badPtRequest = PT_REQUEST.toBuilder()
+        RouterOuterClass.PtRouteRequest badPtRequest = PT_REQUEST_1.toBuilder()
                 .setEarliestDepartureTime(Timestamp.newBuilder().setSeconds(100).build()).build();
         StatusRuntimeException exception =
                 assertThrows(StatusRuntimeException.class, () -> {routerStub.routePt(badPtRequest);});
         assertSame(exception.getStatus().getCode(), Status.NOT_FOUND.getCode());
     }
-    */
 }
