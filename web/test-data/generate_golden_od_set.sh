@@ -1,6 +1,6 @@
 #!/bin/bash
 
-bq --format=csv query \
+bq query --format=csv --use_legacy_sql=false --max_rows=1500 \
 'WITH commuters AS (
   SELECT
     person_id, lat, lng, lat_work, lng_work, TRACT, TRACT_work,
@@ -19,4 +19,4 @@ bq --format=csv query \
 SELECT * EXCEPT (index) FROM commuters
 WHERE index = 1
 LIMIT 1000
-'
+' > micro_nor_cal_golden_od_set.csv
