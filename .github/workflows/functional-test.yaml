@@ -2,11 +2,10 @@ name: Functional Test
 on:
   workflow_run:
     workflows: ["CI"]
-    # branches: [original-direction]
     types:
       - completed
-      # - requested
   workflow_dispatch:
+  push:
 
 jobs:
   wtf:
