@@ -13,4 +13,4 @@ jobs:
     runs-on: ubuntu-latest
     name: "Show me what is going on"
     steps:
-      run: echo ${{ github.event_name }}
+      - run: echo ${{ github.event_name }}
