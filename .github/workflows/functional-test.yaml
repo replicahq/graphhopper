@@ -1,0 +1,16 @@
+name: Functional Test
+on:
+  workflow_run:
+    workflows: ["CI"]
+    # branches: [original-direction]
+    types:
+      - completed
+      # - requested
+  workflow_dispatch:
+
+jobs:
+  wtf:
+    runs-on: ubuntu-latest
+    name: "Show me what is going on"
+    steps:
+      run: echo ${{ github.event_name }}
