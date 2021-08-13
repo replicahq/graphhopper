@@ -14,3 +14,9 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' }} || ${{ github.ref == 'refs/heads/original-direction' }}
     steps:
       - run: echo ${{ github.event_name }}
+      - run: echo ${{ github.ref }}
+  wtf2:
+    runs-on: ubuntu-latest
+    name: "Job that should always run"
+    steps:
+      - run: echo "Nothing to see here"
