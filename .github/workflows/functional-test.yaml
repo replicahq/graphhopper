@@ -11,6 +11,6 @@ jobs:
   wtf:
     runs-on: ubuntu-latest
     name: "Show me what is going on"
-    if: ${{ github.event_name }} == "workflow_dispatch" || ${{ github.ref == 'refs/heads/original-direction' }}
+    if: ${{ github.event_name == "workflow_dispatch" }} || ${{ github.ref == 'refs/heads/original-direction' }}
     steps:
       - run: echo ${{ github.event_name }}
