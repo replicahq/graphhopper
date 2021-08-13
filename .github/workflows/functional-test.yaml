@@ -11,12 +11,8 @@ jobs:
   wtf:
     runs-on: ubuntu-latest
     name: "Show me what is going on"
-    if:  github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/original-direction'
+    if:  github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/original-direction' && github.event.workflow_run.conclusion == 'success' )
     steps:
       - run: echo ${{ github.event_name }}
       - run: echo ${{ github.ref }}
-  wtf2:
-    runs-on: ubuntu-latest
-    name: "Job that should always run"
-    steps:
-      - run: echo "Nothing to see here"
+
