@@ -47,7 +47,7 @@ done
 
 echo "Checking test_gh_config.yaml; updating paths to test OSM/GTFS if needed"
 if grep -q TEST_OSM ./test_gh_config.yaml; then
-  sed -i -e "s/{{ TEST_OSM }}/test-data\/micro_nor_cal.osm.pbf/g" ./test_gh_config.yaml
+  sed -i -e "s/{{ TEST_OSM }}/.\/test-data\/micro_nor_cal.osm.pbf/g" ./test_gh_config.yaml
 fi
 
 if grep -q TEST_GTFS ./test_gh_config.yaml; then
