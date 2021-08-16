@@ -1,4 +1,10 @@
 name: Functional Test
+# This test does the following:
+# * Builds the "server" docker image that is used by the model repo
+# * Runs functional tests
+# * If tests pass, updates git and docker tags
+# The workflow is configured to run on merges to original-direction, after unit tests pass.
+# It can also be run manually, in which case it will NOT execute the steps to update git and docker tags
 on:
   workflow_run:
     workflows: ["CI"]
@@ -9,7 +15,7 @@ on:
 jobs:
   functional-tests:
     name: "Build server image and run functional tests"
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/original-direction' && github.event.workflow_run.conclusion == 'success' )
+    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/original-direction' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: model-159019
