@@ -26,8 +26,8 @@ docker run \
     --rm \
      "$DOCKER_IMAGE_TAG" \
      /bin/bash -c
-     "mkdir $(pwd)/test-data &&
-     cp -r $(pwd)/web/test-data $(pwd)/test-data &&
+     "mkdir /graphhopper/test-data &&
+     cp -r /graphhopper/web/test-data /graphhopper/test-data &&
      java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M
      -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar
      -server com.graphhopper.http.GraphHopperApplication import test_gh_config.yaml"
