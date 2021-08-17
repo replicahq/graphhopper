@@ -21,11 +21,8 @@ package com.graphhopper.http;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.graphhopper.CustomGraphHopperOSM;
-import com.graphhopper.GraphHopper;
-import com.graphhopper.GraphHopperConfig;
+import com.graphhopper.*;
 import com.graphhopper.config.Profile;
-import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.json.geo.JsonFeatureCollection;
 import com.graphhopper.routing.ee.vehicles.TruckFlagEncoder;
@@ -72,7 +69,9 @@ public class GraphHopperManaged implements Managed {
             logger.error("Problem while reading border map GeoJSON. Skipping this.", e1);
             landmarkSplittingFeatureCollection = null;
         }
-        if (configuration.has("gtfs.file")) {
+        if (configuration.has("validation")) {
+            graphHopper = new CustomGraphHopperValidator((configuration));
+        } else if (configuration.has("gtfs.file")) {
             graphHopper = new CustomGraphHopperGtfs(configuration);
         } else {
             graphHopper = new CustomGraphHopperOSM(landmarkSplittingFeatureCollection, configuration).forServer();

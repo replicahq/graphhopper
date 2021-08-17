@@ -17,10 +17,7 @@
  */
 package com.graphhopper.http;
 
-import com.graphhopper.http.cli.ExportCommand;
-import com.graphhopper.http.cli.ExportNationwideCommand;
-import com.graphhopper.http.cli.GtfsLinkMapperCommand;
-import com.graphhopper.http.cli.ImportCommand;
+import com.graphhopper.http.cli.*;
 import com.graphhopper.http.resources.RootResource;
 import io.dropwizard.Application;
 import io.dropwizard.bundles.assets.ConfiguredAssetsBundle;
@@ -46,6 +43,7 @@ public final class GraphHopperApplication extends Application<GraphHopperServerC
         bootstrap.addCommand(new GtfsLinkMapperCommand());
         bootstrap.addCommand(new ExportCommand());
         bootstrap.addCommand(new ExportNationwideCommand());
+        bootstrap.addCommand(new ValidateGTFSCommand());
 
         Map<String, String> resourceToURIMappings = new HashMap<>();
         resourceToURIMappings.put("/src/main/resources/assets/", "/maps/");
