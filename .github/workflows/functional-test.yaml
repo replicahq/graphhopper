@@ -8,6 +8,7 @@ name: Functional Test
 on:
   workflow_run:
     workflows: ["CI"]
+    branches: ["original-direction"]
     types:
       - completed
   workflow_dispatch:
@@ -15,7 +16,6 @@ on:
 jobs:
   functional-tests:
     name: "Build server image and run functional tests"
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/original-direction' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: model-159019
