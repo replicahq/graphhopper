@@ -74,7 +74,7 @@ fi
 grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_response.json <<EOM
 {
 "points":[{"lat":38.74891667931467,"lon":-121.29023848101498},{"lat":38.55518457319914,"lon":-121.43714698730038}],
-"earliest_departure_time":"2018-02-04T08:25:00Z",
+"earliest_departure_time":"2019-10-13T18:25:00Z",
 "limit_solutions":4,
 "max_profile_duration":10,
 "beta_walk_time":1.5,
