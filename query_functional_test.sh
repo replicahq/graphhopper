@@ -1,19 +1,19 @@
 #!/bin/bash
 
+# todo: handle retries? Hopefully unnecessary
+# todo: fix indentation of grpcurl request
+
 set +ex
 
 if [ "$#" -lt 1 ]; then
-    echo "Usage: functional_test.sh TAG"
+    echo "Usage: query_functional_test.sh TAG"
     exit 1
 fi
 
 TAG=$1
 
-TMPDIR=$(mktemp -d)
-
 #make sure the env is clean:
 docker rm --force $(docker ps --all -q)
-
 
 # To run this script locally, you may need to run `docker pull $tag` from the model repo,
 # where your credentials will be populated.
@@ -46,34 +46,34 @@ sleep 30
 # greb the server ip:
 SERVER= $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' functional_test_server }})
 
-# Make a request for a couple of points in the micro_nor_cal region
-grpcurl  -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/street_response.json <<EOM
+touch "$TMPDIR"/street_responses.json
+touch "$TMPDIR"/transit_responses.json
+
+# Make street requests for each point in golden OD set for the micro_nor_cal region
+while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
+  # Don't forget to skip the header line
+  if [ "$person_id" != "person_id" ] ; then
+grpcurl  -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/response.json <<EOM
 {
-"points":[{"lat":38.74891667931467,"lon":-121.29023848101498},{"lat":38.55518457319914,"lon":-121.43714698730038}],
+"points":[{"lat":"$lat","lon":"$lng"},{"lat":"$lat_work","lon":"$lng_work"}],
 "profile": "car"
 }
 EOM
+    # Add JSON query result, appended with person_id field, to street_responses JSONL output file
+    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/response.json >> "$TMPDIR"/street_responses.json
+    # wc -l "$TMPDIR"/street_responses.json
+    rm "$TMPDIR"/response.json
+  fi
+done < ./web/test-data/micro_nor_cal_golden_od_set.csv
 
-#test if the client command exit status == 0
 
-if [ $? != 0 ]
-    then
-        echo "ERROR: Car request FAILED"
-        docker kill functional_test_server
-        exit 1
-fi
-
-if ! [ -s "$TMPDIR"/street_response.json ] || ! jq -e .paths < "$TMPDIR"/street_response.json; then
-    echo "Street response empty or not valid json:"
-    cat "$TMPDIR"/street_response.json
-    docker kill functional_test_server
-    exit 1
-fi
-
-# Make a PT request too
+# Make transit requests for each point in golden OD set for the micro_nor_cal region
+while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
+  # Don't forget to skip the header line
+  if [ "$person_id" != "person_id" ] ; then
 grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_response.json <<EOM
 {
-"points":[{"lat":38.74891667931467,"lon":-121.29023848101498},{"lat":38.55518457319914,"lon":-121.43714698730038}],
+"points":[{"lat":"$lat","lon":"$lng"},{"lat":"$lat_work","lon":"$lng_work"}],
 "earliest_departure_time":"2019-10-13T18:25:00Z",
 "limit_solutions":4,
 "max_profile_duration":10,
@@ -83,21 +83,11 @@ grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_re
 "betaTransfers":1440000
 }
 EOM
-
-#test if the client command exit status == 0
-
-if [ $? != 0 ]
-    then
-        echo "ERROR: PT request FAILED"
-        docker kill functional_test_server
-        exit 1
-fi
-
-if ! [ -s "$TMPDIR"/pt_response.json ] || ! jq -e .paths < "$TMPDIR"/pt_response.json; then
-    echo "PT response empty or not valid json:"
-    cat "$TMPDIR"/pt_response.json
-    docker kill functional_test_server
-    exit 1
-fi
+    # Add JSON query result, appended with person_id field, to street_responses JSONL output file
+    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/response.json >> "$TMPDIR"/transit_responses.json
+    # wc -l "$TMPDIR"/street_responses.json
+    rm "$TMPDIR"/response.json
+  fi
+done < ./web/test-data/micro_nor_cal_golden_od_set.csv
 
 docker kill functional_test_server

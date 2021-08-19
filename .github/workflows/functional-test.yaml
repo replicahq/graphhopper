@@ -1,7 +1,8 @@
 name: Functional Test
 # This test does the following:
 # * Builds the "server" docker image that is used by the model repo
-# * Runs functional tests
+# * Runs functional tests queries against micro nor cal golden OD set
+# * (todo: analyzes results of functional test queries, comparing against golden result set)
 # * If tests pass, updates git and docker tags
 # The workflow is configured to run on merges to original-direction, after unit tests pass.
 # It can also be run manually, in which case it will NOT execute the steps to update git and docker tags
@@ -21,8 +22,8 @@ jobs:
         env:
           GITHUB_CONTEXT: ${{ toJSON(github) }}
         run: echo "$GITHUB_CONTEXT"
-  functional-tests:
-    name: "Build server image and run functional tests"
+  functional-test-queries:
+    name: "Build server image and run functional test queries"
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
@@ -100,12 +101,28 @@ jobs:
           go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
           grpcurl -version
 
-      - name: run functional test
-        run:  bash functional_test.sh ${{ github.sha }}-server-dev
+      - name: Run functional test queries
+        run: |
+          export TMPDIR=$(mktemp -d)
+          bash query_functional_test.sh ${{ github.sha }}-server-dev
+
+      # todo: use job-specific archive names to prevent parallel jobs from overwriting each other's results?
+      # Does it matter, given the results will be analyzed instantly after this?
+      - name: Archive street functional test results
+        uses: actions/upload-artifact@v2
+        with:
+          name: functional-test-street-results
+          path: $TMPDIR/street_responses.json
+
+      - name: Archive transit functional test results
+        uses: actions/upload-artifact@v2
+        with:
+          name: functional-test-transit-results
+          path: $TMPDIR/transit_responses.json
 
   update-tags:
     runs-on: ubuntu-latest
-    needs: functional-tests
+    needs: functional-test-queries
     # Only update tags if this was triggered by completion of CI upstream
     if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     steps:
