@@ -43,8 +43,8 @@ docker run --rm --name functional_test_server -p 50051:50051 -p 8998:8998 -v "$T
 echo "Waiting for graphhopper server to start up"
 sleep 30
 
-# greb the server ip:
-SERVER= $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' functional_test_server }})
+# grab the server ip:
+SERVER=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' functional_test_server }})
 
 touch "$TMPDIR"/street_responses.json
 touch "$TMPDIR"/transit_responses.json
