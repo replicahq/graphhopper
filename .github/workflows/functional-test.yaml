@@ -56,9 +56,6 @@ jobs:
       - run: |-
           gcloud --quiet auth configure-docker
 
-      - run: |-
-          echo "GOOGLE_CREDENTIALS_FILE=$(basename $GOOGLE_APPLICATION_CREDENTIALS)" >> $GITHUB_ENV
-
       - name: Login to GCR
         uses: docker/login-action@v1
         with:
@@ -113,13 +110,13 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-street-results
-          path: $TMPDIR/street_responses.json
+          path: ${{ env.TMPDIR }}/street_responses.json
 
       - name: Archive transit functional test results
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-transit-results
-          path: $TMPDIR/transit_responses.json
+          path: ${{ env.TMPDIR }}/transit_responses.json
 
   update-tags:
     runs-on: ubuntu-latest
