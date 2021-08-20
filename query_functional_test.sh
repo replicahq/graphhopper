@@ -12,7 +12,7 @@ fi
 
 TAG=$1
 
-#make sure the env is clean:
+# Make sure the docker env is clean
 docker rm --force $(docker ps --all -q)
 
 # To run this script locally, you may need to run `docker pull $tag` from the model repo,
@@ -43,7 +43,7 @@ docker run --rm --name functional_test_server -p 50051:50051 -p 8998:8998 -v "$T
 echo "Waiting for graphhopper server to start up"
 sleep 30
 
-# grab the server ip:
+# Grab the server ip:
 SERVER=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' functional_test_server }})
 
 touch "$TMPDIR"/street_responses.json
@@ -53,7 +53,7 @@ touch "$TMPDIR"/transit_responses.json
 while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
   # Don't forget to skip the header line
   if [ "$person_id" != "person_id" ] ; then
-grpcurl  -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/response.json <<EOM
+grpcurl -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/response.json <<EOM
 {
 "points":[{"lat":"$lat","lon":"$lng"},{"lat":"$lat_work","lon":"$lng_work"}],
 "profile": "car"
@@ -65,7 +65,6 @@ EOM
     rm "$TMPDIR"/response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
-
 
 # Make transit requests for each point in golden OD set for the micro_nor_cal region
 while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
@@ -84,9 +83,9 @@ grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_re
 }
 EOM
     # Add JSON query result, appended with person_id field, to street_responses JSONL output file
-    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/response.json >> "$TMPDIR"/transit_responses.json
+    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/pt_response.json >> "$TMPDIR"/transit_responses.json
     # wc -l "$TMPDIR"/street_responses.json
-    rm "$TMPDIR"/response.json
+    rm "$TMPDIR"/pt_response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
 

@@ -28,8 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: model-159019
+      TMPDIR: $(mktemp -d)
     steps:
-
       # ---------------------
       # Common steps that we repeat between workflows.
       # I couldn't find an equivalent of CircleCI's templates; can we consolidate by turning this into an action?
@@ -39,7 +39,7 @@ jobs:
       - name: Sub modules checkout
         env:
           SSH_KEY_FOR_SUBMODULE: ${{secrets.SUBMODULE_GITHUB_KEY}}
-        #the step below set the ssh key for the run
+        # set the ssh key for the run
         run: |
           mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo "$SSH_KEY_FOR_SUBMODULE" > $HOME/.ssh/id_rsa && chmod 600 $HOME/.ssh/id_rsa &&  git submodule sync && git submodule --quiet update --init && echo `git rev-parse --short=8 HEAD ` > TAG.txt
 
@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-graphhopper-buildx-${{ github.sha}}
+          key: ${{ runner.os }}-graphhopper-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-graphhopper-buildx
       # ---------------------
@@ -103,7 +103,6 @@ jobs:
 
       - name: Run functional test queries
         run: |
-          export TMPDIR=$(mktemp -d)
           bash query_functional_test.sh ${{ github.sha }}-server-dev
 
       # todo: use job-specific archive names to prevent parallel jobs from overwriting each other's results?
@@ -112,13 +111,13 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-street-results
-          path: $TMPDIR/street_responses.json
+          path: ${{ env.TMPDIR }}/street_responses.json
 
       - name: Archive transit functional test results
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-transit-results
-          path: $TMPDIR/transit_responses.json
+          path: ${{ env.TMPDIR }}/transit_responses.json
 
   update-tags:
     runs-on: ubuntu-latest
