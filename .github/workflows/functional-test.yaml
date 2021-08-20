@@ -28,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: model-159019
-      TMPDIR: $(mktemp -d)
     steps:
       # ---------------------
       # Common steps that we repeat between workflows.
@@ -80,6 +79,9 @@ jobs:
             ${{ runner.os }}-graphhopper-buildx
       # ---------------------
 
+      - name: Set temp directory env variable
+        run: echo "TMPDIR=$(mktemp -d)" >> $GITHUB_ENV
+
       - name: build the server
         uses: docker/build-push-action@v2
         with:
@@ -111,13 +113,13 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-street-results
-          path: ${{ env.TMPDIR }}/street_responses.json
+          path: $TMPDIR/street_responses.json
 
       - name: Archive transit functional test results
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-transit-results
-          path: ${{ env.TMPDIR }}/transit_responses.json
+          path: $TMPDIR/transit_responses.json
 
   update-tags:
     runs-on: ubuntu-latest
