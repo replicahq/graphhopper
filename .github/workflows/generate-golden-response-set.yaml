@@ -45,19 +45,21 @@ jobs:
           go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
           grpcurl -version
 
+      - name: Set temp directory env variable
+        run: echo "TMPDIR=$(mktemp -d)" >> $GITHUB_ENV
+
       - name: Run functional test queries
         run: |
-          export TMPDIR=$(mktemp -d)
           bash query_functional_test.sh ${{ github.sha }}-server-dev
 
       - name: Archive street functional test results as golden set
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-golden-street-results
-          path: $TMPDIR/street_responses.json
+          path: ${{ env.TMPDIR }}/street_responses.json
 
       - name: Archive transit functional test results as golden set
         uses: actions/upload-artifact@v2
         with:
           name: functional-test-golden-transit-results
-          path: $TMPDIR/transit_responses.json
+          path: ${{ env.TMPDIR }}/transit_responses.json
