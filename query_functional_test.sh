@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# todo: handle retries? Hopefully unnecessary
+# todo: handle retries/communications failures? Hopefully unnecessary with local docker setup
 # todo: fix indentation of grpcurl request
 
 set +ex
@@ -37,8 +37,8 @@ docker run \
     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links test_gh_config.yaml
 
 # Run server in background
-docker run --rm --name functional_test_server -p 50051:50051 -p 8998:8998 -v "$TMPDIR:/graphhopper/transit_data/" \
-    "$DOCKER_IMAGE_TAG" &
+docker run --rm --log-driver=none --name functional_test_server -p 50051:50051 -p 8998:8998 \
+    -v "$TMPDIR:/graphhopper/transit_data/" "$DOCKER_IMAGE_TAG" &
 
 echo "Waiting for graphhopper server to start up"
 sleep 30
@@ -48,6 +48,8 @@ SERVER=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{en
 
 touch "$TMPDIR"/street_responses.json
 touch "$TMPDIR"/transit_responses.json
+
+echo "Running street queries for golden OD set"
 
 # Make street requests for each point in golden OD set for the micro_nor_cal region
 while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
@@ -65,6 +67,8 @@ EOM
     rm "$TMPDIR"/response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
+
+echo "Done running street queries. Now running transit queries for golden OD set"
 
 # Make transit requests for each point in golden OD set for the micro_nor_cal region
 while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
@@ -88,5 +92,7 @@ EOM
     rm "$TMPDIR"/pt_response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
+
+echo "Transit queries complete. Killing server container"
 
 docker kill functional_test_server
