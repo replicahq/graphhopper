@@ -1,0 +1,61 @@
+name: Generate Functional Test Golden Response Set
+on: [workflow_dispatch]
+jobs:
+  functional-test-golden-response-set:
+    name: "Run functional test queries to generate golden set of responses"
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: model-159019
+    steps:
+      # ---------------------
+      # Common steps that we repeat between workflows.
+      - name: Login to GCP
+        # Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
+          version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+          export_default_credentials: true
+
+      # Configure Docker to use the gcloud command-line tool as a credential
+      # helper for authentication
+      - run: |-
+          gcloud --quiet auth configure-docker
+
+      - run: |-
+          echo "GOOGLE_CREDENTIALS_FILE=$(basename $GOOGLE_APPLICATION_CREDENTIALS)" >> $GITHUB_ENV
+
+      - name: Login to GCR
+        uses: docker/login-action@v1
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.GOOGLE_CREDENTIALS }}
+      # ---------------------
+
+      - name: Install golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.6'
+
+      - name: Install grpcurl
+        run: |
+          go get github.com/fullstorydev/grpcurl/...
+          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+          grpcurl -version
+
+      - name: Set temp directory env variable
+        run: echo "TMPDIR=$(mktemp -d)" >> $GITHUB_ENV
+
+      - name: Run functional test queries
+        run: |
+          bash query_functional_test.sh ${{ github.sha }}-server-dev
+
+      - name: Archive street functional test results as golden set
+        run: |
+          gsutil cp ${{ env.TMPDIR }}/street_responses.json gs://graphhopper_test_artifacts/golden_street_response_sets/${{ github.sha }}
+
+      - name: Archive transit functional test results as golden set
+        run: |
+          gsutil cp ${{ env.TMPDIR }}/transit_responses.json gs://graphhopper_test_artifacts/golden_transit_response_sets/${{ github.sha }}
