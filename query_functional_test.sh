@@ -63,7 +63,6 @@ grpcurl -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/
 EOM
     # Add JSON query result, appended with person_id field, to street_responses JSONL output file
     jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/response.json >> "$TMPDIR"/street_responses.json
-    # wc -l "$TMPDIR"/street_responses.json
     rm "$TMPDIR"/response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
@@ -88,7 +87,6 @@ grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_re
 EOM
     # Add JSON query result, appended with person_id field, to street_responses JSONL output file
     jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/pt_response.json >> "$TMPDIR"/transit_responses.json
-    # wc -l "$TMPDIR"/street_responses.json
     rm "$TMPDIR"/pt_response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
