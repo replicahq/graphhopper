@@ -53,13 +53,9 @@ jobs:
           bash query_functional_test.sh ${{ github.sha }}-server-dev
 
       - name: Archive street functional test results as golden set
-        uses: actions/upload-artifact@v2
-        with:
-          name: functional-test-golden-street-results
-          path: ${{ env.TMPDIR }}/street_responses.json
+        run: |
+          gsutil cp ${{ env.TMPDIR }}/street_responses.json gs://graphhopper_test_artifacts/golden_street_response_sets/${{ github.sha }}
 
       - name: Archive transit functional test results as golden set
-        uses: actions/upload-artifact@v2
-        with:
-          name: functional-test-golden-transit-results
-          path: ${{ env.TMPDIR }}/transit_responses.json
+        run: |
+          gsutil cp ${{ env.TMPDIR }}/transit_responses.json gs://graphhopper_test_artifacts/golden_transit_response_sets/${{ github.sha }}
