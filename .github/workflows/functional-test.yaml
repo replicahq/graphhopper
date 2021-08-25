@@ -189,8 +189,8 @@ jobs:
 
       - name: Download latest street + transit golden OD response sets
         run: |
-          GOLDEN_STREET_PATH=$(gsutil ls gs://graphhopper_test_artifacts/golden_street_response_sets | sort -k 2 | tail -2 | head -1)
-          GOLDEN_TRANSIT_PATH=$(gsutil ls gs://graphhopper_test_artifacts/golden_transit_response_sets | sort -k 2 | tail -2 | head -1)
+          GOLDEN_STREET_PATH=$(gsutil ls -l gs://graphhopper_test_artifacts/golden_street_response_sets | sort -k 2 | tail -2 | head -1 | rev | cut -d' ' -f 1 | rev)
+          GOLDEN_TRANSIT_PATH=$(gsutil ls -l gs://graphhopper_test_artifacts/golden_transit_response_sets | sort -k 2 | tail -2 | head -1 | rev | cut -d' ' -f 1 | rev)
           gsutil cp $GOLDEN_STREET_PATH golden_street_responses.json
           gsutil cp $GOLDEN_TRANSIT_PATH golden_transit_responses.json
           echo "Using golden street response set $GOLDEN_STREET_PATH + golden transit response set $GOLDEN_TRANSIT_PATH"
