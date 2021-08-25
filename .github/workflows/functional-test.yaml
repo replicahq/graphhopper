@@ -2,7 +2,7 @@ name: Functional Test
 # This test does the following:
 # * Builds the "server" docker image that is used by the model repo
 # * Runs functional tests queries against micro nor cal golden OD set
-# * analyzes results of functional test queries, comparing against golden result set
+# * Analyzes results of functional test queries, comparing against golden result set
 # * If tests pass, updates git and docker tags
 # The workflow is configured to run on merges to original-direction, after unit tests pass.
 # It can also be run manually, in which case it will NOT execute the steps to update git and docker tags
@@ -120,10 +120,10 @@ jobs:
 
   analyze-functional-test-results:
     name: "Analyze functional test results by comparing to golden OD response set"
-    # Only allow run if functional-test-queries step has succeeded
-    if: github.event_name == 'workflow_dispatch' && github.event.workflow_run.conclusion == 'success'
-    needs: functional-test-queries
     runs-on: ubuntu-latest
+    needs: functional-test-queries
+    # Only allow run if functional-test-queries step has succeeded
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     env:
       PROJECT_ID: model-159019
     steps:
