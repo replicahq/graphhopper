@@ -90,7 +90,10 @@ def percent_matched_routes(
 # Mean percent change over n response paths = (1/n) * sum over n((T_new - T_old) / T_old)
 # Mean absolute percent change over n response paths = (1/n) * sum over n(abs((T_new - T_old) / T_old))
 def travel_time_mean_percent_change(
-    golden_response_set: dict, responses_to_validate: dict, is_transit: bool
+    golden_response_set: dict,
+    responses_to_validate: dict,
+    is_transit: bool,
+    absolute: bool,
 ) -> float:
     matched_count = 0
     sum_of_changes = 0.0
@@ -122,14 +125,20 @@ def travel_time_mean_percent_change(
             else:
                 golden_travel_time = first_golden["duration_millis"]
                 to_compare_travel_time = first_to_compare["duration_millis"]
-            sum_of_changes += (
-                int(to_compare_travel_time) - int(golden_travel_time)
-            ) / int(golden_travel_time)
+            if absolute:
+                sum_of_changes += abs(
+                    (int(to_compare_travel_time) - int(golden_travel_time))
+                    / int(golden_travel_time)
+                )
+            else:
+                sum_of_changes += (
+                    int(to_compare_travel_time) - int(golden_travel_time)
+                ) / int(golden_travel_time)
     return (1 / matched_count) * sum_of_changes
 
 
 def transit_ratio_mean_percent_change(
-    golden_response_set: dict, responses_to_validate: dict
+    golden_response_set: dict, responses_to_validate: dict, absolute: bool
 ) -> float:
     matched_count = 0
     sum_of_changes = 0.0
@@ -139,62 +148,10 @@ def transit_ratio_mean_percent_change(
             matched_count += 1
             golden_ratio = calculate_transit_ratio(golden_response)
             to_compare_ratio = calculate_transit_ratio(to_compare)
-            sum_of_changes += (to_compare_ratio - golden_ratio) / golden_ratio
-    return (1 / matched_count) * sum_of_changes
-
-
-def travel_time_mean_absolute_percent_change(
-    golden_response_set: dict, responses_to_validate: dict, is_transit: bool
-) -> float:
-    matched_count = 0
-    sum_of_changes = 0.0
-    for person_id, golden_response in golden_response_set.items():
-        to_compare = responses_to_validate.get(person_id)
-        if to_compare:
-            matched_count += 1
-            first_golden = golden_response["paths"][0]
-            first_to_compare = to_compare["paths"][0]
-            if is_transit:
-                golden_travel_time = sum(
-                    (
-                        get_unix_timestamp(leg["arrival_time"])
-                        - get_unix_timestamp(leg["departure_time"])
-                    )
-                    * 1000
-                    for leg in (first_golden["pt_legs"] + first_golden["foot_legs"])
-                )
-                to_compare_travel_time = sum(
-                    (
-                        get_unix_timestamp(leg["arrival_time"])
-                        - get_unix_timestamp(leg["departure_time"])
-                    )
-                    * 1000
-                    for leg in (
-                        first_to_compare["pt_legs"] + first_to_compare["foot_legs"]
-                    )
-                )
+            if absolute:
+                sum_of_changes += abs((to_compare_ratio - golden_ratio) / golden_ratio)
             else:
-                golden_travel_time = first_golden["duration_millis"]
-                to_compare_travel_time = first_to_compare["duration_millis"]
-            sum_of_changes += abs(
-                (int(to_compare_travel_time) - int(golden_travel_time))
-                / int(golden_travel_time)
-            )
-    return (1 / matched_count) * sum_of_changes
-
-
-def transit_ratio_mean_absolute_percent_change(
-    golden_response_set: dict, responses_to_validate: dict
-) -> float:
-    matched_count = 0
-    sum_of_changes = 0.0
-    for person_id, golden_response in golden_response_set.items():
-        to_compare = responses_to_validate.get(person_id)
-        if to_compare:
-            matched_count += 1
-            golden_ratio = calculate_transit_ratio(golden_response)
-            to_compare_ratio = calculate_transit_ratio(to_compare)
-            sum_of_changes += abs((to_compare_ratio - golden_ratio) / golden_ratio)
+                sum_of_changes += (to_compare_ratio - golden_ratio) / golden_ratio
     return (1 / matched_count) * sum_of_changes
 
 
@@ -212,21 +169,19 @@ def run_all_validations(
         golden_response_set, responses_to_validate
     )
     validation_results["travel_time_mpc"] = travel_time_mean_percent_change(
-        golden_response_set, responses_to_validate, is_transit
+        golden_response_set, responses_to_validate, is_transit, False
     )
-    validation_results[
-        "travel_time_mean_apc"
-    ] = travel_time_mean_absolute_percent_change(
-        golden_response_set, responses_to_validate, is_transit
+    validation_results["travel_time_mean_apc"] = travel_time_mean_percent_change(
+        golden_response_set, responses_to_validate, is_transit, True
     )
     if is_transit:
         validation_results["transit_ratio_mpc"] = transit_ratio_mean_percent_change(
-            golden_response_set, responses_to_validate
+            golden_response_set, responses_to_validate, False
         )
         validation_results[
             "transit_ratio_mean_apc"
-        ] = transit_ratio_mean_absolute_percent_change(
-            golden_response_set, responses_to_validate
+        ] = transit_ratio_mean_percent_change(
+            golden_response_set, responses_to_validate, True
         )
 
     print("Results of validation: \n" + str(validation_results))
