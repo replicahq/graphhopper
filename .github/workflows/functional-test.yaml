@@ -2,7 +2,7 @@ name: Functional Test
 # This test does the following:
 # * Builds the "server" docker image that is used by the model repo
 # * Runs functional tests queries against micro nor cal golden OD set
-# * (todo: analyzes results of functional test queries, comparing against golden result set)
+# * Analyzes results of functional test queries, comparing against golden result set
 # * If tests pass, updates git and docker tags
 # The workflow is configured to run on merges to original-direction, after unit tests pass.
 # It can also be run manually, in which case it will NOT execute the steps to update git and docker tags
@@ -118,9 +118,90 @@ jobs:
           name: functional-test-transit-results
           path: ${{ env.TMPDIR }}/transit_responses.json
 
-  update-tags:
+  analyze-functional-test-results:
+    name: "Analyze functional test results by comparing to golden OD response set"
     runs-on: ubuntu-latest
     needs: functional-test-queries
+    env:
+      PROJECT_ID: model-159019
+    steps:
+      # ---------------------
+      # Common steps that we repeat between workflows.
+      # I couldn't find an equivalent of CircleCI's templates; can we consolidate by turning this into an action?
+      - name: Code Checkout
+        uses: actions/checkout@v2
+
+      - name: Sub modules checkout
+        env:
+          SSH_KEY_FOR_SUBMODULE: ${{secrets.SUBMODULE_GITHUB_KEY}}
+        # set the ssh key for the run
+        run: |
+          mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo "$SSH_KEY_FOR_SUBMODULE" > $HOME/.ssh/id_rsa && chmod 600 $HOME/.ssh/id_rsa &&  git submodule sync && git submodule --quiet update --init && echo `git rev-parse --short=8 HEAD ` > TAG.txt
+
+      - name: Login to GCP
+        # Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
+          version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+          export_default_credentials: true
+
+      # Configure Docker to use the gcloud command-line tool as a credential
+      # helper for authentication
+      - run: |-
+          gcloud --quiet auth configure-docker
+
+      - name: Login to GCR
+        uses: docker/login-action@v1
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-graphhopper-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-graphhopper-buildx
+      # ---------------------
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Download archived street functional test results
+        uses: actions/download-artifact@v2
+        with:
+          name: functional-test-street-results
+
+      - name: Download transit functional test results
+        uses: actions/download-artifact@v2
+        with:
+          name: functional-test-transit-results
+
+      - name: Download latest street + transit golden OD response sets
+        run: |
+          GOLDEN_STREET_PATH=$(gsutil ls -l gs://graphhopper_test_artifacts/golden_street_response_sets | sort -k 2 | tail -2 | head -1 | rev | cut -d' ' -f 1 | rev)
+          GOLDEN_TRANSIT_PATH=$(gsutil ls -l gs://graphhopper_test_artifacts/golden_transit_response_sets | sort -k 2 | tail -2 | head -1 | rev | cut -d' ' -f 1 | rev)
+          gsutil cp $GOLDEN_STREET_PATH golden_street_responses.json
+          gsutil cp $GOLDEN_TRANSIT_PATH golden_transit_responses.json
+          echo "Using golden street response set $GOLDEN_STREET_PATH + golden transit response set $GOLDEN_TRANSIT_PATH"
+
+      - name: Run analysis of functional test results vs. golden result sets
+        run: |
+          python analyze_functional_test_results.py golden_street_responses.json golden_transit_responses.json street_responses.json transit_responses.json
+
+  update-tags:
+    runs-on: ubuntu-latest
+    needs: analyze-functional-test-results
     # Only update tags if this was triggered by completion of CI upstream
     if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     steps:
@@ -161,4 +242,3 @@ jobs:
         docker pull us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev
         docker tag us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}
         docker push us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}
-
