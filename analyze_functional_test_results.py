@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Tuple
 import json
+import numpy as np
 import sys
 import time
 
@@ -12,6 +13,10 @@ TRAVEL_TIME_MPC_THRESHOLD = 0.05
 TRAVEL_TIME_MEAN_APC_THRESHOLD = 0.05
 TRANSIT_RATIO_MPC_THRESHOLD = 0.05
 TRANSIT_RATIO_MEAN_APC_THRESHOLD = 0.05
+STREET_MEAN_QUERY_TIME_THRESHOLD_MS = 300
+STREET_90TH_PERCENTILE_QUERY_TIME_THRESHOLD_MS = 750
+TRANSIT_MEAN_QUERY_TIME_THRESHOLD_MS = 500
+TRANSIT_90TH_PERCENTILE_QUERY_TIME_THRESHOLD_MS = 1000
 
 
 def import_query_results(
@@ -37,6 +42,14 @@ def get_unix_timestamp(datetime_string: str) -> int:
     return time.mktime(
         datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%SZ").timetuple()
     )
+
+
+def calculate_mean_query_time(response_set: dict) -> float:
+    return np.array([r["query_time"] for r in response_set.values()]).mean()
+
+
+def calculate_query_time_90th_percentile(response_set: dict) -> float:
+    return np.percentile(np.array([r["query_time"] for r in response_set.values()]), 90)
 
 
 def calculate_transit_ratio(response: dict) -> float:
@@ -86,7 +99,7 @@ def percent_matched_routes(
     return matched_count / len(golden_response_set)
 
 
-# Note: The following 4 checks only consider routes that are found across both runs,
+# Note: The following 2 checks only consider routes that are found across both runs,
 # and only consider the first path of each properly matched response
 # Mean percent change over n response paths = (1/n) * sum over n((T_new - T_old) / T_old)
 # Mean absolute percent change over n response paths = (1/n) * sum over n(abs((T_new - T_old) / T_old))
@@ -185,6 +198,13 @@ def run_all_validations(
             golden_response_set, responses_to_validate, True
         )
 
+    validation_results["mean_query_time"] = calculate_mean_query_time(
+        responses_to_validate
+    )
+    validation_results[
+        "90th_percentile_query_time"
+    ] = calculate_query_time_90th_percentile(responses_to_validate)
+
     print("Results of validation: \n" + str(validation_results))
 
     assert validation_results["new_routes_found"] <= NEW_ROUTES_FOUND_THRESHOLD
@@ -199,6 +219,22 @@ def run_all_validations(
         assert (
             validation_results["transit_ratio_mean_apc"]
             <= TRANSIT_RATIO_MEAN_APC_THRESHOLD
+        )
+        assert (
+            validation_results["mean_query_time"]
+            <= TRANSIT_MEAN_QUERY_TIME_THRESHOLD_MS
+        )
+        assert (
+            validation_results["90th_percentile_query_time"]
+            <= TRANSIT_90TH_PERCENTILE_QUERY_TIME_THRESHOLD_MS
+        )
+    else:
+        assert (
+            validation_results["mean_query_time"] <= STREET_MEAN_QUERY_TIME_THRESHOLD_MS
+        )
+        assert (
+            validation_results["90th_percentile_query_time"]
+            <= STREET_90TH_PERCENTILE_QUERY_TIME_THRESHOLD_MS
         )
 
 
