@@ -65,7 +65,7 @@ EOM
     END=$(python -c 'import time; print(int(time.time() * 1000))')
     QUERY_TIME=$((END-START))
     # Add JSON query result, appended with person_id and query time fields, to street_responses JSONL output file
-    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' --arg query_time "$QUERY_TIME" '. |= . + {"query_time": $QUERY_TIME}' "$TMPDIR"/response.json >> "$TMPDIR"/street_responses.json
+    jq -c --arg person "$person_id" --arg query_time "$QUERY_TIME" '. |= . + {"person_id": $person} + {"query_time": $query_time}' "$TMPDIR"/response.json >> "$TMPDIR"/street_responses.json
     rm "$TMPDIR"/response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
@@ -92,7 +92,7 @@ EOM
     END=$(python -c 'import time; print(int(time.time() * 1000))')
     QUERY_TIME=$((END-START))
     # Add JSON query result, appended with person_id and query time fields, to street_responses JSONL output file
-    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' --arg query_time "$QUERY_TIME" '. |= . + {"query_time": $QUERY_TIME}' "$TMPDIR"/pt_response.json >> "$TMPDIR"/transit_responses.json
+    jq -c --arg person "$person_id" --arg query_time "$QUERY_TIME" '. |= . + {"person_id": $person} + {"query_time": $query_time}' "$TMPDIR"/pt_response.json >> "$TMPDIR"/transit_responses.json
     rm "$TMPDIR"/pt_response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
