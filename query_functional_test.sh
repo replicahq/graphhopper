@@ -55,14 +55,17 @@ echo "Running street queries for golden OD set"
 while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
   # Don't forget to skip the header line
   if [ "$person_id" != "person_id" ] ; then
+    START=$(python -c 'import time; print(int(time.time() * 1000))')
 grpcurl -d @ -plaintext $SERVER:50051 router.Router/RouteStreetMode > "$TMPDIR"/response.json <<EOM
 {
 "points":[{"lat":"$lat","lon":"$lng"},{"lat":"$lat_work","lon":"$lng_work"}],
 "profile": "car"
 }
 EOM
-    # Add JSON query result, appended with person_id field, to street_responses JSONL output file
-    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/response.json >> "$TMPDIR"/street_responses.json
+    END=$(python -c 'import time; print(int(time.time() * 1000))')
+    QUERY_TIME=$((END-START))
+    # Add JSON query result, appended with person_id and query time fields, to street_responses JSONL output file
+    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' --arg query_time "$QUERY_TIME" '. |= . + {"query_time": $QUERY_TIME}' "$TMPDIR"/response.json >> "$TMPDIR"/street_responses.json
     rm "$TMPDIR"/response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
@@ -73,6 +76,7 @@ echo "Done running street queries. Now running transit queries for golden OD set
 while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
   # Don't forget to skip the header line
   if [ "$person_id" != "person_id" ] ; then
+    START=$(python -c 'import time; print(int(time.time() * 1000))')
 grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_response.json <<EOM
 {
 "points":[{"lat":"$lat","lon":"$lng"},{"lat":"$lat_work","lon":"$lng_work"}],
@@ -85,8 +89,10 @@ grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_re
 "betaTransfers":1440000
 }
 EOM
-    # Add JSON query result, appended with person_id field, to street_responses JSONL output file
-    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' "$TMPDIR"/pt_response.json >> "$TMPDIR"/transit_responses.json
+    END=$(python -c 'import time; print(int(time.time() * 1000))')
+    QUERY_TIME=$((END-START))
+    # Add JSON query result, appended with person_id and query time fields, to street_responses JSONL output file
+    jq -c --arg person "$person_id" '. |= . + {"person_id": $person}' --arg query_time "$QUERY_TIME" '. |= . + {"query_time": $QUERY_TIME}' "$TMPDIR"/pt_response.json >> "$TMPDIR"/transit_responses.json
     rm "$TMPDIR"/pt_response.json
   fi
 done < ./web/test-data/micro_nor_cal_golden_od_set.csv
