@@ -45,11 +45,11 @@ def get_unix_timestamp(datetime_string: str) -> int:
 
 
 def calculate_mean_query_time(response_set: dict) -> float:
-    return np.array([r["query_time"] for r in response_set.values()]).mean()
+    return np.array([r["query_time"] for r in response_set.values()]).astype(np.int64).mean()
 
 
 def calculate_query_time_90th_percentile(response_set: dict) -> float:
-    return np.percentile(np.array([r["query_time"] for r in response_set.values()]), 90)
+    return np.percentile(np.array([r["query_time"] for r in response_set.values()]).astype(np.int64), 90)
 
 
 def calculate_transit_ratio(response: dict) -> float:
