@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Tuple
+import copy
 import json
 import numpy as np
 import sys
@@ -45,11 +46,17 @@ def get_unix_timestamp(datetime_string: str) -> int:
 
 
 def calculate_mean_query_time(response_set: dict) -> float:
-    return np.array([r["query_time"] for r in response_set.values()]).astype(np.int64).mean()
+    return (
+        np.array([r["query_time"] for r in response_set.values()])
+        .astype(np.int64)
+        .mean()
+    )
 
 
 def calculate_query_time_90th_percentile(response_set: dict) -> float:
-    return np.percentile(np.array([r["query_time"] for r in response_set.values()]).astype(np.int64), 90)
+    return np.percentile(
+        np.array([r["query_time"] for r in response_set.values()]).astype(np.int64), 90
+    )
 
 
 def calculate_transit_ratio(response: dict) -> float:
@@ -89,12 +96,19 @@ def percent_matched_routes(
         if person_id in golden_response_set and person_id in responses_to_validate:
             golden_entry = golden_response_set[person_id]
             to_validate_entry = responses_to_validate[person_id]
+            golden_compare = copy.deepcopy(golden_entry)
+            to_validate_compare = copy.deepcopy(to_validate_entry)
+
             # round distance_meters to nearest meter, because it seems to be slightly inconsistent/nondeterministic
-            for path in golden_entry["paths"]:
+            for path in golden_compare["paths"]:
                 path["distance_meters"] = int(path["distance_meters"])
-            for path in to_validate_entry["paths"]:
+            for path in to_validate_compare["paths"]:
                 path["distance_meters"] = int(path["distance_meters"])
-            if golden_entry == to_validate_entry:
+            # remove query_time field before doing comparison
+            golden_compare.pop("query_time", None)
+            to_validate_compare.pop("query_time", None)
+
+            if golden_compare == to_validate_compare:
                 matched_count += 1
     return matched_count / len(golden_response_set)
 
