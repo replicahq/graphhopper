@@ -96,18 +96,22 @@ def percent_matched_routes(
         if person_id in golden_response_set and person_id in responses_to_validate:
             golden_entry = golden_response_set[person_id]
             to_validate_entry = responses_to_validate[person_id]
-            golden_compare = copy.deepcopy(golden_entry)
-            to_validate_compare = copy.deepcopy(to_validate_entry)
-
+            # remove query_time field before doing comparison
+            golden_compare = {
+                copy.deepcopy(k): copy.deepcopy(v)
+                for k, v in golden_entry.items()
+                if k != "query_time"
+            }
+            to_validate_compare = {
+                copy.deepcopy(k): copy.deepcopy(v)
+                for k, v in to_validate_entry.items()
+                if k != "query_time"
+            }
             # round distance_meters to nearest meter, because it seems to be slightly inconsistent/nondeterministic
             for path in golden_compare["paths"]:
                 path["distance_meters"] = int(path["distance_meters"])
             for path in to_validate_compare["paths"]:
                 path["distance_meters"] = int(path["distance_meters"])
-            # remove query_time field before doing comparison
-            golden_compare.pop("query_time", None)
-            to_validate_compare.pop("query_time", None)
-
             if golden_compare == to_validate_compare:
                 matched_count += 1
     return matched_count / len(golden_response_set)
