@@ -21,13 +21,10 @@ package com.graphhopper.http;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.graphhopper.GraphHopper;
-import com.graphhopper.GraphHopperConfig;
+import com.graphhopper.*;
 import com.graphhopper.config.Profile;
-import com.graphhopper.export.CustomGraphHopperGtfs;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.json.geo.JsonFeatureCollection;
-import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.routing.ee.vehicles.TruckFlagEncoder;
 import com.graphhopper.routing.lm.LandmarkStorage;
 import com.graphhopper.routing.util.*;
@@ -37,7 +34,6 @@ import com.graphhopper.routing.weighting.custom.CustomWeighting;
 import com.graphhopper.replica.CustomCarFlagEncoder;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
-import com.graphhopper.stableid.StableIdEncodedValues;
 import com.graphhopper.util.PMap;
 import com.graphhopper.util.Parameters;
 import com.graphhopper.util.shapes.BBox;
@@ -73,15 +69,12 @@ public class GraphHopperManaged implements Managed {
             logger.error("Problem while reading border map GeoJSON. Skipping this.", e1);
             landmarkSplittingFeatureCollection = null;
         }
-        if (configuration.has("gtfs.file")) {
+        if (configuration.has("validation")) {
+            graphHopper = new CustomGraphHopperValidator((configuration));
+        } else if (configuration.has("gtfs.file")) {
             graphHopper = new CustomGraphHopperGtfs(configuration);
         } else {
-            graphHopper = new GraphHopperOSM(landmarkSplittingFeatureCollection) {
-                @Override
-                protected void registerCustomEncodedValues(EncodingManager.Builder emBuilder) {
-                    StableIdEncodedValues.createAndAddEncodedValues(emBuilder);
-                }
-            }.forServer();
+            graphHopper = new CustomGraphHopperOSM(landmarkSplittingFeatureCollection, configuration).forServer();
         }
         if (!configuration.getString("spatial_rules.location", "").isEmpty()) {
             throw new RuntimeException("spatial_rules.location has been deprecated. Please use spatial_rules.borders_directory instead.");
@@ -145,6 +138,7 @@ public class GraphHopperManaged implements Managed {
         graphHopper.setEncodedValueFactory(new EncodedValueFactoryWithStableId());
         graphHopper.init(configuration);
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
+        graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
     }
 
     @Override

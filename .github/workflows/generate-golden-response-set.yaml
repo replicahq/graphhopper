@@ -1,0 +1,80 @@
+name: Generate Functional Test Golden Response Set
+on: [workflow_dispatch]
+jobs:
+  functional-test-golden-response-set:
+    name: "Run functional test queries to generate golden set of responses"
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: model-159019
+    steps:
+      # ---------------------
+      # Common steps that we repeat between workflows.
+      - name: Code Checkout
+        uses: actions/checkout@v2
+
+      - name: Sub modules checkout
+        env:
+          SSH_KEY_FOR_SUBMODULE: ${{secrets.SUBMODULE_GITHUB_KEY}}
+        # set the ssh key for the run
+        run: |
+          mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo "$SSH_KEY_FOR_SUBMODULE" > $HOME/.ssh/id_rsa && chmod 600 $HOME/.ssh/id_rsa &&  git submodule sync && git submodule --quiet update --init && echo `git rev-parse --short=8 HEAD ` > TAG.txt
+
+      - name: Login to GCP
+        # Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
+          version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+          export_default_credentials: true
+
+      # Configure Docker to use the gcloud command-line tool as a credential
+      # helper for authentication
+      - run: |-
+          gcloud --quiet auth configure-docker
+
+      - name: Login to GCR
+        uses: docker/login-action@v1
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-graphhopper-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-graphhopper-buildx
+      # ---------------------
+
+      - name: Install golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.6'
+
+      - name: Install grpcurl
+        run: |
+          go get github.com/fullstorydev/grpcurl/...
+          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+          grpcurl -version
+
+      - name: Set temp directory env variable
+        run: echo "TMPDIR=$(mktemp -d)" >> $GITHUB_ENV
+
+      - name: Run functional test queries
+        run: |
+          bash query_functional_test.sh ${{ github.sha }}-server-dev
+
+      - name: Archive street functional test results as golden set
+        run: |
+          gsutil cp ${{ env.TMPDIR }}/street_responses.json gs://graphhopper_test_artifacts/golden_street_response_sets/${{ github.sha }}
+
+      - name: Archive transit functional test results as golden set
+        run: |
+          gsutil cp ${{ env.TMPDIR }}/transit_responses.json gs://graphhopper_test_artifacts/golden_transit_response_sets/${{ github.sha }}

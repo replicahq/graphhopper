@@ -42,7 +42,7 @@ public class PtRouteResource {
 
     // Statically load GTFS link mapping and GTFS route info maps for use in building responses
     static {
-        DB db = DBMaker.newFileDB(new File("transit_data/gtfs_link_mappings.db")).make();
+        DB db = DBMaker.newFileDB(new File("transit_data/gtfs_link_mappings.db")).readOnly().make();
         gtfsLinkMappings = db.getHashMap("gtfsLinkMappings");
         gtfsRouteInfo = db.getHashMap("gtfsRouteInfo");
         gtfsFeedIdMapping = db.getHashMap("gtfsFeedIdMap");
@@ -178,7 +178,7 @@ public class PtRouteResource {
         // Retrieve stable edge IDs for each stop->stop segment of leg
         List<String> stableEdgeIdSegments = Lists.newArrayList();
         for (int i = 0; i < stops.size() - 1; i++) {
-            String stopPair = stops.get(i).stop_id + "," + stops.get(i + 1).stop_id;
+            String stopPair = leg.feed_id + ":" + stops.get(i).stop_id + "," + stops.get(i + 1).stop_id;
             if (gtfsLinkMappings.containsKey(stopPair)) {
                 if (!gtfsLinkMappings.get(stopPair).isEmpty()) {
                     stableEdgeIdSegments.add(gtfsLinkMappings.get(stopPair));
