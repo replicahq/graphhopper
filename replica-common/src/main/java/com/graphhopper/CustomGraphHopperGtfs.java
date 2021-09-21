@@ -111,11 +111,8 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                     long osmId = ghReaderWay.getId();
 
                     // Parse street name from Way, if it exists
-                    String wayName = getNameFromOsmElement(ghReaderWay);
+                    String wayName = getConcatNameFromOsmElement(ghReaderWay);
                     if (wayName != null) {
-                        if (osmIdToStreetName.containsKey(osmId)) {
-                            LOG.info("Uh oh.... " + osmId + " : " + osmIdToStreetName.get(osmId));
-                        }
                         osmIdToStreetName.put(osmId, wayName);
                     }
 
@@ -153,48 +150,9 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                     List<EnumSet<TraversalPermissionLabeler.EdgeFlag>> flags = flagLabeler.getPermissions(way);
                     List<String> flagStrings = Lists.newArrayList(flags.get(0).toString(), flags.get(1).toString());
                     osmIdToAccessFlags.put(ghReaderWay.getId(), flagStrings);
-                } else if (next.isType(ReaderElement.RELATION)) {
-                    if (next.hasTag("route", "road")) {
-                        roadRelations.add((ReaderRelation) next);
-                    }
                 }
             }
             LOG.info("Finished parsing lane tag info from OSM ways. " + readCount + " total ways were parsed.");
-
-            // Map for storing OSM ID -> Street names parsed from OSM relations
-            Map<Long, String> streetNamesFromRelations = Maps.newHashMap();
-
-            Map<Long, String> testMap = Maps.newHashMap();
-
-            // For each Way that didn't have a street name tag to parse directly, set street name to be
-            // concatenation of all street name tags from the set of all Relations the Way is part of
-            readCount = 0;
-            LOG.info("Scanning road relations to populate street names for Ways that didn't have them set.");
-            for (ReaderRelation relation : roadRelations) {
-                if (++readCount % 1000 == 0) {
-                    LOG.info("Parsing tag info from OSM relations. " + readCount + " read so far.");
-                }
-                for (ReaderRelation.Member member : relation.getMembers()) {
-                    if (member.getType() == ReaderRelation.Member.WAY && !osmIdToStreetName.containsKey(member.getRef())) {
-                        String streetName = getNameFromOsmElement(relation);
-                        if (streetName != null) {
-                            if (!streetNamesFromRelations.containsKey(member.getRef())) {
-                                streetNamesFromRelations.put(member.getRef(), streetName);
-                            } else {
-                                String concatenatedName = streetNamesFromRelations.get(member.getRef()) + ", " + streetName;
-                                testMap.put(member.getRef(), concatenatedName);
-                                streetNamesFromRelations.put(member.getRef(), concatenatedName);
-                            }
-                        }
-                    }
-                }
-            }
-            LOG.info("Size before: " + osmIdToStreetName.keySet().size());
-            osmIdToStreetName.putAll(streetNamesFromRelations);
-            LOG.info("Size after: " + osmIdToStreetName.keySet().size());
-            LOG.info("Finished scanning road relations for additional street names. " + readCount + " total relations were considered.");
-
-            LOG.info("All concatenated names from relations: \n " + testMap);
         } catch (Exception e) {
             throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
         }
@@ -208,14 +166,16 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         }
     }
 
-    private static String getNameFromOsmElement(ReaderElement wayOrRelation) {
+    // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
+    private static String getConcatNameFromOsmElement(ReaderElement wayOrRelation) {
+        String name = null;
         if (wayOrRelation.hasTag("name")) {
-            return wayOrRelation.getTag("name");
-        } else if (wayOrRelation.hasTag("ref")) {
-            return wayOrRelation.getTag("ref");
-        } else {
-            return null;
+            name = wayOrRelation.getTag("name");
         }
+        if (wayOrRelation.hasTag("ref")) {
+            name = name == null ? wayOrRelation.getTag("ref") : wayOrRelation.getTag("ref") + ", " + name;
+        }
+        return name;
     }
 
     public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
