@@ -150,9 +150,36 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                     List<EnumSet<TraversalPermissionLabeler.EdgeFlag>> flags = flagLabeler.getPermissions(way);
                     List<String> flagStrings = Lists.newArrayList(flags.get(0).toString(), flags.get(1).toString());
                     osmIdToAccessFlags.put(ghReaderWay.getId(), flagStrings);
+                } else if (next.isType(ReaderElement.RELATION)) {
+                    if (next.hasTag("route", "road")) {
+                        roadRelations.add((ReaderRelation) next);
+                    }
                 }
             }
             LOG.info("Finished parsing lane tag info from OSM ways. " + readCount + " total ways were parsed.");
+
+            readCount = 0;
+            LOG.info("Scanning road relations to populate street names for Ways that didn't have them set.");
+            for (ReaderRelation relation : roadRelations) {
+                if (relation.hasTag("route", "road")) {
+                    if (++readCount % 1000 == 0) {
+                        LOG.info("Parsing tag info from OSM relations. " + readCount + " read so far.");
+                    }
+                    for (ReaderRelation.Member member : relation.getMembers()) {
+                        if (member.getType() == ReaderRelation.Member.WAY) {
+                            // If we haven't recorded a street name for a Way in this Relation,
+                            // use the Relation's name instead, if it exists
+                            if (!osmIdToStreetName.containsKey(member.getRef())) {
+                                String streetName = getConcatNameFromOsmElement(relation);
+                                if (streetName != null) {
+                                    osmIdToStreetName.put(member.getRef(), streetName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            LOG.info("Finished scanning road relations for additional street names. " + readCount + " total relations were considered.");
         } catch (Exception e) {
             throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
         }
