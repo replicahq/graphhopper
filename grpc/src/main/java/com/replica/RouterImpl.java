@@ -334,7 +334,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             if (pathsWithStableIds.size() == 0) {
                 String message = "Transit path could not be found between " + fromPoint.getLat() + "," +
                         fromPoint.getLon() + " to " + toPoint.getLat() + "," + toPoint.getLon();
-                logger.warn(message);
+                // logger.warn(message);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
@@ -417,7 +417,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             String message = "Path could not be found between " + fromPoint.getLat() + "," +
                     fromPoint.getLon() + " to " + toPoint.getLat() + "," + toPoint.getLon() +
                     "; one or both endpoints could not be snapped to a road segment";
-            logger.warn(message);
+            // logger.warn(message);
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
