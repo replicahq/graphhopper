@@ -111,7 +111,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                     long osmId = ghReaderWay.getId();
 
                     // Parse street name from Way, if it exists
-                    String wayName = getNameFromOsmElement(ghReaderWay);
+                    String wayName = getConcatNameFromOsmElement(ghReaderWay);
                     if (wayName != null) {
                         osmIdToStreetName.put(osmId, wayName);
                     }
@@ -170,7 +170,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                             // If we haven't recorded a street name for a Way in this Relation,
                             // use the Relation's name instead, if it exists
                             if (!osmIdToStreetName.containsKey(member.getRef())) {
-                                String streetName = getNameFromOsmElement(relation);
+                                String streetName = getConcatNameFromOsmElement(relation);
                                 if (streetName != null) {
                                     osmIdToStreetName.put(member.getRef(), streetName);
                                 }
@@ -193,14 +193,16 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         }
     }
 
-    private static String getNameFromOsmElement(ReaderElement wayOrRelation) {
+    // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
+    private static String getConcatNameFromOsmElement(ReaderElement wayOrRelation) {
+        String name = null;
         if (wayOrRelation.hasTag("name")) {
-            return wayOrRelation.getTag("name");
-        } else if (wayOrRelation.hasTag("ref")) {
-            return wayOrRelation.getTag("ref");
-        } else {
-            return null;
+            name = wayOrRelation.getTag("name");
         }
+        if (wayOrRelation.hasTag("ref")) {
+            name = name == null ? wayOrRelation.getTag("ref") : wayOrRelation.getTag("ref") + ", " + name;
+        }
+        return name;
     }
 
     public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
