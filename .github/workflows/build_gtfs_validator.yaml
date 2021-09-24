@@ -2,8 +2,10 @@ name: Build GTFS Validator Image
 on: [workflow_dispatch]
 jobs:
   build:
-    name: Build GTFS Validator Base Image
+    name: "Build GTFS Validator Base Image"
     runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: model-159019
     steps:
       - name: Code Checkout
         uses: actions/checkout@v2
