@@ -50,13 +50,21 @@ public class ReplicaGraphHopperTest {
         return fileNameList;
     }
 
-    protected static void loadGraphhopper() throws Exception {
+    protected static GraphHopperConfig loadGhConfig(String configPath) throws Exception {
         ObjectMapper yaml = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
         yaml.registerModule(new GraphHopperConfigModule());
-        JsonNode yamlNode = yaml.readTree(new File(TEST_GRAPHHOPPER_CONFIG_PATH));
-        graphHopperConfiguration = yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
+        JsonNode yamlNode = yaml.readTree(new File(configPath));
+        return yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
+    }
+
+    protected static void loadGraphhopper(String configPath) throws Exception {
+        graphHopperConfiguration = loadGhConfig(configPath);
         ObjectMapper json = Jackson.newObjectMapper();
         graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration, json);
         graphHopperManaged.start();
+    }
+
+    protected static void loadGraphhopper() throws Exception {
+        loadGraphhopper(TEST_GRAPHHOPPER_CONFIG_PATH);
     }
 }
