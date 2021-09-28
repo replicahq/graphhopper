@@ -74,10 +74,6 @@ public class ReplicaGraphHopperTest {
         graphHopperManaged.start();
     }
 
-    protected static void loadGraphhopper() throws Exception {
-        loadGraphhopper(TEST_GRAPHHOPPER_CONFIG_PATH);
-    }
-
     public static void setup() throws Exception {
         setup(TEST_GRAPHHOPPER_CONFIG_PATH, GRAPH_FILES_DIR);
     }
@@ -103,7 +99,7 @@ public class ReplicaGraphHopperTest {
         cli.run("import", configPath);
         cli.run("gtfs_links", configPath);
 
-        loadGraphhopper();
+        loadGraphhopper(configPath);
     }
 
     public static void closeGraphhopper() {
