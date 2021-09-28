@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
@@ -22,12 +24,19 @@ import java.util.Set;
 import java.util.zip.ZipFile;
 
 public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
+    private static final Logger logger = LoggerFactory.getLogger(GtfsLinkMapperTest.class);
     private static final String TEST_FEED_NAME = "link_mapping_test_feed";
     private static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../test_gh_config_one_feed.yaml";
     private static final String GRAPH_FILES_DIR = "transit_data/link_mapper/";
 
     @BeforeAll
     public static void setup() throws Exception {
+        // If link mapping files exist from main unit tests, copy to tmp location
+        File existingLinkMapping = new File("transit_data/gtfs_link_mappings.db");
+        if (existingLinkMapping.exists()) {
+            logger.info("Existing link mappings being moved to transit_data/gtfs_link_mappings_tmp.db temporarily");
+            existingLinkMapping.renameTo(new File("transit_data/gtfs_link_mappings_tmp.db"));
+        }
         setup(TEST_GRAPHHOPPER_CONFIG_PATH, GRAPH_FILES_DIR);
     }
 
@@ -87,8 +96,15 @@ public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
 
     @AfterAll
     public static void cleanupGraphDir() {
+        // If link mapping files exist from main unit tests, copy back from tmp location
+        File mainLinkMappings = new File("transit_data/gtfs_link_mappings_tmp.db");
+        if (mainLinkMappings.exists()) {
+            logger.info("Main test link mappings being moved back to transit_data/gtfs_link_mappings.db from temp location");
+            File existingLinkMappings = new File("transit_data/gtfs_link_mappings.db");
+            existingLinkMappings.delete();
+            mainLinkMappings.renameTo(new File("transit_data/gtfs_link_mappings.db"));
+        }
         Helper.removeDir(new File(GRAPH_FILES_DIR));
-        Helper.removeDir(new File(TRANSIT_DATA_DIR));
         closeGraphhopper();
     }
 }
