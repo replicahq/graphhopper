@@ -34,6 +34,7 @@ import com.graphhopper.routing.weighting.custom.CustomWeighting;
 import com.graphhopper.replica.CustomCarFlagEncoder;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
+import com.graphhopper.util.CustomModel;
 import com.graphhopper.util.PMap;
 import com.graphhopper.util.Parameters;
 import com.graphhopper.util.shapes.BBox;
@@ -58,68 +59,21 @@ public class GraphHopperManaged implements Managed {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final GraphHopper graphHopper;
 
-    public GraphHopperManaged(GraphHopperConfig configuration, ObjectMapper objectMapper) {
-        ObjectMapper localObjectMapper = objectMapper.copy();
-        localObjectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        String splitAreaLocation = configuration.getString(Parameters.Landmark.PREPARE + "split_area_location", "");
-        JsonFeatureCollection landmarkSplittingFeatureCollection;
-        try (Reader reader = splitAreaLocation.isEmpty() ? new InputStreamReader(LandmarkStorage.class.getResource("map.geo.json").openStream(), UTF_CS) : new InputStreamReader(new FileInputStream(splitAreaLocation), UTF_CS)) {
-            landmarkSplittingFeatureCollection = localObjectMapper.readValue(reader, JsonFeatureCollection.class);
-        } catch (IOException e1) {
-            logger.error("Problem while reading border map GeoJSON. Skipping this.", e1);
-            landmarkSplittingFeatureCollection = null;
-        }
+    public GraphHopperManaged(GraphHopperConfig configuration) {
+
         if (configuration.has("validation")) {
             graphHopper = new CustomGraphHopperValidator((configuration));
         } else if (configuration.has("gtfs.file")) {
             graphHopper = new CustomGraphHopperGtfs(configuration);
         } else {
-            graphHopper = new CustomGraphHopperOSM(landmarkSplittingFeatureCollection, configuration).forServer();
+            graphHopper = new CustomGraphHopperOSM(configuration);
         }
-        if (!configuration.getString("spatial_rules.location", "").isEmpty()) {
-            throw new RuntimeException("spatial_rules.location has been deprecated. Please use spatial_rules.borders_directory instead.");
-        }
-        String spatialRuleBordersDirLocation = configuration.getString("spatial_rules.borders_directory", "");
-        if (!spatialRuleBordersDirLocation.isEmpty()) {
-            final BBox maxBounds = BBox.parseBBoxString(configuration.getString("spatial_rules.max_bbox", "-180, 180, -90, 90"));
-            final Path bordersDirectory = Paths.get(spatialRuleBordersDirLocation);
-            List<JsonFeatureCollection> jsonFeatureCollections = new ArrayList<>();
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(bordersDirectory, "*.{geojson,json}")) {
-                for (Path borderFile : stream) {
-                    try (BufferedReader reader = Files.newBufferedReader(borderFile, StandardCharsets.UTF_8)) {
-                        JsonFeatureCollection jsonFeatureCollection = localObjectMapper.readValue(reader, JsonFeatureCollection.class);
-                        jsonFeatureCollections.add(jsonFeatureCollection);
-                    }
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            SpatialRuleLookupHelper.buildAndInjectCountrySpatialRules(graphHopper,
-                    new Envelope(maxBounds.minLon, maxBounds.maxLon, maxBounds.minLat, maxBounds.maxLat), jsonFeatureCollections);
-        }
+        String customModelFolder = configuration.getString("custom_model_folder", "");
+        List<Profile> newProfiles = resolveCustomModelFiles(customModelFolder, configuration.getProfiles());
 
-        ObjectMapper yamlOM = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
-        ObjectMapper jsonOM = Jackson.newObjectMapper();
-        List<Profile> newProfiles = new ArrayList<>();
-        for (Profile profile : configuration.getProfiles()) {
-            if (!CustomWeighting.NAME.equals(profile.getWeighting())) {
-                newProfiles.add(profile);
-                continue;
-            }
-            String customModelLocation = profile.getHints().getString("custom_model_file", "");
-            if (customModelLocation.isEmpty())
-                throw new IllegalArgumentException("Missing 'custom_model_file' field in profile '" + profile.getName() + "' if you want an empty custom model set it to 'empty'");
-            if ("empty".equals(customModelLocation))
-                newProfiles.add(new CustomProfile(profile).setCustomModel(new CustomModel()));
-            else
-                try {
-                    CustomModel customModel = (customModelLocation.endsWith(".json") ? jsonOM : yamlOM).readValue(new File(customModelLocation), CustomModel.class);
-                    newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
-                } catch (Exception ex) {
-                    throw new RuntimeException("Cannot load custom_model from " + customModelLocation + " for profile " + profile.getName(), ex);
-                }
-        }
         configuration.setProfiles(newProfiles);
+
+        graphHopper.init(configuration);
 
         graphHopper.setFlagEncoderFactory(new FlagEncoderFactory() {
             private FlagEncoderFactory delegate = new DefaultFlagEncoderFactory();
@@ -141,12 +95,55 @@ public class GraphHopperManaged implements Managed {
         graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
     }
 
+    public static List<Profile> resolveCustomModelFiles(String customModelFolder, List<Profile> profiles) {
+        ObjectMapper yamlOM = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
+        ObjectMapper jsonOM = Jackson.newObjectMapper();
+        List<Profile> newProfiles = new ArrayList<>();
+        for (Profile profile : profiles) {
+            if (!CustomWeighting.NAME.equals(profile.getWeighting())) {
+                newProfiles.add(profile);
+                continue;
+            }
+            Object cm = profile.getHints().getObject("custom_model", null);
+            if (cm != null) {
+                try {
+                    // custom_model can be an object tree (read from config) or an object (e.g. from tests)
+                    CustomModel customModel = jsonOM.readValue(jsonOM.writeValueAsBytes(cm), CustomModel.class);
+                    newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
+                    continue;
+                } catch (Exception ex) {
+                    throw new RuntimeException("Cannot load custom_model from " + cm + " for profile " + profile.getName(), ex);
+                }
+            }
+            String customModelFileName = profile.getHints().getString("custom_model_file", "");
+            if (customModelFileName.isEmpty())
+                throw new IllegalArgumentException("Missing 'custom_model' or 'custom_model_file' field in profile '"
+                        + profile.getName() + "'. To use default specify custom_model_file: empty");
+            if ("empty".equals(customModelFileName))
+                newProfiles.add(new CustomProfile(profile).setCustomModel(new CustomModel()));
+            else {
+                if (customModelFileName.contains(File.separator))
+                    throw new IllegalArgumentException("Use custom_model_folder for the custom_model_file parent");
+                // Somehow dropwizard makes it very hard to find out the folder of config.yml -> use an extra parameter for the folder
+                File file = Paths.get(customModelFolder).resolve(customModelFileName).toFile();
+                try {
+                    CustomModel customModel = (customModelFileName.endsWith(".json") ? jsonOM : yamlOM).readValue(file, CustomModel.class);
+                    newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
+                } catch (Exception ex) {
+                    throw new RuntimeException("Cannot load custom_model from location " + customModelFileName + " for profile " + profile.getName(), ex);
+                }
+            }
+        }
+        return newProfiles;
+    }
+
     @Override
     public void start() {
         graphHopper.importOrLoad();
-        logger.info("loaded graph at:{}, data_reader_file:{}, encoded values:{}, {}",
-                graphHopper.getGraphHopperLocation(), graphHopper.getDataReaderFile(),
+        logger.info("loaded graph at:{}, data_reader_file:{}, encoded values:{}, {} ints for edge flags, {}",
+                graphHopper.getGraphHopperLocation(), graphHopper.getOSMFile(),
                 graphHopper.getEncodingManager().toEncodedValuesAsString(),
+                graphHopper.getEncodingManager().getIntsForFlags(),
                 graphHopper.getGraphHopperStorage().toDetailsString());
     }
 
