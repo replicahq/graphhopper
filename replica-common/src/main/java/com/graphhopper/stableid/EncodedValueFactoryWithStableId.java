@@ -25,38 +25,38 @@ import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
 public class EncodedValueFactoryWithStableId extends DefaultEncodedValueFactory {
     @Override
     public EncodedValue create(String encodedValueString) {
-        if (encodedValueString.startsWith("stable-id-byte-0")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-0", 8, false);
-        } else if (encodedValueString.startsWith("stable-id-byte-1")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-1", 8, false);
-        } else if (encodedValueString.startsWith("stable-id-byte-2")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-2", 8, false);
-        } else if (encodedValueString.startsWith("stable-id-byte-3")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-3", 8, false);
-        } else if (encodedValueString.startsWith("stable-id-byte-4")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-4", 8, false);
-        } else if (encodedValueString.startsWith("stable-id-byte-5")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-5", 8, false);
-        } else if (encodedValueString.startsWith("stable-id-byte-6")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-6", 8, false);
-        } else if (encodedValueString.startsWith("stable-id-byte-7")) {
-            return new UnsignedIntEncodedValue("stable-id-byte-7", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-0")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-0", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-1")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-1", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-2")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-2", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-3")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-3", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-4")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-4", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-5")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-5", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-6")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-6", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable-id-byte-7")) {
-            return new UnsignedIntEncodedValue("reverse-stable-id-byte-7", 8, false);
+        if (encodedValueString.startsWith("stable_id_byte_0")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_0", 8, false);
+        } else if (encodedValueString.startsWith("stable_id_byte_1")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_1", 8, false);
+        } else if (encodedValueString.startsWith("stable_id_byte_2")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_2", 8, false);
+        } else if (encodedValueString.startsWith("stable_id_byte_3")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_3", 8, false);
+        } else if (encodedValueString.startsWith("stable_id_byte_4")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_4", 8, false);
+        } else if (encodedValueString.startsWith("stable_id_byte_5")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_5", 8, false);
+        } else if (encodedValueString.startsWith("stable_id_byte_6")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_6", 8, false);
+        } else if (encodedValueString.startsWith("stable_id_byte_7")) {
+            return new UnsignedIntEncodedValue("stable_id_byte_7", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_0")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_0", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_1")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_1", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_2")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_2", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_3")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_3", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_4")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_4", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_5")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_5", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_6")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_6", 8, false);
+        } else if (encodedValueString.startsWith("reverse-stable_id_byte_7")) {
+            return new UnsignedIntEncodedValue("reverse-stable_id_byte_7", 8, false);
         } else {
             return super.create(encodedValueString);
         }

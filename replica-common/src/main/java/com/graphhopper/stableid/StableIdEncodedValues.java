@@ -21,10 +21,10 @@ public class StableIdEncodedValues {
     private StableIdEncodedValues(EncodingManager encodingManager) {
         this.roadClassEnc = encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
         for (int i=0; i<8; i++) {
-            stableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("stable-id-byte-"+i);
+            stableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("stable_id_byte_"+i);
         }
         for (int i=0; i<8; i++) {
-            reverseStableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("reverse-stable-id-byte-"+i);
+            reverseStableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("reverse_stable_id_byte_"+i);
         }
     }
 
@@ -34,10 +34,10 @@ public class StableIdEncodedValues {
 
     public static void createAndAddEncodedValues(EncodingManager.Builder emBuilder) {
         for (int i=0; i<8; i++) {
-            emBuilder.add(new UnsignedIntEncodedValue("stable-id-byte-"+i, 8, false));
+            emBuilder.add(new UnsignedIntEncodedValue("stable_id_byte_"+i, 8, false));
         }
         for (int i=0; i<8; i++) {
-            emBuilder.add(new UnsignedIntEncodedValue("reverse-stable-id-byte-"+i, 8, false));
+            emBuilder.add(new UnsignedIntEncodedValue("reverse_stable_id_byte_"+i, 8, false));
         }
     }
 
