@@ -58,10 +58,7 @@ public class GraphHopperManaged implements Managed {
         }
         String customModelFolder = configuration.getString("custom_model_folder", "");
         List<Profile> newProfiles = resolveCustomModelFiles(customModelFolder, configuration.getProfiles());
-
         configuration.setProfiles(newProfiles);
-
-        graphHopper.init(configuration);
 
         graphHopper.setFlagEncoderFactory(new FlagEncoderFactory() {
             private FlagEncoderFactory delegate = new DefaultFlagEncoderFactory();
