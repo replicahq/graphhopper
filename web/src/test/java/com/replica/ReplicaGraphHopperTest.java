@@ -7,7 +7,6 @@ import com.google.common.collect.Lists;
 import com.graphhopper.GraphHopperConfig;
 import com.graphhopper.http.GraphHopperManaged;
 import com.graphhopper.http.GraphHopperServerConfiguration;
-import com.graphhopper.jackson.GraphHopperConfigModule;
 import com.graphhopper.jackson.Jackson;
 import io.dropwizard.cli.Cli;
 import io.dropwizard.setup.Bootstrap;
@@ -18,7 +17,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.List;
-
 
 public class ReplicaGraphHopperTest {
     private static final Logger logger = LoggerFactory.getLogger(ReplicaGraphHopperTest.class);
@@ -52,11 +50,9 @@ public class ReplicaGraphHopperTest {
 
     protected static void loadGraphhopper() throws Exception {
         ObjectMapper yaml = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
-        yaml.registerModule(new GraphHopperConfigModule());
         JsonNode yamlNode = yaml.readTree(new File(TEST_GRAPHHOPPER_CONFIG_PATH));
         graphHopperConfiguration = yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
-        ObjectMapper json = Jackson.newObjectMapper();
-        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration, json);
+        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration);
         graphHopperManaged.start();
     }
 }

@@ -18,41 +18,30 @@
 
 package com.graphhopper.http;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.graphhopper.*;
 import com.graphhopper.config.Profile;
 import com.graphhopper.jackson.Jackson;
-import com.graphhopper.json.geo.JsonFeatureCollection;
-import com.graphhopper.routing.ee.vehicles.TruckFlagEncoder;
-import com.graphhopper.routing.lm.LandmarkStorage;
-import com.graphhopper.routing.util.*;
-import com.graphhopper.routing.util.spatialrules.SpatialRuleLookupHelper;
+import com.graphhopper.replica.CustomCarFlagEncoder;
+import com.graphhopper.replica.TruckFlagEncoder;
+import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
+import com.graphhopper.routing.util.FlagEncoder;
+import com.graphhopper.routing.util.FlagEncoderFactory;
 import com.graphhopper.routing.weighting.custom.CustomProfile;
 import com.graphhopper.routing.weighting.custom.CustomWeighting;
-import com.graphhopper.replica.CustomCarFlagEncoder;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
 import com.graphhopper.util.CustomModel;
 import com.graphhopper.util.PMap;
-import com.graphhopper.util.Parameters;
-import com.graphhopper.util.shapes.BBox;
 import io.dropwizard.lifecycle.Managed;
-import org.locationtech.jts.geom.Envelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.File;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.graphhopper.util.Helper.UTF_CS;
 
 public class GraphHopperManaged implements Managed {
 
@@ -60,7 +49,6 @@ public class GraphHopperManaged implements Managed {
     private final GraphHopper graphHopper;
 
     public GraphHopperManaged(GraphHopperConfig configuration) {
-
         if (configuration.has("validation")) {
             graphHopper = new CustomGraphHopperValidator((configuration));
         } else if (configuration.has("gtfs.file")) {

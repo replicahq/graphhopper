@@ -41,7 +41,7 @@ public class ExportCommand extends ConfiguredCommand<GraphHopperServerConfigurat
                        GraphHopperServerConfiguration configuration) {
         // Read in pre-built GH graph files from /transit_data/graphhopper
         final GraphHopperManaged graphHopper =
-                new GraphHopperManaged(configuration.getGraphHopperConfiguration(), bootstrap.getObjectMapper());
+                new GraphHopperManaged(configuration.getGraphHopperConfiguration());
         GraphHopper configuredGraphHopper = graphHopper.getGraphHopper();
         if (!configuredGraphHopper.load(configuredGraphHopper.getGraphHopperLocation())) {
             throw new RuntimeException("Couldn't load existing GH graph at " +
@@ -51,14 +51,13 @@ public class ExportCommand extends ConfiguredCommand<GraphHopperServerConfigurat
         // Load OSM info needed for export from MapDB database file
         DB db = DBMaker.newFileDB(new File("transit_data/osm_info.db")).readOnly().make();
         Map<Long, Map<String, String>> osmIdToLaneTags = db.getHashMap("osmIdToLaneTags");
-        Map<Integer, Long> ghIdToOsmId = db.getHashMap("ghIdToOsmId");
         Map<Long, List<String>> osmIdToAccessFlags = db.getHashMap("osmIdToAccessFlags");
         Map<Long, String> osmIdToStreetName = db.getHashMap("osmIdToStreetName");
         Map<Long, String> osmIdToHighway = db.getHashMap("osmIdToHighway");
         logger.info("Done loading OSM info needed for CSV export from MapDB file.");
 
         // Use loaded graph data to write street network out to CSV
-        StreetEdgeExporter.writeStreetEdgesCsv(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId,
+        StreetEdgeExporter.writeStreetEdgesCsv(configuredGraphHopper, osmIdToLaneTags,
                 osmIdToAccessFlags, osmIdToStreetName, osmIdToHighway);
         db.close();
     }

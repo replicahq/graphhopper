@@ -21,7 +21,7 @@ public class ExportNationwideCommand extends ConfiguredCommand<GraphHopperServer
     @Override
     protected void run(Bootstrap<GraphHopperServerConfiguration> bootstrap, Namespace namespace,
                        GraphHopperServerConfiguration configuration) {
-        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration(), bootstrap.getObjectMapper());
+        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration());
 
         // Build OSM-only GH graph, collect OSM tag info, and set stable edge IDs (as done in normal import)
         CustomGraphHopperOSM gh = (CustomGraphHopperOSM) graphHopper.getGraphHopper();
