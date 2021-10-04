@@ -23,7 +23,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.graphhopper.*;
 import com.graphhopper.config.Profile;
 import com.graphhopper.jackson.Jackson;
-import com.graphhopper.replica.CustomCarFlagEncoder;
 import com.graphhopper.replica.TruckFlagEncoder;
 import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
 import com.graphhopper.routing.util.FlagEncoder;
@@ -65,9 +64,7 @@ public class GraphHopperManaged implements Managed {
 
             @Override
             public FlagEncoder createFlagEncoder(String name, PMap configuration) {
-                if (name.startsWith("car")) {
-                    return new CustomCarFlagEncoder(configuration, name);
-                } else if (name.equals("truck")) {
+                if (name.equals("truck")) {
                     return TruckFlagEncoder.createTruck(configuration, "truck");
                 } else {
                     return delegate.createFlagEncoder(name, configuration);
