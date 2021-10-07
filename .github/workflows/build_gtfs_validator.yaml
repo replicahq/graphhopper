@@ -1,0 +1,27 @@
+name: Build GTFS Validator Image
+on: [workflow_dispatch]
+jobs:
+  build:
+    name: "Build GTFS Validator Base Image"
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: model-159019
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v2
+
+      - name: Login to GCP
+        # Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
+          version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+
+      - name: Download USA OSM cutout and build GTFS validator image
+        run: |-
+          gsutil -m -o "GSUtil:parallel_process_count=1" cp ${{ secrets.USA_OSM_PATH }} ./full_usa.osm.pbf
+          gcloud builds submit \
+          --config=gtfs_validator_build.yaml \
+          --timeout='2h' \
+          --substitutions=_IMAGE_TAG=us.gcr.io/model-159019/gh:${{ github.sha }}-gtfs-validator,_BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev \

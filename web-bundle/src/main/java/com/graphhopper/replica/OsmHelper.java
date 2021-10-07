@@ -1,6 +1,8 @@
 package com.graphhopper.replica;
 
-import com.graphhopper.export.CustomGraphHopperGtfs;
+import com.graphhopper.CustomGraphHopperGtfs;
+import com.graphhopper.CustomGraphHopperOSM;
+import com.graphhopper.reader.osm.GraphHopperOSM;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.HTreeMap;
@@ -15,7 +17,7 @@ import java.util.Map;
 public class OsmHelper {
     private static final Logger logger = LoggerFactory.getLogger(OsmHelper.class);
 
-    public static void writeOsmInfoToMapDb(CustomGraphHopperGtfs graphHopperGtfs) {
+    public static void writeOsmInfoToMapDb(GraphHopperOSM graphHopper) {
         logger.info("Initializing new MapDB database files to store OSM info.");
         DB db = DBMaker.newFileDB(new File("transit_data/osm_info.db")).make();
 
@@ -37,9 +39,34 @@ public class OsmHelper {
                 .valueSerializer(Serializer.JAVA)
                 .make();
 
-        osmIdToLaneTags.putAll(graphHopperGtfs.getOsmIdToLaneTags());
-        ghIdToOsmId.putAll(graphHopperGtfs.getGhIdToOsmId());
-        osmIdToAccessFlags.putAll(graphHopperGtfs.getOsmIdToAccessFlags());
+        HTreeMap<Long, String> osmIdToStreetName = db
+                .createHashMap("osmIdToStreetName")
+                .keySerializer(Serializer.LONG)
+                .valueSerializer(Serializer.STRING)
+                .make();
+
+        HTreeMap<Long, String> osmIdToHighway = db
+                .createHashMap("osmIdToHighway")
+                .keySerializer(Serializer.LONG)
+                .valueSerializer(Serializer.STRING)
+                .make();
+
+        // todo: refactor to make this less awful
+        if (graphHopper instanceof CustomGraphHopperOSM) {
+            CustomGraphHopperOSM ghOsm = (CustomGraphHopperOSM) graphHopper;
+            osmIdToLaneTags.putAll(ghOsm.getOsmIdToLaneTags());
+            ghIdToOsmId.putAll(ghOsm.getGhIdToOsmId());
+            osmIdToAccessFlags.putAll(ghOsm.getOsmIdToAccessFlags());
+            osmIdToStreetName.putAll(ghOsm.getOsmIdToStreetName());
+            osmIdToHighway.putAll(ghOsm.getOsmIdToHighwayTag());
+        } else {
+            CustomGraphHopperGtfs ghGtfs = (CustomGraphHopperGtfs) graphHopper;
+            osmIdToLaneTags.putAll(ghGtfs.getOsmIdToLaneTags());
+            ghIdToOsmId.putAll(ghGtfs.getGhIdToOsmId());
+            osmIdToAccessFlags.putAll(ghGtfs.getOsmIdToAccessFlags());
+            osmIdToStreetName.putAll(ghGtfs.getOsmIdToStreetName());
+            osmIdToHighway.putAll(ghGtfs.getOsmIdToHighwayTag());
+        }
 
         db.commit();
         db.close();
