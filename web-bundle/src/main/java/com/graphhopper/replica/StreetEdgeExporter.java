@@ -44,7 +44,7 @@ public class StreetEdgeExporter {
     private Map<Long, List<String>> osmIdToAccessFlags;
     private Map<Long, String> osmIdToStreetName;
     private Map<Long, String> osmIdToHighway;
-    //
+
     private NodeAccess nodes;
     private DecimalEncodedValue avgSpeedEnc;
     private StableIdEncodedValues stableIdEncodedValues;
@@ -168,7 +168,7 @@ public class StreetEdgeExporter {
 
     public static void writeStreetEdgesCsv(GraphHopper configuredGraphHopper,
                                             Map<Long, Map<String, String>> osmIdToLaneTags,
-                                           Map<Integer, Long> ghIdToOsmId,
+                                            Map<Integer, Long> ghIdToOsmId,
                                             Map<Long, List<String>> osmIdToAccessFlags,
                                             Map<Long, String> osmIdToStreetName,
                                             Map<Long, String> osmIdToHighway) {
