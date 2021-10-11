@@ -27,6 +27,12 @@ public class OsmHelper {
                 .valueSerializer(Serializer.JAVA)
                 .make();
 
+        HTreeMap<Integer, Long> ghIdToOsmId = db
+                .createHashMap("ghIdToOsmId")
+                .keySerializer(Serializer.INTEGER)
+                .valueSerializer(Serializer.LONG)
+                .make();
+
         HTreeMap<Long, List<String>> osmIdToAccessFlags = db
                 .createHashMap("osmIdToAccessFlags")
                 .keySerializer(Serializer.LONG)
@@ -49,12 +55,14 @@ public class OsmHelper {
         if (graphHopper instanceof CustomGraphHopperOSM) {
             CustomGraphHopperOSM ghOsm = (CustomGraphHopperOSM) graphHopper;
             osmIdToLaneTags.putAll(ghOsm.getOsmIdToLaneTags());
+            ghIdToOsmId.putAll(ghOsm.getGhIdToOsmId());
             osmIdToAccessFlags.putAll(ghOsm.getOsmIdToAccessFlags());
             osmIdToStreetName.putAll(ghOsm.getOsmIdToStreetName());
             osmIdToHighway.putAll(ghOsm.getOsmIdToHighwayTag());
         } else {
             CustomGraphHopperGtfs ghGtfs = (CustomGraphHopperGtfs) graphHopper;
             osmIdToLaneTags.putAll(ghGtfs.getOsmIdToLaneTags());
+            ghIdToOsmId.putAll(ghGtfs.getGhIdToOsmId());
             osmIdToAccessFlags.putAll(ghGtfs.getOsmIdToAccessFlags());
             osmIdToStreetName.putAll(ghGtfs.getOsmIdToStreetName());
             osmIdToHighway.putAll(ghGtfs.getOsmIdToHighwayTag());

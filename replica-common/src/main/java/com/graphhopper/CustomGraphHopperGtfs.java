@@ -1,5 +1,7 @@
 package com.graphhopper;
 
+import com.bedatadriven.jackson.datatype.jts.JtsModule;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -12,15 +14,29 @@ import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
+import com.graphhopper.reader.osm.OSMReader;
+import com.graphhopper.routing.util.AreaIndex;
+import com.graphhopper.routing.util.CustomArea;
 import com.graphhopper.stableid.StableIdEncodedValues;
+import com.graphhopper.util.JsonFeatureCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.graphhopper.util.GHUtility.readCountries;
+import static com.graphhopper.util.Helper.*;
 
 /**
  * Custom implementation of internal class GraphHopper uses to parse OSM files into GH's internal graph data structures.
@@ -40,6 +56,8 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
+    // Map of GH edge ID to OSM way ID
+    private Map<Integer, Long> ghIdToOsmId;
     // Map of OSM way ID to access flags for each edge direction (each created from set
     // {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}), stored in list in order [forward, backward]
     private Map<Long, List<String>> osmIdToAccessFlags;
@@ -49,11 +67,18 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
 
+    private String customAreasDirectory = "";
+    private String ghLocation = "";
+    private boolean smoothElevation = false;
+    private double longEdgeSamplingDistance = Double.MAX_VALUE;
+    private double dataReaderWayPointMaxDistance = 1;
+    private int dataReaderWorkerThreads = 2;
 
     public CustomGraphHopperGtfs(GraphHopperConfig ghConfig) {
         super(ghConfig);
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
+        this.ghIdToOsmId = Maps.newHashMap();
         this.osmIdToAccessFlags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
@@ -150,6 +175,79 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         }
     }
 
+    // Copied from GraphHopper.java; updated to store mapping of GH -> OSM edge ID
+    protected void importOSM() {
+        if (super.getOSMFile() == null)
+            throw new IllegalStateException("Couldn't load from existing folder: " + ghLocation
+                    + " but also cannot use file for DataReader as it wasn't specified!");
+
+        List<CustomArea> customAreas = readCountries();
+        if (isEmpty(customAreasDirectory)) {
+            LOG.info("No custom areas are used, custom_areas.directory not given");
+        } else {
+            LOG.info("Creating custom area index, reading custom areas from: '" + customAreasDirectory + "'");
+            customAreas.addAll(readCustomAreas());
+        }
+        AreaIndex<CustomArea> areaIndex = new AreaIndex<>(customAreas);
+
+        LOG.info("start creating graph from " + super.getOSMFile());
+        OSMReader reader = new OSMReader(super.getGraphHopperStorage()) {
+            // Hacky override used to populate GH ID -> OSM ID map
+            @Override
+            protected void storeOsmWayID(int edgeId, long osmWayId) {
+                super.storeOsmWayID(edgeId, osmWayId);
+                ghIdToOsmId.put(edgeId, osmWayId);
+            }
+        };
+        reader.setFile(_getOSMFile()).
+                setAreaIndex(areaIndex).
+                setElevationProvider(super.getElevationProvider()).
+                setWorkerThreads(dataReaderWorkerThreads).
+                setWayPointMaxDistance(dataReaderWayPointMaxDistance).
+                setWayPointElevationMaxDistance(super.getRouterConfig().getElevationWayPointMaxDistance()).
+                setSmoothElevation(smoothElevation).
+                setLongEdgeSamplingDistance(longEdgeSamplingDistance).
+                setCountryRuleFactory(super.getCountryRuleFactory());
+        LOG.info("using " + super.getGraphHopperStorage().toString() + ", memory:" + getMemInfo());
+        try {
+            reader.readGraph();
+        } catch (IOException ex) {
+            throw new RuntimeException("Cannot read file " + getOSMFile(), ex);
+        }
+        DateFormat f = createFormatter();
+        super.getGraphHopperStorage().getProperties().put("datareader.import.date", f.format(new Date()));
+        if (reader.getDataDate() != null)
+            super.getGraphHopperStorage().getProperties().put("datareader.data.date", f.format(reader.getDataDate()));
+    }
+
+    // Copied from GraphHopper.java (needed in importOsm())
+    private List<CustomArea> readCustomAreas() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JtsModule());
+        final Path bordersDirectory = Paths.get(customAreasDirectory);
+        List<JsonFeatureCollection> jsonFeatureCollections = new ArrayList<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(bordersDirectory, "*.{geojson,json}")) {
+            for (Path borderFile : stream) {
+                try (BufferedReader reader = Files.newBufferedReader(borderFile, StandardCharsets.UTF_8)) {
+                    JsonFeatureCollection jsonFeatureCollection = objectMapper.readValue(reader, JsonFeatureCollection.class);
+                    jsonFeatureCollections.add(jsonFeatureCollection);
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return jsonFeatureCollections.stream().flatMap(j -> j.getFeatures().stream())
+                .map(CustomArea::fromJsonFeature)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Currently we use this for a few tests where the dataReaderFile is loaded from the classpath
+     */
+    protected File _getOSMFile() {
+        return new File(super.getOSMFile());
+    }
+
     private static String getHighwayFromOsmWay(ReaderWay way) {
         if (way.hasTag("highway")) {
             return way.getTag("highway");
@@ -170,6 +268,10 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
     public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
         return osmIdToLaneTags;
+    }
+
+    public Map<Integer, Long> getGhIdToOsmId() {
+        return ghIdToOsmId;
     }
 
     public Map<Long, List<String>> getOsmIdToAccessFlags() {
