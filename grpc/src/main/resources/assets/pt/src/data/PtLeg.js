@@ -30,13 +30,13 @@ export default class PtLeg extends Leg {
   initializeTurns(apiLeg) {
     this._geometry = {
       type: "LineString",
-      coordinates: apiLeg.getStopsList().map(stop => [stop.getPoint().getLon(), stop.getPoint().getLat()])
+      coordinates: apiLeg.getTransitMetadata().getStopsList().map(stop => [stop.getPoint().getLon(), stop.getPoint().getLat()])
     };
     let result = [];
     console.log(apiLeg)
     //leave out first and last stop since they are displayed as waypoint
-    for (let i = 1; i < apiLeg.getStopsList().length - 1; i++) {
-      const apiStop = apiLeg.getStopsList()[i];
+    for (let i = 1; i < apiLeg.getTransitMetadata().getStopsList().length - 1; i++) {
+      const apiStop = apiLeg.getTransitMetadata().getStopsList()[i];
       let stop = {
         name: apiStop.getStopName(),
         departureTime: apiStop.getDepartureTime().toDate(),
@@ -57,7 +57,7 @@ export default class PtLeg extends Leg {
 
   initializeDistance(apiLeg) {
     //The first stop is where passengers enter thus n - 1 stops to go on this leg
-    return apiLeg.getStopsList().length - 1 + " Stops";
+    return apiLeg.getTransitMetadata().getStopsList().length - 1 + " Stops";
   }
 
   _calculateDelay(actual, planned) {

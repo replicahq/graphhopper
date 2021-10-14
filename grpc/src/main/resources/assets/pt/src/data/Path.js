@@ -70,8 +70,8 @@ export default class Path {
 
   _initializeSimpleValues(apiPath) {
     this._isSelected = false;
-    this._departureTime = apiPath.getFootLegsList()[0].getDepartureTime().toDate();
-    this._arrivalTime = apiPath.getFootLegsList()[apiPath.getFootLegsList().length - 1].getArrivalTime().toDate();
+    this._departureTime = apiPath.getLegsList()[0].getDepartureTime().toDate();
+    this._arrivalTime = apiPath.getLegsList()[apiPath.getLegsList().length - 1].getArrivalTime().toDate();
     this._fare = apiPath.fare;
   }
 
@@ -90,13 +90,9 @@ export default class Path {
     //   console.log(c);
     //   return c;
     // }
-    var mergedLegs = [];
-    mergedLegs.push(apiPath.getFootLegsList()[0]);
-    apiPath.getPtLegsList().forEach(apiLeg => mergedLegs.push(apiLeg));
-    mergedLegs.push(apiPath.getFootLegsList()[apiPath.getFootLegsList().length - 1]);
-    console.log(mergedLegs)
-    mergedLegs.forEach((apiLeg, i) => {
-      if (i === 0 || i === mergedLegs.length - 1) {
+    console.log(apiPath.getLegsList())
+    apiPath.getLegsList().forEach((apiLeg, i) => {
+      if (!apiLeg.hasTransitMetadata()) {
         apiLeg.type = LegMode.WALK;
         this.legs.push(new WalkLeg(apiLeg));
       } else {
@@ -104,9 +100,9 @@ export default class Path {
         this.legs.push(new PtLeg(apiLeg));
       }
       if (i > 0) {
-        this._waypoints.push(new Waypoint(mergedLegs[i - 1], apiLeg));
+        this._waypoints.push(new Waypoint(apiPath.getLegsList()[i - 1], apiLeg));
       } else this._waypoints.push(new Waypoint(null, apiLeg));
-      if (i === mergedLegs.length - 1)
+      if (i === apiPath.getLegsList().length - 1)
         this.waypoints.push(new Waypoint(apiLeg, null));
     });
   }

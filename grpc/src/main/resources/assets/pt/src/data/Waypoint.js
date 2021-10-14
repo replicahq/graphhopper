@@ -84,7 +84,11 @@ export default class Waypoint {
   _initializeName(prevApiLeg, nextApiLeg) {
     if (nextApiLeg) {
       if (nextApiLeg.type === Mode.PT) {
-        this._name = nextApiLeg.getAgencyName() + ":" + nextApiLeg.getRouteId() + ":" + nextApiLeg.getRouteShortName() + ":" + nextApiLeg.getRouteLongName() + " @ " + nextApiLeg.getStopsList()[0].getStopName();
+        this._name = nextApiLeg.getTransitMetadata().getAgencyName() + ":"
+            + nextApiLeg.getTransitMetadata().getRouteId() + ":"
+            + nextApiLeg.getTransitMetadata().getRouteShortName() + ":"
+            + nextApiLeg.getTransitMetadata().getRouteLongName() + " @ "
+            + nextApiLeg.getTransitMetadata().getStopsList()[0].getStopName();
       } else if (prevApiLeg) {
         this._name = this._findArrivalLocation(prevApiLeg);
       } else {
@@ -113,7 +117,7 @@ export default class Waypoint {
   _initializeArrivalTime(apiLeg) {
     if (!apiLeg) return;
     if (apiLeg.type === Mode.PT) {
-      let lastStop = apiLeg.getStopsList()[apiLeg.getStopsList().length - 1];
+      let lastStop = apiLeg.getTransitMetadata().getStopsList()[apiLeg.getTransitMetadata().getStopsList().length - 1];
       this._arrivalTime = lastStop.getArrivalTime().toDate();
       this._arrivalDelay = this._calculateDelay(
         lastStop.getArrivalTime().toDate(),
@@ -128,7 +132,7 @@ export default class Waypoint {
   _initializeDepartureTime(apiLeg) {
     if (!apiLeg) return;
     if (apiLeg.type === Mode.PT) {
-      let firstStop = apiLeg.getStopsList()[0];
+      let firstStop = apiLeg.getTransitMetadata().getStopsList()[0];
       this._departureTime = firstStop.getDepartureTime().toDate();
       this._departureDelay = this._calculateDelay(
         firstStop.getDepartureTime().toDate(),
@@ -143,13 +147,13 @@ export default class Waypoint {
   _initializeGeometry(prevApiLeg, nextApiLeg, waypointType) {
     if (waypointType === WaypointType.INBEETWEEN) {
       if (nextApiLeg.type === Mode.PT) {
-        let result = nextApiLeg.getStopsList()[0].getPoint();
+        let result = nextApiLeg.getTransitMetadata().getStopsList()[0].getPoint();
         this._geometry = {
           type: "Point",
           coordinates: [result.getLon(), result.getLat()]
         };
       } else if (prevApiLeg) {
-        let result = prevApiLeg.getStopsList()[prevApiLeg.getStopsList().length - 1].getPoint();
+        let result = prevApiLeg.getTransitMetadata().getStopsList()[prevApiLeg.getTransitMetadata().getStopsList().length - 1].getPoint();
         this._geometry = {
           type: "Point",
           coordinates: [result.getLon(), result.getLat()]
@@ -159,7 +163,7 @@ export default class Waypoint {
   }
 
   _findArrivalLocation(apiLeg) {
-    return apiLeg.getStopsList()[apiLeg.getStopsList().length - 1].getStopName();
+    return apiLeg.getTransitMetadata().getStopsList()[apiLeg.getTransitMetadata().getStopsList().length - 1].getStopName();
   }
 
   _findWalkLocation(apiLeg, isArrival) {
