@@ -176,9 +176,13 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         // Check that foot legs contain proper info
         List<String> observedTravelSegmentTypes = Lists.newArrayList();
         List<String> expectedTravelSegmentTypes = Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS");
+        List<String> observedStableEdgeIds = Lists.newArrayList();
+        int observedStableEdgeIdCount = 0;
         double observedDistanceMeters = 0;
         for (RouterOuterClass.PtLeg footLeg : footLegs) {
             assertTrue(footLeg.getStableEdgeIdsCount() > 0);
+            observedStableEdgeIdCount += footLeg.getStableEdgeIdsCount();
+            observedStableEdgeIds.addAll(footLeg.getStableEdgeIdsList());
             assertTrue(footLeg.getArrivalTime().getSeconds() > footLeg.getDepartureTime().getSeconds());
             assertTrue(footLeg.getDistanceMeters() > 0);
             assertFalse(footLeg.getTravelSegmentType().isEmpty());
@@ -191,6 +195,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         for (RouterOuterClass.PtLeg ptLeg : ptLegs) {
             assertTrue(ptLeg.getArrivalTime().getSeconds() > ptLeg.getDepartureTime().getSeconds());
             assertTrue(ptLeg.getStableEdgeIdsCount() > 0); // check that the GTFS link mapper worked
+            observedStableEdgeIdCount += ptLeg.getStableEdgeIdsCount();
+            observedStableEdgeIds.addAll(ptLeg.getStableEdgeIdsList());
             assertTrue(ptLeg.getDistanceMeters() > 0);
             observedDistanceMeters += ptLeg.getDistanceMeters();
 
@@ -203,7 +209,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertFalse(ptMetadata.getRouteType().isEmpty());
             assertFalse(ptMetadata.getDirection().isEmpty());
         }
-
+        assertEquals(observedStableEdgeIdCount, observedStableEdgeIds.size());
         assertEquals(path.getDistanceMeters(), observedDistanceMeters);
 
         // Check stops in first PT leg
