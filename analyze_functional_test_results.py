@@ -61,7 +61,7 @@ def calculate_query_time_90th_percentile(response_set: dict) -> float:
 
 def calculate_transit_ratio(response: dict) -> float:
     first_path = response["paths"][0]
-    transit_legs = filter(lambda x: x.has_key("transit_metadata"), first_path["legs"])
+    transit_legs = [x for x in first_path["legs"] if "transit_metadata" in x]
     transit_time_millis = sum(
         (
             get_unix_timestamp(leg["arrival_time"])
