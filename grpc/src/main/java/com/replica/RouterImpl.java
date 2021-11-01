@@ -27,6 +27,7 @@ import com.graphhopper.*;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
 import com.graphhopper.routing.*;
+import com.graphhopper.util.DistanceCalcEarth;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.PMap;
 import com.graphhopper.util.exceptions.PointNotFoundException;
@@ -44,7 +45,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.graphhopper.util.Parameters.Routing.INSTRUCTIONS;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 
 public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
@@ -295,38 +296,65 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                     continue;
                 }
 
-                // Add stable edge IDs to PT legs
-                List<Trip.Leg> ptLegs = path.getLegs().stream()
-                        .filter(leg -> leg.type.equals("pt"))
-                        .map(leg -> getCustomPtLeg((Trip.PtLeg)leg))
-                        .collect(toList());
-
-                // Add stable edge IDs to walk legs
-                List<Trip.Leg> walkLegs = path.getLegs().stream()
-                        .filter(leg -> leg.type.equals("walk"))
-                        .collect(toList());
-
-                Trip.WalkLeg firstLeg = (Trip.WalkLeg) walkLegs.get(0);
-                Trip.WalkLeg lastLeg = (Trip.WalkLeg) walkLegs.get(1);
-
-                List<String> lastLegStableIds = lastLeg.details.get("stable_edge_ids").stream()
-                        .map(idPathDetail -> (String) idPathDetail.getValue())
-                        .filter(id -> id.length() == 20)
-                        .collect(toList());
-
-                // The first leg contains stable IDs for both walking legs for some reason,
-                // so we remove the IDs from the last leg
-                List<String> firstLegStableIds = firstLeg.details.get("stable_edge_ids").stream()
-                        .map(idPathDetail -> (String) idPathDetail.getValue())
-                        .filter(id -> id.length() == 20)
-                        .collect(toList());
-                firstLegStableIds.removeAll(lastLegStableIds);
-
                 // Replace the path's legs with newly-constructed legs containing stable edge IDs
+                ArrayList<Trip.Leg> legs = new ArrayList<>(path.getLegs());
                 path.getLegs().clear();
-                path.getLegs().add(new CustomWalkLeg(firstLeg, firstLegStableIds, "ACCESS"));
-                path.getLegs().addAll(ptLegs);
-                path.getLegs().add(new CustomWalkLeg(lastLeg, lastLegStableIds, "EGRESS"));
+
+                for (int i = 0; i < legs.size(); i++) {
+                    Trip.Leg leg = legs.get(i);
+                    if (leg instanceof Trip.WalkLeg) {
+                        Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
+                        String travelSegmentType;
+                        // We only expect graphhopper to return ACCESS + EGRESS walk legs
+                        if (i == 0) {
+                            travelSegmentType = "ACCESS";
+                        } else {
+                            travelSegmentType = "EGRESS";
+                        }
+                        path.getLegs().add(new CustomWalkLeg(thisLeg, fetchWalkLegStableIds(thisLeg), travelSegmentType));
+                    } else if (leg instanceof Trip.PtLeg) {
+                        Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
+                        path.getLegs().add(getCustomPtLeg(thisLeg));
+
+                        // If this PT leg is followed by another PT leg, add a TRANSFER walk leg between them
+                        if (i < legs.size() - 1 && legs.get(i + 1) instanceof Trip.PtLeg) {
+                            Trip.PtLeg nextLeg = (Trip.PtLeg) legs.get(i + 1);
+                            Trip.Stop lastStopOfThisLeg = thisLeg.stops.get(thisLeg.stops.size() - 1);
+                            Trip.Stop firstStopOfNextLeg = nextLeg.stops.get(0);
+                            if (!lastStopOfThisLeg.stop_id.equals(firstStopOfNextLeg.stop_id)) {
+                                GHRequest r = new GHRequest(
+                                        lastStopOfThisLeg.geometry.getY(), lastStopOfThisLeg.geometry.getX(),
+                                        firstStopOfNextLeg.geometry.getY(), firstStopOfNextLeg.geometry.getX());
+                                r.setProfile("foot");
+                                r.setPathDetails(Arrays.asList("stable_edge_ids"));
+                                GHResponse transfer = graphHopper.route(r);
+                                if (!transfer.hasErrors()) {
+                                    ResponsePath transferPath = transfer.getBest();
+                                    Trip.WalkLeg transferLeg = new Trip.WalkLeg(
+                                            lastStopOfThisLeg.stop_name,
+                                            thisLeg.getArrivalTime(),
+                                            transferPath.getPoints().getCachedLineString(false),
+                                            transferPath.getDistance(),
+                                            transferPath.getInstructions(),
+                                            transferPath.getPathDetails(),
+                                            Date.from(thisLeg.getArrivalTime().toInstant().plusMillis(transferPath.getTime()))
+                                    );
+                                    path.getLegs().add(new CustomWalkLeg(transferLeg, fetchWalkLegStableIds(transferLeg), "TRANSFER"));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
+                // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
+                CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
+                CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
+                accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
+
+                // Calculate correct distance incorporating foot + pt legs
+                path.setDistance(path.getLegs().stream().mapToDouble(l -> l.distance).sum());
+
                 path.getPathDetails().clear();
                 pathsWithStableIds.add(path);
             }
@@ -349,59 +377,15 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             } else {
                 PtRouteReply.Builder replyBuilder = PtRouteReply.newBuilder();
                 for (ResponsePath responsePath : pathsWithStableIds) {
-                    List<FootLeg> footLegs = responsePath.getLegs().stream()
-                            .filter(leg -> leg.type.equals("walk"))
-                            .map(leg -> (CustomWalkLeg) leg)
-                            .map(leg -> FootLeg.newBuilder()
-                                    .setDepartureTime(Timestamp.newBuilder()
-                                            .setSeconds(leg.getDepartureTime().getTime() / 1000) // getTime() returns millis
-                                            .build())
-                                    .setArrivalTime(Timestamp.newBuilder()
-                                            .setSeconds(leg.getArrivalTime().getTime() / 1000) // getTime() returns millis
-                                            .build())
-                                    .setDistanceMeters(leg.getDistance())
-                                    .addAllStableEdgeIds(leg.stableEdgeIds)
-                                    .setTravelSegmentType(leg.travelSegmentType)
-                                    .build())
+                    List<PtLeg> legs = responsePath.getLegs().stream()
+                            .map(RouterImpl::createPtLeg)
                             .collect(toList());
-
-                    List<PtLeg> ptLegs = responsePath.getLegs().stream()
-                            .filter(leg -> leg.type.equals("pt"))
-                            .map(leg -> (CustomPtLeg) leg)
-                            .map(leg -> PtLeg.newBuilder()
-                                    .setDepartureTime(Timestamp.newBuilder()
-                                            .setSeconds(leg.getDepartureTime().getTime() / 1000) // getTime() returns millis
-                                            .build())
-                                    .setArrivalTime(Timestamp.newBuilder()
-                                            .setSeconds(leg.getArrivalTime().getTime() / 1000) // getTime() returns millis
-                                            .build())
-                                    .setDistanceMeters(leg.getDistance())
-                                    .addAllStableEdgeIds(leg.stableEdgeIds)
-                                    .setTripId(leg.trip_id)
-                                    .setRouteId(leg.route_id)
-                                    .setAgencyName(leg.agencyName)
-                                    .setRouteShortName(leg.routeShortName != null ? leg.routeShortName : "")
-                                    .setRouteLongName(leg.routeLongName != null ? leg.routeLongName : "")
-                                    .setRouteType(leg.routeType)
-                                    .setDirection(leg.trip_headsign)
-                                    .addAllStops(leg.stops.stream().map(stop -> Stop.newBuilder()
-                                            .setStopId(stop.stop_id)
-                                            .setStopName(stop.stop_name)
-                                            .setArrivalTime(stop.arrivalTime == null ? Timestamp.newBuilder().build()
-                                                    : Timestamp.newBuilder().setSeconds(stop.arrivalTime.getTime() / 1000).build())
-                                            .setDepartureTime(stop.departureTime == null ? Timestamp.newBuilder().build()
-                                                    : Timestamp.newBuilder().setSeconds(stop.departureTime.getTime() / 1000).build())
-                                            .setPoint(Point.newBuilder().setLat(stop.geometry.getY()).setLon(stop.geometry.getX()).build())
-                                            .build()).collect(toList())
-                                    ).build()
-                            ).collect(toList());
 
                     replyBuilder.addPaths(PtPath.newBuilder()
                             .setDurationMillis(responsePath.getTime())
                             .setDistanceMeters(responsePath.getDistance())
                             .setTransfers(responsePath.getNumChanges())
-                            .addAllFootLegs(footLegs)
-                            .addAllPtLegs(ptLegs)
+                            .addAllLegs(legs)
                     );
                 }
 
@@ -446,6 +430,61 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         }
     }
 
+    private static List<String> fetchWalkLegStableIds(Trip.WalkLeg leg) {
+        return leg.details.get("stable_edge_ids").stream()
+                .map(idPathDetail -> (String) idPathDetail.getValue())
+                .filter(id -> id.length() == 20)
+                .collect(toList());
+    }
+
+    private static PtLeg createPtLeg(Trip.Leg leg) {
+        if (leg.type.equals("walk")) {
+            CustomWalkLeg walkLeg = (CustomWalkLeg) leg;
+            return PtLeg.newBuilder()
+                    .setDepartureTime(Timestamp.newBuilder()
+                            .setSeconds(walkLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
+                            .build())
+                    .setArrivalTime(Timestamp.newBuilder()
+                            .setSeconds(walkLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
+                            .build())
+                    .setDistanceMeters(walkLeg.getDistance())
+                    .addAllStableEdgeIds(walkLeg.stableEdgeIds)
+                    .setTravelSegmentType(walkLeg.travelSegmentType)
+                    .build();
+        } else { // leg is a PT leg
+            CustomPtLeg ptLeg = (CustomPtLeg) leg;
+            TransitMetadata ptMetadata = TransitMetadata.newBuilder()
+                    .setTripId(ptLeg.trip_id)
+                    .setRouteId(ptLeg.route_id)
+                    .setAgencyName(ptLeg.agencyName)
+                    .setRouteShortName(ptLeg.routeShortName)
+                    .setRouteLongName(ptLeg.routeLongName)
+                    .setRouteType(ptLeg.routeType)
+                    .setDirection(ptLeg.trip_headsign)
+                    .addAllStops(ptLeg.stops.stream().map(stop -> Stop.newBuilder()
+                            .setStopId(stop.stop_id)
+                            .setStopName(stop.stop_name)
+                            .setArrivalTime(stop.arrivalTime == null ? Timestamp.newBuilder().build()
+                                    : Timestamp.newBuilder().setSeconds(stop.arrivalTime.getTime() / 1000).build())
+                            .setDepartureTime(stop.departureTime == null ? Timestamp.newBuilder().build()
+                                    : Timestamp.newBuilder().setSeconds(stop.departureTime.getTime() / 1000).build())
+                            .setPoint(Point.newBuilder().setLat(stop.geometry.getY()).setLon(stop.geometry.getX()).build())
+                            .build()).collect(toList())
+                    ).build();
+            return PtLeg.newBuilder()
+                    .setDepartureTime(Timestamp.newBuilder()
+                            .setSeconds(ptLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
+                            .build())
+                    .setArrivalTime(Timestamp.newBuilder()
+                            .setSeconds(ptLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
+                            .build())
+                    .setDistanceMeters(ptLeg.getDistance())
+                    .addAllStableEdgeIds(ptLeg.stableEdgeIds)
+                    .setTransitMetadata(ptMetadata)
+                    .build();
+        }
+    }
+
     public static class CustomWalkLeg extends Trip.WalkLeg {
         public final List<String> stableEdgeIds;
         public final String type;
@@ -470,10 +509,10 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         public final String routeLongName;
         public final String routeType;
 
-        public CustomPtLeg(Trip.PtLeg leg, List<String> stableEdgeIds, List<Trip.Stop> updatedStops,
+        public CustomPtLeg(Trip.PtLeg leg, List<String> stableEdgeIds, List<Trip.Stop> updatedStops, double distance,
                            String agencyName, String routeShortName, String routeLongName, String routeType) {
             super(leg.feed_id, leg.isInSameVehicleAsPrevious, leg.trip_id, leg.route_id,
-                    leg.trip_headsign, updatedStops, leg.distance, leg.travelTime, leg.geometry);
+                    leg.trip_headsign, updatedStops, distance, leg.travelTime, leg.geometry);
             this.stableEdgeIds = stableEdgeIds;
             this.agencyName = agencyName;
             this.routeShortName = routeShortName;
@@ -487,29 +526,35 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         List<String> routeInfo = gtfsRouteInfo.getOrDefault(gtfsRouteInfoKey(leg), Lists.newArrayList("", "", "", ""));
         String routeType = routeInfo.get(3);
 
-        List<String> stableEdgeIdsList = Lists.newArrayList();
-        if (STREET_BASED_ROUTE_TYPES.contains(Integer.parseInt(routeType))) {
-            // Retrieve stable edge IDs for each stop->stop segment of leg
-            List<Trip.Stop> stops = leg.stops;
-            List<String> stableEdgeIdSegments = Lists.newArrayList();
-            for (int i = 0; i < stops.size() - 1; i++) {
-                String stopPair = gtfsFeedIdMapping.get(leg.feed_id) + ":" + stops.get(i).stop_id + "," + stops.get(i + 1).stop_id;
+        List<Trip.Stop> stops = leg.stops;
+        double legDistance = 0.0;
+        List<String> stableEdgeIdSegments = Lists.newArrayList();
+        for (int i = 0; i < stops.size() - 1; i++) {
+            Trip.Stop from = stops.get(i);
+            Trip.Stop to = stops.get(i + 1);
+            legDistance += DistanceCalcEarth.DIST_EARTH.calcDist(
+                    from.geometry.getY(), from.geometry.getX(), to.geometry.getY(), to.geometry.getX()
+            );
+
+            if (STREET_BASED_ROUTE_TYPES.contains(Integer.parseInt(routeType))) {
+                // Retrieve stable edge IDs for each stop->stop segment of leg
+                String stopPair = gtfsFeedIdMapping.get(leg.feed_id) + ":" + from.stop_id + "," + to.stop_id;
                 if (gtfsLinkMappings.containsKey(stopPair)) {
                     if (!gtfsLinkMappings.get(stopPair).isEmpty()) {
                         stableEdgeIdSegments.add(gtfsLinkMappings.get(stopPair));
                     }
                 }
             }
-            stableEdgeIdsList = stableEdgeIdSegments.stream()
+        }
+         List<String> stableEdgeIdsList = stableEdgeIdSegments.stream()
                     .flatMap(segment -> Arrays.stream(segment.split(",")))
                     .collect(toList());
 
-            // Remove duplicates from stable ID list while retaining order;
-            // needed because start/end of sequential segments overlap by 1 edge
-            Set<String> stableEdgeIdsWithoutDuplicates = Sets.newLinkedHashSet(stableEdgeIdsList);
-            stableEdgeIdsList.clear();
-            stableEdgeIdsList.addAll(stableEdgeIdsWithoutDuplicates);
-        }
+        // Remove duplicates from stable ID list while retaining order;
+        // needed because start/end of sequential segments overlap by 1 edge
+        Set<String> stableEdgeIdsWithoutDuplicates = Sets.newLinkedHashSet(stableEdgeIdsList);
+        stableEdgeIdsList.clear();
+        stableEdgeIdsList.addAll(stableEdgeIdsWithoutDuplicates);
 
         // Convert any missing info to empty string to prevent NPE
         routeInfo = routeInfo.stream().map(info -> info == null ? "" : info).collect(toList());
@@ -527,7 +572,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                     stop.plannedDepartureTime, stop.predictedDepartureTime, stop.departureCancelled));
         }
 
-        return new CustomPtLeg(leg, stableEdgeIdsList, updatedStops,
+        return new CustomPtLeg(leg, stableEdgeIdsList, updatedStops, legDistance,
                 routeInfo.get(0), routeInfo.get(1), routeInfo.get(2), routeType);
     }
 
