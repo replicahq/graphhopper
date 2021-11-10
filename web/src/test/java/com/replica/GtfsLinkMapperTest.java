@@ -8,6 +8,7 @@ import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.gtfs.GtfsStorage;
 import com.graphhopper.replica.GtfsLinkMapperHelper;
 import com.graphhopper.util.Helper;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -31,11 +32,11 @@ public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
 
     @BeforeAll
     public static void setup() throws Exception {
-        // If link mapping files exist from main unit tests, copy to tmp location
-        File existingLinkMapping = new File("transit_data/gtfs_link_mappings.db");
-        if (existingLinkMapping.exists()) {
-            logger.info("Existing link mappings being moved to transit_data/gtfs_link_mappings_tmp.db temporarily");
-            existingLinkMapping.renameTo(new File("transit_data/gtfs_link_mappings_tmp.db"));
+        // If graph files exist from main unit tests, copy to tmp location
+        File existingGraphFolder = new File("./transit_data");
+        if (existingGraphFolder.exists()) {
+            logger.info("Existing graph files being moved to tmp_transit_data folder temporarily");
+            FileUtils.copyDirectory(existingGraphFolder, new File("./tmp_transit_data"));
         }
         setup(TEST_GRAPHHOPPER_CONFIG_PATH, GRAPH_FILES_DIR);
     }
@@ -95,16 +96,19 @@ public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
     }
 
     @AfterAll
-    public static void cleanupGraphDir() {
-        // If link mapping files exist from main unit tests, copy back from tmp location
-        File mainLinkMappings = new File("transit_data/gtfs_link_mappings_tmp.db");
-        if (mainLinkMappings.exists()) {
-            logger.info("Main test link mappings being moved back to transit_data/gtfs_link_mappings.db from temp location");
-            File existingLinkMappings = new File("transit_data/gtfs_link_mappings.db");
-            existingLinkMappings.delete();
-            mainLinkMappings.renameTo(new File("transit_data/gtfs_link_mappings.db"));
-        }
+    public static void cleanupGraphDir() throws Exception {
         Helper.removeDir(new File(GRAPH_FILES_DIR));
+        Helper.removeDir(new File(TRANSIT_DATA_DIR));
         closeGraphhopper();
+
+        // If we copied existing graph files before running tests, copy back from tmp location
+        File existingGraphFolder = new File("./tmp_transit_data");
+        if (existingGraphFolder.exists()) {
+            logger.info("Already-existing graph files being moved back to transit_data from temp location");
+            FileUtils.copyDirectory(existingGraphFolder, new File("./transit_data"));
+        }
+
+        // Reload default test graph files so remaining unit tests work
+        loadGraphhopper();
     }
 }
