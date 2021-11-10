@@ -95,7 +95,7 @@ public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
     }
 
     @AfterAll
-    public static void cleanupGraphDir() {
+    public static void cleanupGraphDir() throws Exception {
         // If link mapping files exist from main unit tests, copy back from tmp location
         File mainLinkMappings = new File("transit_data/gtfs_link_mappings_tmp.db");
         if (mainLinkMappings.exists()) {
@@ -106,5 +106,8 @@ public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
         }
         Helper.removeDir(new File(GRAPH_FILES_DIR));
         closeGraphhopper();
+
+        // Reload default test graph files so remaining unit tests work
+        loadGraphhopper();
     }
 }

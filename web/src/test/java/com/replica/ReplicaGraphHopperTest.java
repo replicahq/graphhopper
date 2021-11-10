@@ -67,6 +67,10 @@ public class ReplicaGraphHopperTest {
         return yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
     }
 
+    protected static void loadGraphhopper() throws Exception {
+        loadGraphhopper(TEST_GRAPHHOPPER_CONFIG_PATH);
+    }
+
     protected static void loadGraphhopper(String configPath) throws Exception {
         graphHopperConfiguration = loadGhConfig(configPath);
         ObjectMapper json = Jackson.newObjectMapper();
