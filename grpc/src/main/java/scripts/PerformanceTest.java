@@ -72,7 +72,7 @@ public class PerformanceTest {
             try {
                 RouterOuterClass.PtRouteReply reply = client.blockingStub.routePt(request);
                 double executionTime = (System.nanoTime() - startTime) / 1000_000.0;
-                List<Integer> numTransfers = reply.getPathsList().stream().map(path -> path.getPtLegsList().size() - 1).collect(Collectors.toList());
+                List<Integer> numTransfers = reply.getPathsList().stream().map(path -> (int) path.getLegsList().stream().filter(RouterOuterClass.PtLeg::hasTransitMetadata).count() - 1).collect(Collectors.toList());
                 results.add(new RouterPerformanceResult(from, to, departureTime, usePareto, executionTime, numTransfers, false));
             } catch (StatusRuntimeException e) {
                 logger.warn("RPC failed: " + e.getMessage() + ";;;;;" + e.getStatus(), e.getStatus());

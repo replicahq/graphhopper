@@ -61,13 +61,14 @@ def calculate_query_time_90th_percentile(response_set: dict) -> float:
 
 def calculate_transit_ratio(response: dict) -> float:
     first_path = response["paths"][0]
+    transit_legs = [x for x in first_path["legs"] if "transit_metadata" in x]
     transit_time_millis = sum(
         (
             get_unix_timestamp(leg["arrival_time"])
             - get_unix_timestamp(leg["departure_time"])
         )
         * 1000
-        for leg in first_path["pt_legs"]
+        for leg in transit_legs
     )
     return transit_time_millis / int(first_path["duration_millis"])
 
@@ -142,7 +143,7 @@ def travel_time_mean_percent_change(
                         - get_unix_timestamp(leg["departure_time"])
                     )
                     * 1000
-                    for leg in (first_golden["pt_legs"] + first_golden["foot_legs"])
+                    for leg in (first_golden["legs"])
                 )
                 to_compare_travel_time = sum(
                     (
@@ -150,9 +151,7 @@ def travel_time_mean_percent_change(
                         - get_unix_timestamp(leg["departure_time"])
                     )
                     * 1000
-                    for leg in (
-                        first_to_compare["pt_legs"] + first_to_compare["foot_legs"]
-                    )
+                    for leg in (first_to_compare["legs"])
                 )
             else:
                 golden_travel_time = first_golden["duration_millis"]
