@@ -54,7 +54,7 @@ public class TruckFlagEncoder extends CarFlagEncoder {
     public static TruckFlagEncoder createVan(PMap properties, String name) {
         setDefaultProperties(properties, 7, 2, 1);
         return new TruckFlagEncoder(properties, name).
-                setHeight(2.5).setWidth(1.91, 0.4).setLength(4.75).
+                setHeight(2.5).setWidth(2, 0.4).setLength(4.75).
                 setWeight(1.660 + 1.110).
                 initProperties();
     }
@@ -333,9 +333,9 @@ public class TruckFlagEncoder extends CarFlagEncoder {
     }
 
     @Override
-    public void createEncodedValues(List<EncodedValue> registerNewEncodedValue, String prefix, int index) {
+    public void createEncodedValues(List<EncodedValue> registerNewEncodedValue, String prefix) {
         if (!softOneways) {
-            super.createEncodedValues(registerNewEncodedValue, prefix, index);
+            super.createEncodedValues(registerNewEncodedValue, prefix);
             return;
         }
 

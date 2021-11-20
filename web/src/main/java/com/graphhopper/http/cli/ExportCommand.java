@@ -43,7 +43,7 @@ public class ExportCommand extends ConfiguredCommand<GraphHopperServerConfigurat
         final GraphHopperManaged graphHopper =
                 new GraphHopperManaged(configuration.getGraphHopperConfiguration());
         GraphHopper configuredGraphHopper = graphHopper.getGraphHopper();
-        if (!configuredGraphHopper.load(configuredGraphHopper.getGraphHopperLocation())) {
+        if (!configuredGraphHopper.load()) {
             throw new RuntimeException("Couldn't load existing GH graph at " +
                     configuredGraphHopper.getGraphHopperLocation());
         }
