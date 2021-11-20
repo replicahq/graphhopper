@@ -11,7 +11,13 @@ import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
+import com.graphhopper.routing.ev.EncodedValue;
+import com.graphhopper.routing.ev.EncodedValueLookup;
+import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
+import com.graphhopper.routing.util.AllEdgesIterator;
+import com.graphhopper.routing.util.parsers.TagParser;
 import com.graphhopper.stableid.StableIdEncodedValues;
+import com.graphhopper.storage.IntsRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +45,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
 
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of GH edge ID to OSM way ID
-    private Map<Integer, Long> ghIdToOsmId;
     // Map of OSM way ID to access flags for each edge direction (each created from set
     // {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}), stored in list in order [forward, backward]
     private Map<Long, List<String>> osmIdToAccessFlags;
@@ -58,6 +62,8 @@ public class CustomGraphHopperOSM extends GraphHopper {
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
         StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
+        this.getEncodingManagerBuilder().add(new OsmIdTagParser());
+        getEncodingManagerBuilder().add(new UnsignedIntEncodedValue("osmid", 31, false));
     }
 
     public void collectOsmInfo() {
@@ -180,6 +186,12 @@ public class CustomGraphHopperOSM extends GraphHopper {
     }
 
     public Map<Integer, Long> getGhIdToOsmId() {
+        Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
+        AllEdgesIterator allEdges = getGraphHopperStorage().getAllEdges();
+        while (allEdges.next()) {
+            int osmid = allEdges.get(getEncodingManager().getIntEncodedValue("osmid"));
+            ghIdToOsmId.put(allEdges.getEdge(), (long) osmid);
+        }
         return ghIdToOsmId;
     }
 

@@ -12,15 +12,14 @@ import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
+import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
+import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.stableid.StableIdEncodedValues;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Custom implementation of internal class GraphHopper uses to parse OSM files into GH's internal graph data structures.
@@ -40,8 +39,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of GH edge ID to OSM way ID
-    private Map<Integer, Long> ghIdToOsmId;
     // Map of OSM way ID to access flags for each edge direction (each created from set
     // {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}), stored in list in order [forward, backward]
     private Map<Long, List<String>> osmIdToAccessFlags;
@@ -55,11 +52,12 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         super(ghConfig);
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
-        this.ghIdToOsmId = Maps.newHashMap();
         this.osmIdToAccessFlags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
         StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
+        this.getEncodingManagerBuilder().add(new OsmIdTagParser());
+        getEncodingManagerBuilder().add(new UnsignedIntEncodedValue("osmid", 31, false));
     }
 
     public void collectOsmInfo() {
@@ -184,6 +182,12 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     }
 
     public Map<Integer, Long> getGhIdToOsmId() {
+        Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
+        AllEdgesIterator allEdges = getGraphHopperStorage().getAllEdges();
+        while (allEdges.next()) {
+            int osmid = allEdges.get(getEncodingManager().getIntEncodedValue("osmid"));
+            ghIdToOsmId.put(allEdges.getEdge(), (long) osmid);
+        }
         return ghIdToOsmId;
     }
 
@@ -198,4 +202,5 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     public Map<Long, String> getOsmIdToHighwayTag() {
         return osmIdToHighwayTag;
     }
+
 }

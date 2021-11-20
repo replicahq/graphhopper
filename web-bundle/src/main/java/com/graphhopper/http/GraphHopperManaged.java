@@ -65,32 +65,6 @@ public class GraphHopperManaged implements Managed {
                 }
             }
         });
-        graphHopper.setTagParserFactory(new DefaultTagParserFactory() {
-            @Override
-            public TagParser create(String name, PMap configuration) {
-                if (name.equals("osmid")) {
-                    return new TagParser() {
-                        private EncodedValueLookup lookup;
-
-                        @Override
-                        public void createEncodedValues(EncodedValueLookup lookup, List<EncodedValue> encodedValues) {
-                            this.lookup = lookup;
-                        }
-
-                        @Override
-                        public IntsRef handleWayTags(IntsRef edgeFlags, ReaderWay way, boolean isFerry, IntsRef intsRef1) {
-                            UnsignedIntEncodedValue osmid = (UnsignedIntEncodedValue) lookup.getIntEncodedValue("osmid");
-                            if (way.getId() > Integer.MAX_VALUE)
-                                throw new RuntimeException("Unexpectedly high way id.");
-                            osmid.setInt(false, edgeFlags, (int) way.getId());
-                            System.out.println("pups " + osmid.getInt(false, edgeFlags));
-                            return edgeFlags;
-                        }
-                    };
-                }
-                return super.create(name, configuration);
-            }
-        });
         graphHopper.setEncodedValueFactory(new EncodedValueFactoryWithStableId());
         graphHopper.init(configuration);
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
