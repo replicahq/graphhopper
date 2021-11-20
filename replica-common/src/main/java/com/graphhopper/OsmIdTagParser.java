@@ -23,7 +23,6 @@ class OsmIdTagParser implements TagParser {
         if (way.getId() > Integer.MAX_VALUE)
             throw new RuntimeException("Unexpectedly high way id.");
         osmid.setInt(false, edgeFlags, (int) way.getId());
-        System.out.println("pups " + osmid.getInt(false, edgeFlags));
         return edgeFlags;
     }
 }
