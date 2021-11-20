@@ -57,6 +57,8 @@ public class EncodedValueFactoryWithStableId extends DefaultEncodedValueFactory 
             return new UnsignedIntEncodedValue("reverse-stable_id_byte_6", 8, false);
         } else if (encodedValueString.startsWith("reverse-stable_id_byte_7")) {
             return new UnsignedIntEncodedValue("reverse-stable_id_byte_7", 8, false);
+        } else if (encodedValueString.startsWith("osmid")) {
+            return new UnsignedIntEncodedValue("osmid", 31, false);
         } else {
             return super.create(encodedValueString);
         }

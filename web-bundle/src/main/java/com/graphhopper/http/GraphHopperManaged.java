@@ -18,28 +18,25 @@
 
 package com.graphhopper.http;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.graphhopper.*;
-import com.graphhopper.config.Profile;
-import com.graphhopper.jackson.Jackson;
+import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.replica.TruckFlagEncoder;
+import com.graphhopper.routing.ev.EncodedValue;
+import com.graphhopper.routing.ev.EncodedValueLookup;
+import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
 import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.FlagEncoderFactory;
-import com.graphhopper.routing.weighting.custom.CustomProfile;
-import com.graphhopper.routing.weighting.custom.CustomWeighting;
+import com.graphhopper.routing.util.parsers.DefaultTagParserFactory;
+import com.graphhopper.routing.util.parsers.TagParser;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
-import com.graphhopper.util.CustomModel;
+import com.graphhopper.storage.IntsRef;
 import com.graphhopper.util.PMap;
 import io.dropwizard.lifecycle.Managed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 
 public class GraphHopperManaged implements Managed {
@@ -55,9 +52,6 @@ public class GraphHopperManaged implements Managed {
         } else {
             graphHopper = new CustomGraphHopperOSM(configuration);
         }
-        String customModelFolder = configuration.getString("custom_model_folder", "");
-        List<Profile> newProfiles = resolveCustomModelFiles(customModelFolder, configuration.getProfiles());
-        configuration.setProfiles(newProfiles);
 
         graphHopper.setFlagEncoderFactory(new FlagEncoderFactory() {
             private FlagEncoderFactory delegate = new DefaultFlagEncoderFactory();
@@ -71,52 +65,36 @@ public class GraphHopperManaged implements Managed {
                 }
             }
         });
+        graphHopper.setTagParserFactory(new DefaultTagParserFactory() {
+            @Override
+            public TagParser create(String name, PMap configuration) {
+                if (name.equals("osmid")) {
+                    return new TagParser() {
+                        private EncodedValueLookup lookup;
+
+                        @Override
+                        public void createEncodedValues(EncodedValueLookup lookup, List<EncodedValue> encodedValues) {
+                            this.lookup = lookup;
+                        }
+
+                        @Override
+                        public IntsRef handleWayTags(IntsRef edgeFlags, ReaderWay way, boolean isFerry, IntsRef intsRef1) {
+                            UnsignedIntEncodedValue osmid = (UnsignedIntEncodedValue) lookup.getIntEncodedValue("osmid");
+                            if (way.getId() > Integer.MAX_VALUE)
+                                throw new RuntimeException("Unexpectedly high way id.");
+                            osmid.setInt(false, edgeFlags, (int) way.getId());
+                            System.out.println("pups " + osmid.getInt(false, edgeFlags));
+                            return edgeFlags;
+                        }
+                    };
+                }
+                return super.create(name, configuration);
+            }
+        });
         graphHopper.setEncodedValueFactory(new EncodedValueFactoryWithStableId());
         graphHopper.init(configuration);
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
         graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
-    }
-
-    public static List<Profile> resolveCustomModelFiles(String customModelFolder, List<Profile> profiles) {
-        ObjectMapper yamlOM = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
-        ObjectMapper jsonOM = Jackson.newObjectMapper();
-        List<Profile> newProfiles = new ArrayList<>();
-        for (Profile profile : profiles) {
-            if (!CustomWeighting.NAME.equals(profile.getWeighting())) {
-                newProfiles.add(profile);
-                continue;
-            }
-            Object cm = profile.getHints().getObject("custom_model", null);
-            if (cm != null) {
-                try {
-                    // custom_model can be an object tree (read from config) or an object (e.g. from tests)
-                    CustomModel customModel = jsonOM.readValue(jsonOM.writeValueAsBytes(cm), CustomModel.class);
-                    newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
-                    continue;
-                } catch (Exception ex) {
-                    throw new RuntimeException("Cannot load custom_model from " + cm + " for profile " + profile.getName(), ex);
-                }
-            }
-            String customModelFileName = profile.getHints().getString("custom_model_file", "");
-            if (customModelFileName.isEmpty())
-                throw new IllegalArgumentException("Missing 'custom_model' or 'custom_model_file' field in profile '"
-                        + profile.getName() + "'. To use default specify custom_model_file: empty");
-            if ("empty".equals(customModelFileName))
-                newProfiles.add(new CustomProfile(profile).setCustomModel(new CustomModel()));
-            else {
-                if (customModelFileName.contains(File.separator))
-                    throw new IllegalArgumentException("Use custom_model_folder for the custom_model_file parent");
-                // Somehow dropwizard makes it very hard to find out the folder of config.yml -> use an extra parameter for the folder
-                File file = Paths.get(customModelFolder).resolve(customModelFileName).toFile();
-                try {
-                    CustomModel customModel = (customModelFileName.endsWith(".json") ? jsonOM : yamlOM).readValue(file, CustomModel.class);
-                    newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
-                } catch (Exception ex) {
-                    throw new RuntimeException("Cannot load custom_model from location " + customModelFileName + " for profile " + profile.getName(), ex);
-                }
-            }
-        }
-        return newProfiles;
     }
 
     @Override
