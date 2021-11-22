@@ -189,8 +189,11 @@ public class CustomGraphHopperOSM extends GraphHopper {
         Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
         AllEdgesIterator allEdges = getGraphHopperStorage().getAllEdges();
         while (allEdges.next()) {
-            int osmid = allEdges.get(getEncodingManager().getIntEncodedValue("osmid"));
-            ghIdToOsmId.put(allEdges.getEdge(), (long) osmid);
+            // Ignore setting OSM IDs for transit edges, which have a distance of 0
+            if (allEdges.getDistance() != 0) {
+                int osmid = allEdges.get(getEncodingManager().getIntEncodedValue("osmid"));
+                ghIdToOsmId.put(allEdges.getEdge(), (long) osmid);
+            }
         }
         return ghIdToOsmId;
     }
