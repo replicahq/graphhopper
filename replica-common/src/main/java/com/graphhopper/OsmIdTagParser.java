@@ -18,7 +18,7 @@ class OsmIdTagParser implements TagParser {
     }
 
     @Override
-    public IntsRef handleWayTags(IntsRef edgeFlags, ReaderWay way, boolean isFerry, IntsRef intsRef1) {
+    public IntsRef handleWayTags(IntsRef edgeFlags, ReaderWay way, IntsRef intsRef1) {
         UnsignedIntEncodedValue osmid = (UnsignedIntEncodedValue) lookup.getIntEncodedValue("osmid");
         if (way.getId() > Integer.MAX_VALUE)
             throw new RuntimeException("Unexpectedly high way id.");
