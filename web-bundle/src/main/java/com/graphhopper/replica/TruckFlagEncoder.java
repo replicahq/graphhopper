@@ -346,7 +346,7 @@ public class TruckFlagEncoder extends CarFlagEncoder {
 
         // TODO doesn't work currently with "true" as speed is still left to 0 (was set in CarFlagEncoder)
         boolean storeTwoDirections = false;
-        registerNewEncodedValue.add(avgSpeedEnc = new UnsignedDecimalEncodedValue(EncodingManager.getKey(prefix, "average_speed"), speedBits, speedFactor, storeTwoDirections));
+        registerNewEncodedValue.add(avgSpeedEnc = new DecimalEncodedValueImpl(EncodingManager.getKey(prefix, "average_speed"), speedBits, speedFactor, storeTwoDirections));
     }
 
     @Override

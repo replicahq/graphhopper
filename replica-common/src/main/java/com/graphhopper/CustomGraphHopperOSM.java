@@ -11,13 +11,9 @@ import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
-import com.graphhopper.routing.ev.EncodedValue;
-import com.graphhopper.routing.ev.EncodedValueLookup;
-import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
+import com.graphhopper.routing.ev.IntEncodedValueImpl;
 import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.routing.util.parsers.TagParser;
 import com.graphhopper.stableid.StableIdEncodedValues;
-import com.graphhopper.storage.IntsRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +59,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
         this.osmIdToHighwayTag = Maps.newHashMap();
         StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
         this.getEncodingManagerBuilder().add(new OsmIdTagParser());
-        getEncodingManagerBuilder().add(new UnsignedIntEncodedValue("osmid", 31, false));
+        getEncodingManagerBuilder().add(new IntEncodedValueImpl("osmid", 31, false));
     }
 
     public void collectOsmInfo() {

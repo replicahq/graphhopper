@@ -19,25 +19,16 @@
 package com.graphhopper.http;
 
 import com.graphhopper.*;
-import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.replica.TruckFlagEncoder;
-import com.graphhopper.routing.ev.EncodedValue;
-import com.graphhopper.routing.ev.EncodedValueLookup;
-import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
 import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.FlagEncoderFactory;
-import com.graphhopper.routing.util.parsers.DefaultTagParserFactory;
-import com.graphhopper.routing.util.parsers.TagParser;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
-import com.graphhopper.storage.IntsRef;
 import com.graphhopper.util.PMap;
 import io.dropwizard.lifecycle.Managed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 public class GraphHopperManaged implements Managed {
 
