@@ -6,7 +6,6 @@ graphhopper:
   gtfs.file: {{ TEST_GTFS }}
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
-  routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
   graph.flag_encoders: car,bike,foot,truck
   prepare.ch.threads: 16

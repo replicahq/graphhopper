@@ -2,22 +2,39 @@
 # 1 profile loaded with default speeds is defined for each vehicle type
 
 graphhopper:
-  validation:
   datareader.file:
   gtfs.file:
+  gtfs.free_walk: true
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,foot
+  graph.flag_encoders: car,bike,foot,truck
+  prepare.ch.threads: 16
+
+  # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
+  # prepare.ch.edge_based: edge_and_node
+  # graph.flag_encoders: car|turn_costs=true
+  # graph.bytes_for_flags: 64
 
   # Profiles specifying vehicle and weightings for each mode type.
-  # Save time by not building contraction hierarchies
   profiles:
     - name: car
       vehicle: car
       weighting: fastest
+    - name: bike
+      vehicle: bike
+      weighting: fastest
     - name: foot
       vehicle: foot
       weighting: fastest
+    - name: truck
+      vehicle: truck
+      weighting: fastest
+
+  profiles_ch:
+    - profile: car
+    - profile: bike
+    - profile: foot
+    - profile: truck
 
 server:
   min_threads: 4

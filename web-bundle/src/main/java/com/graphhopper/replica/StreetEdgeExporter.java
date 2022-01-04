@@ -1,6 +1,7 @@
 package com.graphhopper.replica;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.routing.ev.DecimalEncodedValue;
 import com.graphhopper.routing.ev.EnumEncodedValue;
@@ -43,13 +44,15 @@ public class StreetEdgeExporter {
     private Map<Long, List<String>> osmIdToAccessFlags;
     private Map<Long, String> osmIdToStreetName;
     private Map<Long, String> osmIdToHighway;
-    //
+
     private NodeAccess nodes;
     private DecimalEncodedValue avgSpeedEnc;
     private StableIdEncodedValues stableIdEncodedValues;
     private EnumEncodedValue<RoadClass> roadClassEnc;
 
-    public StreetEdgeExporter(GraphHopper configuredGraphHopper, Map<Long, Map<String, String>> osmIdToLaneTags, Map<Integer, Long> ghIdToOsmId, Map<Long, List<String>> osmIdToAccessFlags, Map<Long, String> osmIdToStreetName, Map<Long, String> osmIdToHighway) {
+    public StreetEdgeExporter(GraphHopper configuredGraphHopper, Map<Long, Map<String, String>> osmIdToLaneTags,
+                              Map<Integer, Long> ghIdToOsmId, Map<Long, List<String>> osmIdToAccessFlags,
+                              Map<Long, String> osmIdToStreetName, Map<Long, String> osmIdToHighway) {
         this.osmIdToLaneTags = osmIdToLaneTags;
         this.ghIdToOsmId = ghIdToOsmId;
         this.osmIdToAccessFlags = osmIdToAccessFlags;
@@ -169,8 +172,10 @@ public class StreetEdgeExporter {
                                             Map<Long, List<String>> osmIdToAccessFlags,
                                             Map<Long, String> osmIdToStreetName,
                                             Map<Long, String> osmIdToHighway) {
-
-        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId, osmIdToAccessFlags, osmIdToStreetName, osmIdToHighway);
+        StreetEdgeExporter exporter = new StreetEdgeExporter(
+                configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId,
+                osmIdToAccessFlags, osmIdToStreetName, osmIdToHighway
+        );
         GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
         AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
         File outputFile = new File(configuredGraphHopper.getGraphHopperLocation() + "/street_edges.csv");
