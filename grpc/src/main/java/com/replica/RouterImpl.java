@@ -188,6 +188,12 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
+        
+        // If both access + egress modes are explicitly provided, use them
+        if (!request.getAccessMode().equals("") && !request.getEgressMode().equals("")) {
+            ghPtRequest.setAccessProfile(request.getAccessMode());
+            ghPtRequest.setEgressProfile(request.getEgressMode());
+        }
 
         try {
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
