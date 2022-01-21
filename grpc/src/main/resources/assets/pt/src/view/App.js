@@ -37,6 +37,8 @@ export default class App extends React.Component {
             limitStreetTimeSeconds: 1440,
             usePareto: false,
             betaTransfers: 1440000.0,
+            accessMode: "foot",
+            egressMode: "foot",
             routes: {
                 query: null,
                 isFetching: false
@@ -93,6 +95,8 @@ export default class App extends React.Component {
                     ptRouteRequest.setLimitStreetTimeSeconds(this.state.limitStreetTimeSeconds)
                     ptRouteRequest.setUsePareto(this.state.usePareto);
                     ptRouteRequest.setBetaTransfers(this.state.betaTransfers);
+                    ptRouteRequest.setAccessMode(this.state.accessMode);
+                    ptRouteRequest.setEgressMode(this.state.egressMode);
                     var component = this;
                     var router = new Router.RouterClient('/api');
                     router.routePt(ptRouteRequest, null, function(err, response) {

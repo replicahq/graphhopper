@@ -28,6 +28,8 @@ const CreateQuery = (baseUrl, search) => {
     url.searchParams.set("pt.limit_street_time", search.limitStreetTimeSeconds);
     url.searchParams.set("pt.use_pareto", search.usePareto);
     url.searchParams.set("pt.beta_transfers", search.betaTransfers);
+    url.searchParams.set("pt.access_mode", search.accessMode);
+    url.searchParams.set("pt.egress_mode", search.egressMode);
     return url.toString();
 };
 
@@ -71,6 +73,8 @@ const ParseQuery = (search, searchParams) => {
     parse("pt.limit_street_time", "limitStreetTimeSeconds", searchParams)
     parse("pt.use_pareto", "usePareto", searchParams);
     parse("pt.beta_transfers", "betaTransfers", searchParams);
+    parse("pt.access_mode", "accessMode", searchParams);
+    parse("pt.egress_mode", "egressMode", searchParams);
     return search;
 };
 
