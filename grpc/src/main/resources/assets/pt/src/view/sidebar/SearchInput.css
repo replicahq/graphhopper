@@ -42,3 +42,10 @@
 .optionsButton:active {
   background-color: #98cbed;
 }
+
+.accessEgressModes {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: rgb(94, 94, 94);
+  font-size: 0.8rem;
+  margin-block-end: 0rem;
+}

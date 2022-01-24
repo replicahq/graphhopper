@@ -26,7 +26,6 @@ import com.google.rpc.Status;
 import com.graphhopper.*;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
-import com.graphhopper.routing.*;
 import com.graphhopper.util.DistanceCalcEarth;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.PMap;
@@ -188,12 +187,13 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
-        
-        // If both access + egress modes are explicitly provided, use them
-        if (!request.getAccessMode().equals("") && !request.getEgressMode().equals("")) {
-            ghPtRequest.setAccessProfile(request.getAccessMode());
-            ghPtRequest.setEgressProfile(request.getEgressMode());
-        }
+
+        // Set access and egress leg modes if they've been explicitly provided. Note: even if modes
+        // other than walk are requested, Graphhopper will return these legs as Trip.WalkLeg objects
+        String accessMode = request.getAccessMode().equals("") ? "foot" : request.getAccessMode();
+        String egressMode = request.getEgressMode().equals("") ? "foot" : request.getEgressMode();
+        ghPtRequest.setAccessProfile(accessMode);
+        ghPtRequest.setEgressProfile(egressMode);
 
         try {
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
@@ -210,16 +210,20 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 for (int i = 0; i < legs.size(); i++) {
                     Trip.Leg leg = legs.get(i);
+                    // Graphhopper returns Trip.WalkLegs even if we requested different access/egress modes
                     if (leg instanceof Trip.WalkLeg) {
                         Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
                         String travelSegmentType;
+                        String legMode;
                         // We only expect graphhopper to return ACCESS + EGRESS walk legs
                         if (i == 0) {
                             travelSegmentType = "ACCESS";
+                            legMode = accessMode;
                         } else {
                             travelSegmentType = "EGRESS";
+                            legMode = egressMode;
                         }
-                        path.getLegs().add(new CustomWalkLeg(thisLeg, fetchWalkLegStableIds(thisLeg), travelSegmentType));
+                        path.getLegs().add(new CustomStreetLeg(thisLeg, fetchStreetLegStableIds(thisLeg), travelSegmentType, legMode));
                     } else if (leg instanceof Trip.PtLeg) {
                         Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
                         path.getLegs().add(getCustomPtLeg(thisLeg));
@@ -247,7 +251,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                                             transferPath.getPathDetails(),
                                             Date.from(thisLeg.getArrivalTime().toInstant().plusMillis(transferPath.getTime()))
                                     );
-                                    path.getLegs().add(new CustomWalkLeg(transferLeg, fetchWalkLegStableIds(transferLeg), "TRANSFER"));
+                                    path.getLegs().add(new CustomStreetLeg(transferLeg, fetchStreetLegStableIds(transferLeg), "TRANSFER", "foot"));
                                 }
                             }
                         }
@@ -256,8 +260,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
                 // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
-                CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
-                CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
+                CustomStreetLeg accessLeg = (CustomStreetLeg) path.getLegs().get(0);
+                CustomStreetLeg egressLeg = (CustomStreetLeg) path.getLegs().get(path.getLegs().size() - 1);
                 accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
 
                 // Calculate correct distance incorporating foot + pt legs
@@ -338,7 +342,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         }
     }
 
-    private static List<String> fetchWalkLegStableIds(Trip.WalkLeg leg) {
+    private static List<String> fetchStreetLegStableIds(Trip.WalkLeg leg) {
         return leg.details.get("stable_edge_ids").stream()
                 .map(idPathDetail -> (String) idPathDetail.getValue())
                 .filter(id -> id.length() == 20)
@@ -346,18 +350,19 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     }
 
     private static PtLeg createPtLeg(Trip.Leg leg) {
-        if (leg.type.equals("walk")) {
-            CustomWalkLeg walkLeg = (CustomWalkLeg) leg;
+        if (!leg.type.equals("pt")) {
+            CustomStreetLeg streetLeg = (CustomStreetLeg) leg;
             return PtLeg.newBuilder()
                     .setDepartureTime(Timestamp.newBuilder()
-                            .setSeconds(walkLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
+                            .setSeconds(streetLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
                             .build())
                     .setArrivalTime(Timestamp.newBuilder()
-                            .setSeconds(walkLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
+                            .setSeconds(streetLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
                             .build())
-                    .setDistanceMeters(walkLeg.getDistance())
-                    .addAllStableEdgeIds(walkLeg.stableEdgeIds)
-                    .setTravelSegmentType(walkLeg.travelSegmentType)
+                    .setDistanceMeters(streetLeg.getDistance())
+                    .addAllStableEdgeIds(streetLeg.stableEdgeIds)
+                    .setTravelSegmentType(streetLeg.travelSegmentType)
+                    .setMode(streetLeg.mode)
                     .build();
         } else { // leg is a PT leg
             CustomPtLeg ptLeg = (CustomPtLeg) leg;
@@ -393,17 +398,17 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         }
     }
 
-    public static class CustomWalkLeg extends Trip.WalkLeg {
+    public static class CustomStreetLeg extends Trip.WalkLeg {
         public final List<String> stableEdgeIds;
-        public final String type;
+        public final String mode;
         public final String travelSegmentType;
 
-        public CustomWalkLeg(Trip.WalkLeg leg, List<String> stableEdgeIds, String travelSegmentType) {
+        public CustomStreetLeg(Trip.WalkLeg leg, List<String> stableEdgeIds, String travelSegmentType, String mode) {
             super(leg.departureLocation, leg.getDepartureTime(), leg.geometry,
                     leg.distance, leg.instructions, leg.details, leg.getArrivalTime());
             this.stableEdgeIds = stableEdgeIds;
             this.details.clear();
-            this.type = "foot";
+            this.mode = mode;
             this.travelSegmentType = travelSegmentType;
         }
     }

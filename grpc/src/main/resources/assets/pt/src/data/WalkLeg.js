@@ -20,7 +20,7 @@ import Leg, { LegMode } from "./Leg.js";
 
 export default class WalkLeg extends Leg {
   constructor(apiLeg) {
-    super(apiLeg, LegMode.WALK);
+    super(apiLeg, apiLeg.type);
   }
 
   initializeTurns(apiLeg) {

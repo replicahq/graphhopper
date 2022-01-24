@@ -94,7 +94,7 @@ class SearchInput extends React.Component {
                 onChange: this.handleInputChange,
                 actionType: "betaTransfers"
             }),
-            React.createElement("p", {}, "Access mode"),
+            React.createElement("p", {className: "accessEgressModes"}, "Access mode"),
             React.createElement("select",
                 {
                     name: "access_mode",
@@ -114,7 +114,7 @@ class SearchInput extends React.Component {
                    value: "bike"
                }, "bike")
             ),
-            React.createElement("p", {}, "Egress mode"),
+            React.createElement("p", {className: "accessEgressModes"}, "Egress mode"),
             React.createElement("select",
                 {
                     name: "egress_mode",
