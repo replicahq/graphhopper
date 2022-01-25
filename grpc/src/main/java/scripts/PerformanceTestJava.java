@@ -9,6 +9,7 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.GraphHopperConfig;
 import com.graphhopper.gtfs.*;
 import com.graphhopper.http.GraphHopperManaged;
+import com.graphhopper.jackson.GraphHopperConfigModule;
 import com.graphhopper.jackson.Jackson;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -43,15 +44,17 @@ public class PerformanceTestJava {
 
         // Start GH instance based on config given as command-line arg
         ObjectMapper yaml = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
+        yaml.registerModule(new GraphHopperConfigModule());
         JsonNode yamlNode = yaml.readTree(new File(configPath));
         GraphHopperConfig graphHopperConfiguration = yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
-        GraphHopperManaged graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration);
+        ObjectMapper json = Jackson.newObjectMapper();
+        GraphHopperManaged graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration, json);
         graphHopperManaged.start();
 
         // Grab instance of PT router
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         final PtRouter ptRouter = new PtRouterImpl(
-                graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(),
+                graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(),
                 graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(),
                 RealtimeFeed.empty(((GraphHopperGtfs) graphHopper).getGtfsStorage()),
                 graphHopper.getPathDetailsBuilderFactory()
@@ -72,7 +75,7 @@ public class PerformanceTestJava {
                     ghPtRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
                     ghPtRequest.setProfileQuery(true);
                     ghPtRequest.setMaxProfileDuration(Duration.ofMinutes(10));
-                    ghPtRequest.setBetaStreetTime(1.5);
+                    ghPtRequest.setBetaWalkTime(1.5);
                     ghPtRequest.setLimitStreetTime(Duration.ofSeconds(1440));
                     ghPtRequest.setIgnoreTransfers(!usePareto); // ignoreTransfers=true means pareto queries are off
                     ghPtRequest.setBetaTransfers(1440000);

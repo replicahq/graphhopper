@@ -19,7 +19,7 @@ public class ValidateGTFSCommand extends ConfiguredCommand<GraphHopperServerConf
     @Override
     protected void run(Bootstrap<GraphHopperServerConfiguration> bootstrap, Namespace namespace,
                        GraphHopperServerConfiguration configuration) {
-        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration());
+        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration(), bootstrap.getObjectMapper());
         GraphHopper gh = graphHopper.getGraphHopper();
         gh.importOrLoad();
         gh.close();

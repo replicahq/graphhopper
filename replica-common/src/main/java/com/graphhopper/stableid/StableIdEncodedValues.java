@@ -5,9 +5,8 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Longs;
 import com.graphhopper.routing.ev.EnumEncodedValue;
-import com.graphhopper.routing.ev.IntEncodedValueImpl;
 import com.graphhopper.routing.ev.RoadClass;
-import com.graphhopper.routing.ev.IntEncodedValue;
+import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.AngleCalc;
@@ -15,17 +14,17 @@ import com.graphhopper.util.EdgeIteratorState;
 
 public class StableIdEncodedValues {
 
-    private IntEncodedValue[] stableIdEnc = new IntEncodedValue[8];
-    private IntEncodedValue[] reverseStableIdEnc = new IntEncodedValue[8];
+    private UnsignedIntEncodedValue[] stableIdEnc = new UnsignedIntEncodedValue[8];
+    private UnsignedIntEncodedValue[] reverseStableIdEnc = new UnsignedIntEncodedValue[8];
     private EnumEncodedValue<RoadClass> roadClassEnc;
 
     private StableIdEncodedValues(EncodingManager encodingManager) {
         this.roadClassEnc = encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
         for (int i=0; i<8; i++) {
-            stableIdEnc[i] = encodingManager.getIntEncodedValue("stable_id_byte_"+i);
+            stableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("stable-id-byte-"+i);
         }
         for (int i=0; i<8; i++) {
-            reverseStableIdEnc[i] = encodingManager.getIntEncodedValue("reverse_stable_id_byte_"+i);
+            reverseStableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("reverse-stable-id-byte-"+i);
         }
     }
 
@@ -35,16 +34,16 @@ public class StableIdEncodedValues {
 
     public static void createAndAddEncodedValues(EncodingManager.Builder emBuilder) {
         for (int i=0; i<8; i++) {
-            emBuilder.add(new IntEncodedValueImpl("stable_id_byte_" + i, 8, false));
+            emBuilder.add(new UnsignedIntEncodedValue("stable-id-byte-"+i, 8, false));
         }
         for (int i=0; i<8; i++) {
-            emBuilder.add(new IntEncodedValueImpl("reverse_stable_id_byte_" + i, 8, false));
+            emBuilder.add(new UnsignedIntEncodedValue("reverse-stable-id-byte-"+i, 8, false));
         }
     }
 
     public final String getStableId(boolean reverse, EdgeIteratorState edge) {
         byte[] stableId = new byte[8];
-        IntEncodedValue[] idByte = reverse ? reverseStableIdEnc : stableIdEnc;
+        UnsignedIntEncodedValue[] idByte = reverse ? reverseStableIdEnc : stableIdEnc;
         for (int i=0; i<8; i++) {
             stableId[i] = (byte) edge.get(idByte[i]);
         }
@@ -56,7 +55,7 @@ public class StableIdEncodedValues {
         if (stableId.length != 8)
             throw new IllegalArgumentException("stable ID must be 8 bytes: " + new String(stableId));
 
-        IntEncodedValue[] idBytes = reverse ? reverseStableIdEnc : stableIdEnc;
+        UnsignedIntEncodedValue[] idBytes = reverse ? reverseStableIdEnc : stableIdEnc;
         for (int i=0; i<8; i++) {
             edge.set(idBytes[i], Byte.toUnsignedInt(stableId[i]));
         }

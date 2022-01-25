@@ -41,9 +41,9 @@ public class ExportCommand extends ConfiguredCommand<GraphHopperServerConfigurat
                        GraphHopperServerConfiguration configuration) {
         // Read in pre-built GH graph files from /transit_data/graphhopper
         final GraphHopperManaged graphHopper =
-                new GraphHopperManaged(configuration.getGraphHopperConfiguration());
+                new GraphHopperManaged(configuration.getGraphHopperConfiguration(), bootstrap.getObjectMapper());
         GraphHopper configuredGraphHopper = graphHopper.getGraphHopper();
-        if (!configuredGraphHopper.load()) {
+        if (!configuredGraphHopper.load(configuredGraphHopper.getGraphHopperLocation())) {
             throw new RuntimeException("Couldn't load existing GH graph at " +
                     configuredGraphHopper.getGraphHopperLocation());
         }
@@ -58,10 +58,8 @@ public class ExportCommand extends ConfiguredCommand<GraphHopperServerConfigurat
         logger.info("Done loading OSM info needed for CSV export from MapDB file.");
 
         // Use loaded graph data to write street network out to CSV
-        StreetEdgeExporter.writeStreetEdgesCsv(
-                configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId,
-                osmIdToAccessFlags, osmIdToStreetName, osmIdToHighway
-        );
+        StreetEdgeExporter.writeStreetEdgesCsv(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId,
+                osmIdToAccessFlags, osmIdToStreetName, osmIdToHighway);
         db.close();
     }
 }

@@ -21,7 +21,7 @@ public class ExportNationwideCommand extends ConfiguredCommand<GraphHopperServer
     @Override
     protected void run(Bootstrap<GraphHopperServerConfiguration> bootstrap, Namespace namespace,
                        GraphHopperServerConfiguration configuration) {
-        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration());
+        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration(), bootstrap.getObjectMapper());
 
         // Build OSM-only GH graph, collect OSM tag info, and set stable edge IDs (as done in normal import)
         CustomGraphHopperOSM gh = (CustomGraphHopperOSM) graphHopper.getGraphHopper();
@@ -32,10 +32,8 @@ public class ExportNationwideCommand extends ConfiguredCommand<GraphHopperServer
         logger.info("Done building graph from OSM, parsing tags, and setting stable edge IDs");
 
         // Write processed street network out to CSV
-        StreetEdgeExporter.writeStreetEdgesCsv(
-                gh, gh.getOsmIdToLaneTags(), gh.getGhIdToOsmId(), gh.getOsmIdToAccessFlags(),
-                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
-        );
+        StreetEdgeExporter.writeStreetEdgesCsv(gh, gh.getOsmIdToLaneTags(), gh.getGhIdToOsmId(),
+                gh.getOsmIdToAccessFlags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag());
         gh.close();
     }
 }

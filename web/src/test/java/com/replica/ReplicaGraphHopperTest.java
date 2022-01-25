@@ -12,6 +12,7 @@ import com.graphhopper.http.GraphHopperServerConfiguration;
 import com.graphhopper.http.cli.ExportCommand;
 import com.graphhopper.http.cli.GtfsLinkMapperCommand;
 import com.graphhopper.http.cli.ImportCommand;
+import com.graphhopper.jackson.GraphHopperConfigModule;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.util.Helper;
 import io.dropwizard.cli.Cli;
@@ -28,6 +29,7 @@ import java.util.Optional;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
 
 public class ReplicaGraphHopperTest {
     private static final Logger logger = LoggerFactory.getLogger(ReplicaGraphHopperTest.class);
@@ -60,6 +62,7 @@ public class ReplicaGraphHopperTest {
 
     protected static GraphHopperConfig loadGhConfig(String configPath) throws Exception {
         ObjectMapper yaml = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
+        yaml.registerModule(new GraphHopperConfigModule());
         JsonNode yamlNode = yaml.readTree(new File(configPath));
         return yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
     }
@@ -70,7 +73,8 @@ public class ReplicaGraphHopperTest {
 
     protected static void loadGraphhopper(String configPath) throws Exception {
         graphHopperConfiguration = loadGhConfig(configPath);
-        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration);
+        ObjectMapper json = Jackson.newObjectMapper();
+        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration, json);
         graphHopperManaged.start();
     }
 
