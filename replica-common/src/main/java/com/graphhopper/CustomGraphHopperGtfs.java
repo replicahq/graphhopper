@@ -3,9 +3,6 @@ package com.graphhopper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.graphhopper.export.TraversalPermissionLabeler;
-import com.graphhopper.export.USTraversalPermissionLabeler;
-import com.graphhopper.export.Way;
 import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.ReaderElement;
@@ -21,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,9 +42,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     private Map<Long, Map<String, String>> osmIdToLaneTags;
     // Map of GH edge ID to OSM way ID
     private Map<Integer, Long> ghIdToOsmId;
-    // Map of OSM way ID to access flags for each edge direction (each created from set
-    // {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}), stored in list in order [forward, backward]
-    private Map<Long, List<String>> osmIdToAccessFlags;
     // Map of OSM ID to street name. Name is parsed directly from Way, unless name field isn't present,
     // in which case the name is taken from the Relation containing the Way, if one exists
     private Map<Long, String> osmIdToStreetName;
@@ -61,7 +54,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
         this.ghIdToOsmId = Maps.newHashMap();
-        this.osmIdToAccessFlags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
     }
@@ -100,7 +92,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         List<ReaderRelation> roadRelations = Lists.newArrayList();
         int readCount = 0;
         try (OSMInput input = new OSMInputFile(new File(osmPath)).setWorkerThreads(2).open()) {
-            TraversalPermissionLabeler flagLabeler = new USTraversalPermissionLabeler();
             ReaderElement next;
             while((next = input.getNext()) != null) {
                 if (next.isType(ReaderElement.WAY)) {
@@ -136,20 +127,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                             }
                         }
                     }
-
-                    // Parse all tags that will be considered for determining accessibility flags for edge
-                    Map<String, String> wayTagsToConsider = Maps.newHashMap();
-                    for (String consideredTag : flagLabeler.getAllConsideredTags()) {
-                        if (ghReaderWay.hasTag(consideredTag)) {
-                            wayTagsToConsider.put(consideredTag, ghReaderWay.getTag(consideredTag));
-                        }
-                    }
-
-                    // Compute accessibility flags for edge in both directions
-                    Way way = new Way(wayTagsToConsider);
-                    List<EnumSet<TraversalPermissionLabeler.EdgeFlag>> flags = flagLabeler.getPermissions(way);
-                    List<String> flagStrings = Lists.newArrayList(flags.get(0).toString(), flags.get(1).toString());
-                    osmIdToAccessFlags.put(ghReaderWay.getId(), flagStrings);
                 } else if (next.isType(ReaderElement.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
@@ -211,10 +188,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
     public Map<Integer, Long> getGhIdToOsmId() {
         return ghIdToOsmId;
-    }
-
-    public Map<Long, List<String>> getOsmIdToAccessFlags() {
-        return osmIdToAccessFlags;
     }
 
     public Map<Long, String> getOsmIdToStreetName() {

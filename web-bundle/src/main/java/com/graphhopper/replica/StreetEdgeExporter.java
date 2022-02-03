@@ -34,13 +34,12 @@ public class StreetEdgeExporter {
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
-            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway"};
+            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "lanes", "highway"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
     // Some sticky members
     private Map<Long, Map<String, String>> osmIdToLaneTags;
     private Map<Integer, Long> ghIdToOsmId;
-    private Map<Long, List<String>> osmIdToAccessFlags;
     private Map<Long, String> osmIdToStreetName;
     private Map<Long, String> osmIdToHighway;
     //
@@ -49,10 +48,13 @@ public class StreetEdgeExporter {
     private StableIdEncodedValues stableIdEncodedValues;
     private EnumEncodedValue<RoadClass> roadClassEnc;
 
-    public StreetEdgeExporter(GraphHopper configuredGraphHopper, Map<Long, Map<String, String>> osmIdToLaneTags, Map<Integer, Long> ghIdToOsmId, Map<Long, List<String>> osmIdToAccessFlags, Map<Long, String> osmIdToStreetName, Map<Long, String> osmIdToHighway) {
+    public StreetEdgeExporter(GraphHopper configuredGraphHopper,
+                              Map<Long, Map<String, String>> osmIdToLaneTags,
+                              Map<Integer, Long> ghIdToOsmId,
+                              Map<Long, String> osmIdToStreetName,
+                              Map<Long, String> osmIdToHighway) {
         this.osmIdToLaneTags = osmIdToLaneTags;
         this.ghIdToOsmId = ghIdToOsmId;
-        this.osmIdToAccessFlags = osmIdToAccessFlags;
         this.osmIdToStreetName = osmIdToStreetName;
         this.osmIdToHighway = osmIdToHighway;
 
@@ -106,11 +108,6 @@ public class StreetEdgeExporter {
         String highwayTag = osmIdToHighway.getOrDefault(osmId, iteratorState.get(roadClassEnc).toString());
         String forwardStableEdgeId = stableIdEncodedValues.getStableId(false, iteratorState);
         String backwardStableEdgeId = stableIdEncodedValues.getStableId(true, iteratorState);
-
-        // Set accessibility flags for each edge direction
-        // Returned flags are from the set {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}
-        String forwardFlags = OsmHelper.getFlagsForGhEdge(ghEdgeId, false, osmIdToAccessFlags, ghIdToOsmId);
-        String backwardFlags = OsmHelper.getFlagsForGhEdge(ghEdgeId, true, osmIdToAccessFlags, ghIdToOsmId);
 
         // Calculate number of lanes for edge, as done in R5, based on OSM tags + edge direction
         int overallLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes");
@@ -166,11 +163,10 @@ public class StreetEdgeExporter {
     public static void writeStreetEdgesCsv(GraphHopper configuredGraphHopper,
                                             Map<Long, Map<String, String>> osmIdToLaneTags,
                                             Map<Integer, Long> ghIdToOsmId,
-                                            Map<Long, List<String>> osmIdToAccessFlags,
                                             Map<Long, String> osmIdToStreetName,
                                             Map<Long, String> osmIdToHighway) {
 
-        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId, osmIdToAccessFlags, osmIdToStreetName, osmIdToHighway);
+        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId, osmIdToStreetName, osmIdToHighway);
         GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
         AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
         File outputFile = new File(configuredGraphHopper.getGraphHopperLocation() + "/street_edges.csv");
