@@ -29,6 +29,10 @@ import java.util.Map;
  * -jar web/target/graphhopper-web-1.0-SNAPSHOT.jar export config-usa.yml
  */
 
+/**
+As of 2021, this command is effectively deprecated. It's only kept around for usage in tests.
+ */
+
 public class ExportCommand extends ConfiguredCommand<GraphHopperServerConfiguration> {
     private static final Logger logger = LoggerFactory.getLogger(ExportCommand.class);
 
