@@ -9,9 +9,15 @@ mkdir -p ./grpc/src/main/resources/assets/pt/src/grpc
 # to force something else. Feel free to improve..)
 protoc grpc/src/main/proto/router.proto --js_out=import_style=commonjs:grpc/src/main/resources/assets/pt/src/grpc --grpc-web_out=import_style=commonjs,mode=grpcwebtext:grpc/src/main/resources/assets/pt/src/grpc
 
-# Install both JS dependencies and the webpack build tool
+# Install both JS dependencies and the webpack build tool for PT GUI
 npm install
 npm run build -- --config grpc/src/main/resources/assets/pt/webpack.config.js
 
+# Bundle files needed for non-PT GUI
+cd web && npm install && npm run bundle && cd ..
+
 mvn -s maven_settings.xml --projects grpc -am -DskipTests=true package
 mvn -s maven_settings.xml --projects web -am -DskipTests=true package
+
+# For some reason, below command is what works locally - above commands cause mvn to loop (?)
+# mvn -s maven_settings.xml -am -DskipTests=true package

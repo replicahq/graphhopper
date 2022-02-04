@@ -132,6 +132,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                             .setDistanceMeters(responsePath.getDistance())
                             .addAllStableEdgeIds(pathStableEdgeIds)
                             .addAllEdgeDurationsMillis(edgeTimes)
+                            .setPoints(responsePath.getPoints().toLineString(false).toString())
                     );
                 }
 

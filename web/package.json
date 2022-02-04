@@ -6,10 +6,10 @@
   "license": "Apache-2.0",
   "main": "main.js",
   "scripts": {
-    "watch": "watchify ../grpc/src/main/resources/assets/js/main-template.js -o target/classes/assets/js/main.js --debug --verbose",
-    "bundle": "browserify ../grpc/src/main/resources/assets/js/main-template.js -o target/classes/assets/js/main.js",
-    "bundleDebug": "browserify ../grpc/src/main/resources/assets/js/main-template.js --debug -o target/classes/assets/js/main.js",
-    "bundleProduction": "browserify -g uglifyify ../grpc/src/main/resources/assets/js/main-template.js -o target/classes/assets/js/main.js",
+    "watch": "watchify ../grpc/src/main/resources/assets/js/main-template.js -o ../grpc/src/main/resources/assets/js/main.js --debug --verbose",
+    "bundle": "browserify ../grpc/src/main/resources/assets/js/main-template.js -o ../grpc/src/main/resources/assets/js/main.js",
+    "bundleDebug": "browserify ../grpc/src/main/resources/assets/js/main-template.js --debug -o ../grpc/src/main/resources/assets/js/main.js",
+    "bundleProduction": "browserify -g uglifyify ../grpc/src/main/resources/assets/js/main-template.js -o ../grpc/src/main/resources/assets/js/main.js",
     "test": "JASMINE_CONFIG_PATH=src/test/resources/assets/spec/jasmine.json jasmine",
     "lint": "jshint ../grpc/src/main/resources/assets/js/"
   },
@@ -36,7 +36,8 @@
     "leaflet.heightgraph": "0.2.0",
     "leaflet.vectorgrid": "1.3.0",
     "moment": "2.22.1",
-    "uglifyify": "5.0.2"
+    "uglifyify": "5.0.2",
+    "wkt": "0.1.1"
   },
   "devDependencies": {
     "jasmine": "3.1.0",
