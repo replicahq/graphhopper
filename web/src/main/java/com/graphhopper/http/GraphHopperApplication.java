@@ -41,7 +41,6 @@ public final class GraphHopperApplication extends Application<GraphHopperServerC
         bootstrap.addBundle(new RealtimeBundle());
         bootstrap.addCommand(new ImportCommand());
         bootstrap.addCommand(new GtfsLinkMapperCommand());
-        bootstrap.addCommand(new ExportCommand());
         bootstrap.addCommand(new ExportNationwideCommand());
         bootstrap.addCommand(new ValidateGTFSCommand());
 

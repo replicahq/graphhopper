@@ -9,7 +9,7 @@ import com.graphhopper.http.GraphHopperApplication;
 import com.graphhopper.http.GraphHopperBundle;
 import com.graphhopper.http.GraphHopperManaged;
 import com.graphhopper.http.GraphHopperServerConfiguration;
-import com.graphhopper.http.cli.ExportCommand;
+import com.graphhopper.http.cli.ExportNationwideCommand;
 import com.graphhopper.http.cli.GtfsLinkMapperCommand;
 import com.graphhopper.http.cli.ImportCommand;
 import com.graphhopper.jackson.GraphHopperConfigModule;
@@ -34,9 +34,11 @@ import static org.mockito.Mockito.when;
 public class ReplicaGraphHopperTest {
     private static final Logger logger = LoggerFactory.getLogger(ReplicaGraphHopperTest.class);
     protected static final String GRAPH_FILES_DIR = "transit_data/graphhopper/";
+    protected static final String EXPORT_FILES_DIR = "transit_data/export_test/graphhopper/";
     protected static final String TRANSIT_DATA_DIR = "transit_data/";
     protected static final String TEST_REGION_NAME = "mini_nor_cal";
     protected static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../test_gh_config.yaml";
+    protected static final String TEST_EXPORT_GRAPHHOPPER_CONFIG_PATH = "../test_export_gh_config.yaml";
     protected static final List<String> TEST_GTFS_FILE_NAMES = parseTestGtfsFileNames();
 
     protected static Bootstrap<GraphHopperServerConfiguration> bootstrap;
@@ -95,11 +97,12 @@ public class ReplicaGraphHopperTest {
         bootstrap = new Bootstrap<>(new GraphHopperApplication());
         bootstrap.addBundle(new GraphHopperBundle());
         bootstrap.addCommand(new ImportCommand());
-        bootstrap.addCommand(new ExportCommand());
+        bootstrap.addCommand(new ExportNationwideCommand());
         bootstrap.addCommand(new GtfsLinkMapperCommand());
 
         // Run commands to build graph and GTFS link mappings for test region
         cli = new Cli(location, bootstrap, System.out, System.err);
+        cli.run("export-nationwide", TEST_EXPORT_GRAPHHOPPER_CONFIG_PATH);
         cli.run("import", configPath);
         cli.run("gtfs_links", configPath);
 
