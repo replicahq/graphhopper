@@ -7,16 +7,13 @@ import com.graphhopper.export.TraversalPermissionLabeler;
 import com.graphhopper.export.USTraversalPermissionLabeler;
 import com.graphhopper.export.Way;
 import com.graphhopper.gtfs.GraphHopperGtfs;
-import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
-import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.stableid.StableIdEncodedValues;
-import com.graphhopper.storage.GraphHopperStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +41,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of GH edge ID to OSM way ID
-    private Map<Integer, Long> ghIdToOsmId;
     // Map of OSM way ID to access flags for each edge direction (each created from set
     // {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}), stored in list in order [forward, backward]
     private Map<Long, List<String>> osmIdToAccessFlags;
@@ -60,7 +55,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         super(ghConfig);
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
-        this.ghIdToOsmId = Maps.newHashMap();
         this.osmIdToAccessFlags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
@@ -70,29 +64,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     protected void registerCustomEncodedValues(EncodingManager.Builder emBuilder) {
         super.registerCustomEncodedValues(emBuilder);
         StableIdEncodedValues.createAndAddEncodedValues(emBuilder);
-    }
-
-    /**
-     * Override creation of OSM reader to read the file once at initialization time, for the sole purpose of storing
-     * OSM information that will be used later in the export script.
-     *
-     * Note that this approach requires reading the OSM file twice: once during the static initialization code, and
-     * once during the call to importOrLoad() in ExportCommand.java, which is where the modified storeOsmWayID method
-     * overridden below is called to populate the ghIdToOsmId map.
-     *
-     * todo: figure out if it's possible to eliminate the need for two OSM read operations
-     */
-    @Override
-    protected DataReader createReader(GraphHopperStorage ghStorage) {
-        OSMReader reader = new OSMReader(ghStorage) {
-            // Hacky override used to populate GH ID -> OSM ID map; called during standard GH import process
-            @Override
-            protected void storeOsmWayID(int edgeId, long osmWayId) {
-                super.storeOsmWayID(edgeId, osmWayId);
-                ghIdToOsmId.put(edgeId, osmWayId);
-            }
-        };
-        return initDataReader(reader);
     }
 
     public void collectOsmInfo() {
@@ -207,10 +178,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
     public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
         return osmIdToLaneTags;
-    }
-
-    public Map<Integer, Long> getGhIdToOsmId() {
-        return ghIdToOsmId;
     }
 
     public Map<Long, List<String>> getOsmIdToAccessFlags() {
