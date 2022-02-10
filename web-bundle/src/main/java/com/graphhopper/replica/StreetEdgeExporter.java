@@ -34,7 +34,7 @@ public class StreetEdgeExporter {
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
-            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "lanes", "highway"};
+            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
     // Some sticky members
@@ -151,12 +151,12 @@ public class StreetEdgeExporter {
             if (!(forwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, startVertex, endVertex,
                         startLat, startLon, endLat, endLon, geometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, forwardLanes, highwayTag));
+                        distanceMillimeters, osmId, speedcms, forwardFlags, forwardLanes, highwayTag));
             }
             if (!(backwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, endVertex, startVertex,
                         endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, backwardLanes, highwayTag));
+                        distanceMillimeters, osmId, speedcms, backwardFlags, backwardLanes, highwayTag));
             }
         }
 
@@ -192,7 +192,7 @@ public class StreetEdgeExporter {
                     }
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
-                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.lanes, r.highwayTag);
+                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag);
                     }
                 }
             }
