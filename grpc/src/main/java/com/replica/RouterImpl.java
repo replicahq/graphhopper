@@ -54,14 +54,13 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     private static final Logger logger = LoggerFactory.getLogger(RouterImpl.class);
     private final GraphHopper graphHopper;
     private final PtRouter ptRouter;
-    private final MatrixAPI matrixAPI;
     private Map<String, String> gtfsLinkMappings;
     private Map<String, List<String>> gtfsRouteInfo;
     private Map<String, String> gtfsFeedIdMapping;
     private final StatsDClient statsDClient;
     private String regionName;
 
-    public RouterImpl(GraphHopper graphHopper, PtRouter ptRouter, MatrixAPI matrixAPI,
+    public RouterImpl(GraphHopper graphHopper, PtRouter ptRouter,
                       Map<String, String> gtfsLinkMappings,
                       Map<String, List<String>> gtfsRouteInfo,
                       Map<String, String> gtfsFeedIdMapping,
@@ -69,7 +68,6 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                       String regionName) {
         this.graphHopper = graphHopper;
         this.ptRouter = ptRouter;
-        this.matrixAPI = matrixAPI;
         this.gtfsLinkMappings = gtfsLinkMappings;
         this.gtfsRouteInfo = gtfsRouteInfo;
         this.gtfsFeedIdMapping = gtfsFeedIdMapping;
@@ -163,102 +161,6 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         }
     }
 
-    // TODO: Clean up code based on fix-it comments in PR #26
-    @Override
-    public void routeMatrix(MatrixRouteRequest request, StreamObserver<MatrixRouteReply> responseObserver) {
-        long startTime = System.currentTimeMillis();
-
-        List<GHPoint> fromPoints = request.getFromPointsList().stream()
-                .map(p -> new GHPoint(p.getLat(), p.getLon())).collect(toList());
-        List<GHPoint> toPoints = request.getToPointsList().stream()
-                .map(p -> new GHPoint(p.getLat(), p.getLon())).collect(toList());
-
-        GHMRequest ghMatrixRequest = new GHMRequest();
-        ghMatrixRequest.setFromPoints(fromPoints);
-        ghMatrixRequest.setToPoints(toPoints);
-        ghMatrixRequest.setOutArrays(new HashSet<>(request.getOutArraysList()));
-        ghMatrixRequest.setProfile(request.getMode());
-        ghMatrixRequest.setFailFast(request.getFailFast());
-
-        try {
-            GHMResponse ghMatrixResponse = matrixAPI.calc(ghMatrixRequest);
-
-            if (ghMatrixRequest.getFailFast() && ghMatrixResponse.hasInvalidPoints()) {
-                MatrixErrors matrixErrors = new MatrixErrors();
-                matrixErrors.addInvalidFromPoints(ghMatrixResponse.getInvalidFromPoints());
-                matrixErrors.addInvalidToPoints(ghMatrixResponse.getInvalidToPoints());
-                throw new MatrixCalculationException(matrixErrors);
-            }
-            int from_len = ghMatrixRequest.getFromPoints().size();
-            int to_len = ghMatrixRequest.getToPoints().size();
-            List<List<Long>> timeList = new ArrayList(from_len);
-            List<Long> timeRow;
-            List<List<Long>> distanceList = new ArrayList(from_len);
-            List<Long> distanceRow;
-            Iterator<MatrixElement> iter = ghMatrixResponse.getMatrixElementIterator();
-            MatrixErrors matrixErrors = new MatrixErrors();
-            StringBuilder debugBuilder = new StringBuilder();
-            debugBuilder.append(ghMatrixResponse.getDebugInfo());
-
-            for(int fromIndex = 0; fromIndex < from_len; ++fromIndex) {
-                timeRow = new ArrayList(to_len);
-                timeList.add(timeRow);
-                distanceRow = new ArrayList(to_len);
-                distanceList.add(distanceRow);
-
-                for(int toIndex = 0; toIndex < to_len; ++toIndex) {
-                    if (!iter.hasNext()) {
-                        throw new IllegalStateException("Internal error, matrix dimensions should be " + from_len + "x" + to_len + ", but failed to retrieve element (" + fromIndex + ", " + toIndex + ")");
-                    }
-
-                    MatrixElement element = iter.next();
-                    if (!element.isConnected()) {
-                        matrixErrors.addDisconnectedPair(element.getFromIndex(), element.getToIndex());
-                    }
-
-                    if (ghMatrixRequest.getFailFast() && matrixErrors.hasDisconnectedPairs()) {
-                        throw new MatrixCalculationException(matrixErrors);
-                    }
-
-                    long time = element.getTime();
-                    timeRow.add(time == Long.MAX_VALUE ? -1 : Math.round((double)time / 1000.0D));
-
-                    double distance = element.getDistance();
-                    distanceRow.add(distance == Double.MAX_VALUE ? -1 : Math.round(distance));
-
-                    debugBuilder.append(element.getDebugInfo());
-                }
-            }
-
-            List<MatrixRow> timeRows = timeList.stream()
-                    .map(row -> MatrixRow.newBuilder().addAllValues(row).build()).collect(toList());
-            List<MatrixRow> distanceRows = distanceList.stream()
-                    .map(row -> MatrixRow.newBuilder().addAllValues(row).build()).collect(toList());
-
-            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {"mode:" + request.getMode() + "_matrix", "api:grpc", "routes_found:true"};
-            tags = applyRegionName(tags, regionName);
-            sendDatadogStats(statsDClient, tags, durationSeconds);
-
-            MatrixRouteReply result = MatrixRouteReply.newBuilder().addAllTimes(timeRows).addAllDistances(distanceRows).build();
-            responseObserver.onNext(result);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            logger.error("Error while completing GraphHopper matrix request! ", e);
-
-            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {"mode:" + request.getMode() + "_matrix", "api:grpc", "routes_found:false"};
-            tags = applyRegionName(tags, regionName);
-            sendDatadogStats(statsDClient, tags, durationSeconds);
-
-            Status status = Status.newBuilder()
-                    .setCode(Code.INTERNAL.getNumber())
-                    .setMessage("GH internal error! Matrix request could not be completed.")
-                    .build();
-            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
-        }
-    }
-
     @Override
     public void info(InfoRequest request, StreamObserver<InfoReply> responseObserver) {
         GraphHopperStorage storage = graphHopper.getGraphHopperStorage();
@@ -283,7 +185,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         ghPtRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
         ghPtRequest.setProfileQuery(true);
         ghPtRequest.setMaxProfileDuration(Duration.ofMinutes(request.getMaxProfileDuration()));
-        ghPtRequest.setBetaWalkTime(request.getBetaWalkTime());
+        ghPtRequest.setBetaStreetTime(request.getBetaWalkTime());
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());

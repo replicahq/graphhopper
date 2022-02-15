@@ -30,10 +30,7 @@ import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.PtRouterImpl;
 import com.graphhopper.gtfs.RealtimeFeed;
 import com.graphhopper.http.GraphHopperManaged;
-import com.graphhopper.jackson.GraphHopperConfigModule;
 import com.graphhopper.jackson.Jackson;
-import com.graphhopper.routing.GHMatrixAPI;
-import com.graphhopper.routing.MatrixAPI;
 import com.timgroup.statsd.NonBlockingStatsDClientBuilder;
 import com.timgroup.statsd.StatsDClient;
 import io.dropwizard.Application;
@@ -94,22 +91,17 @@ public class RouterServer {
     private void start() throws Exception {
         // Start GH instance based on config given as command-line arg
         ObjectMapper yaml = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
-        yaml.registerModule(new GraphHopperConfigModule());
         JsonNode yamlNode = yaml.readTree(new File(configPath));
         GraphHopperConfig graphHopperConfiguration = yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
-        ObjectMapper json = Jackson.newObjectMapper();
-        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration, json);
+        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration);
         graphHopperManaged.start();
 
         // Grab instances of auto/bike/ped router and PT router (if applicable)
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         PtRouter ptRouter = null;
         if (graphHopper instanceof GraphHopperGtfs) {
-            ptRouter = new PtRouterImpl(graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(((GraphHopperGtfs) graphHopper).getGtfsStorage()), graphHopper.getPathDetailsBuilderFactory());
+            ptRouter = new PtRouterImpl(graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(((GraphHopperGtfs) graphHopper).getGtfsStorage()), graphHopper.getPathDetailsBuilderFactory());
         }
-
-        // Create matrix API instance
-        MatrixAPI matrixAPI = new GHMatrixAPI(graphHopper, graphHopperConfiguration);
 
         // Load GTFS link mapping and GTFS info maps for use in building responses
         Map<String, String> gtfsLinkMappings = null;
@@ -142,7 +134,7 @@ public class RouterServer {
         // Start server
         int grpcPort = 50051;
         server = NettyServerBuilder.forPort(grpcPort)
-                .addService(new RouterImpl(graphHopper, ptRouter, matrixAPI, gtfsLinkMappings, gtfsRouteInfo, gtfsFeedIdMapping, statsDClient, regionName))
+                .addService(new RouterImpl(graphHopper, ptRouter, gtfsLinkMappings, gtfsRouteInfo, gtfsFeedIdMapping, statsDClient, regionName))
                 .addService(ProtoReflectionService.newInstance())
                 .maxConnectionAge(userDefinedProperties.getOrDefault("CONN_TIME_MAX_AGE_SECS", defaultProperties.get("CONN_TIME_MAX_AGE_SECS")), TimeUnit.SECONDS)
                 .maxConnectionAgeGrace(userDefinedProperties.getOrDefault("CONN_TIME_GRACE_PERIOD_SECS", defaultProperties.get("CONN_TIME_GRACE_PERIOD_SECS")), TimeUnit.SECONDS)

@@ -12,16 +12,14 @@ import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
-import com.graphhopper.routing.util.EncodingManager;
+import com.graphhopper.routing.ev.IntEncodedValueImpl;
+import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.stableid.StableIdEncodedValues;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Custom implementation of internal class GraphHopper uses to parse OSM files into GH's internal graph data structures.
@@ -50,7 +48,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
 
-
     public CustomGraphHopperGtfs(GraphHopperConfig ghConfig) {
         super(ghConfig);
         this.osmPath = ghConfig.getString("datareader.file", "");
@@ -58,12 +55,9 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         this.osmIdToAccessFlags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
-    }
-
-    @Override
-    protected void registerCustomEncodedValues(EncodingManager.Builder emBuilder) {
-        super.registerCustomEncodedValues(emBuilder);
-        StableIdEncodedValues.createAndAddEncodedValues(emBuilder);
+        StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
+        this.getEncodingManagerBuilder().add(new OsmIdTagParser());
+        getEncodingManagerBuilder().add(new IntEncodedValueImpl("osmid", 31, false));
     }
 
     public void collectOsmInfo() {
@@ -156,6 +150,13 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         }
     }
 
+    /**
+     * Currently we use this for a few tests where the dataReaderFile is loaded from the classpath
+     */
+    protected File _getOSMFile() {
+        return new File(super.getOSMFile());
+    }
+
     private static String getHighwayFromOsmWay(ReaderWay way) {
         if (way.hasTag("highway")) {
             return way.getTag("highway");
@@ -180,6 +181,19 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         return osmIdToLaneTags;
     }
 
+    public Map<Integer, Long> getGhIdToOsmId() {
+        Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
+        AllEdgesIterator allEdges = getGraphHopperStorage().getAllEdges();
+        while (allEdges.next()) {
+            // Ignore setting OSM IDs for transit edges, which have a distance of 0
+            if (allEdges.getDistance() != 0) {
+                int osmid = allEdges.get(getEncodingManager().getIntEncodedValue("osmid"));
+                ghIdToOsmId.put(allEdges.getEdge(), (long) osmid);
+            }
+        }
+        return ghIdToOsmId;
+    }
+
     public Map<Long, List<String>> getOsmIdToAccessFlags() {
         return osmIdToAccessFlags;
     }
@@ -191,4 +205,5 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     public Map<Long, String> getOsmIdToHighwayTag() {
         return osmIdToHighwayTag;
     }
+
 }

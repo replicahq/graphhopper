@@ -24,8 +24,6 @@ import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.PtRouterImpl;
 import com.graphhopper.gtfs.RealtimeFeed;
-import com.graphhopper.routing.GHMatrixAPI;
-import com.graphhopper.routing.MatrixAPI;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -82,14 +80,12 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         PtRouter ptRouter = null;
         if (graphHopper instanceof GraphHopperGtfs) {
-            ptRouter = new PtRouterImpl(graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(),
+            ptRouter = new PtRouterImpl(graphHopperConfiguration,
+                    graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(),
                     graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(),
                     RealtimeFeed.empty(((GraphHopperGtfs) graphHopper).getGtfsStorage()),
                     graphHopper.getPathDetailsBuilderFactory());
         }
-
-        // Create matrix API instance
-        MatrixAPI matrixAPI = new GHMatrixAPI(graphHopper, graphHopperConfiguration);
 
         // Load GTFS link mapping and GTFS info maps for use in building responses
         Map<String, String> gtfsLinkMappings = null;
@@ -108,7 +104,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         String uniqueName = InProcessServerBuilder.generateName();
         InProcessServerBuilder.forName(uniqueName)
                 .directExecutor() // directExecutor is fine for unit tests
-                .addService(new RouterImpl(graphHopper, ptRouter, matrixAPI, gtfsLinkMappings,
+                .addService(new RouterImpl(graphHopper, ptRouter, gtfsLinkMappings,
                         gtfsRouteInfo, gtfsFeedIdMapping, null, TEST_REGION_NAME))
                 .addService(ProtoReflectionService.newInstance())
                 .build().start();
@@ -210,7 +206,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertFalse(ptMetadata.getDirection().isEmpty());
         }
         assertEquals(observedStableEdgeIdCount, observedStableEdgeIds.size());
-        assertEquals(path.getDistanceMeters(), observedDistanceMeters);
+        assertEquals(path.getDistanceMeters(), observedDistanceMeters, 0.0001);
 
         // Check stops in first PT leg
         RouterOuterClass.PtLeg firstLeg = ptLegs.get(0);
