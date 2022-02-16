@@ -3,19 +3,13 @@
 
 graphhopper:
   datareader.file: ./test-data/micro_nor_cal.osm.pbf
-  gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/export_test/graphhopper
-  routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
   graph.flag_encoders: car,bike,foot,truck
   prepare.ch.threads: 16
 
-  # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
-  # prepare.ch.edge_based: edge_and_node
-  # graph.flag_encoders: car|turn_costs=true
-  # graph.bytes_for_flags: 64
-
   # Profiles specifying vehicle and weightings for each mode type.
+  # For nationwide export, save time by not building contraction hierarchies
   profiles:
     - name: car
       vehicle: car
@@ -29,12 +23,6 @@ graphhopper:
     - name: truck
       vehicle: truck
       weighting: fastest
-
-  profiles_ch:
-    - profile: car
-    - profile: bike
-    - profile: foot
-    - profile: truck
 
 server:
   min_threads: 4
