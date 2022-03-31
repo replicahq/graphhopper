@@ -100,7 +100,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
         try {
             GHResponse ghResponse = graphHopper.route(ghRequest);
-            if (ghResponse.getAll().size() == 0) {
+            if (ghResponse.hasErrors()) {
                 String message = "Path could not be found between "
                         + ghRequest.getPoints().get(0).lat + "," + ghRequest.getPoints().get(0).lon + " to "
                         + ghRequest.getPoints().get(1).lat + "," + ghRequest.getPoints().get(1).lon;
