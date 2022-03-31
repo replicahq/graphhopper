@@ -70,6 +70,7 @@ public class RouterServer {
     private Map<String, Integer> defaultProperties;
     private Map<String, Integer> userDefinedProperties;
     private String regionName;
+    private String releaseName;
     private GraphHopperManaged graphHopperManaged;
     public static final Set<String> SETTABLE_PARAMETERS = Sets.newHashSet(
             "SERVER_THREADS",
@@ -84,11 +85,12 @@ public class RouterServer {
     );
 
     public RouterServer(String configPath, Map<String, Integer> defaultProperties,
-                        Map<String, Integer> userDefinedProperties, String regionName) {
+                        Map<String, Integer> userDefinedProperties, String regionName, String releaseName) {
         this.configPath = configPath;
         this.defaultProperties = defaultProperties;
         this.userDefinedProperties = userDefinedProperties;
         this.regionName = regionName;
+        this.releaseName = releaseName;
     }
 
     private void start() throws Exception {
@@ -127,22 +129,22 @@ public class RouterServer {
             logger.info("No GTFS link mapping mapdb file found! Skipped loading GTFS link mappings.");
         }
 
-        String datadogHost = System.getenv("DD_AGENT_HOST");
+        String metricsHost = System.getenv("METRICS_AGENT_HOST");
         StatsDClient statsDClient = null;
-        if (datadogHost != null) {
-            // Initialize Datadog client
+        if (metricsHost != null) {
+            // Initialize Metrics client
             statsDClient = new NonBlockingStatsDClientBuilder()
-                    .hostname(System.getenv("DD_AGENT_HOST"))
+                    .hostname(metricsHost)
                     .port(8125)
                     .build();
         }
 
-        logger.info("Datadog agent host IP is: " + System.getenv("DD_AGENT_HOST"));
+        logger.info("Metrics agent host IP is: " + System.getenv("METRICS_AGENT_HOST"));
 
         // Start server
         int grpcPort = 50051;
         server = NettyServerBuilder.forPort(grpcPort)
-                .addService(new RouterImpl(graphHopper, ptRouter, matrixAPI, gtfsLinkMappings, gtfsRouteInfo, gtfsFeedIdMapping, statsDClient, regionName))
+                .addService(new RouterImpl(graphHopper, ptRouter, matrixAPI, gtfsLinkMappings, gtfsRouteInfo, gtfsFeedIdMapping, statsDClient, regionName, releaseName))
                 .addService(ProtoReflectionService.newInstance())
                 .maxConnectionAge(userDefinedProperties.getOrDefault("CONN_TIME_MAX_AGE_SECS", defaultProperties.get("CONN_TIME_MAX_AGE_SECS")), TimeUnit.SECONDS)
                 .maxConnectionAgeGrace(userDefinedProperties.getOrDefault("CONN_TIME_GRACE_PERIOD_SECS", defaultProperties.get("CONN_TIME_GRACE_PERIOD_SECS")), TimeUnit.SECONDS)
@@ -225,8 +227,12 @@ public class RouterServer {
         if (envVars.containsKey("REGION_NAME")) {
             regionName = envVars.get("REGION_NAME");
         }
+        String releaseName = null;
+        if (envVars.containsKey("HELM_RELEASE_NAME")) {
+            releaseName = envVars.get("HELM_RELEASE_NAME");
+        }
 
-        final RouterServer server = new RouterServer(config, defaultProperties, userProvidedProperties, regionName);
+        final RouterServer server = new RouterServer(config, defaultProperties, userProvidedProperties, regionName, releaseName);
         server.start();
         server.blockUntilShutdown();
     }
