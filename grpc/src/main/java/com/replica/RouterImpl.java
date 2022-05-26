@@ -23,10 +23,7 @@ import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.isochrone.algorithm.JTSTriangulator;
 import com.graphhopper.routing.MatrixAPI;
 import com.graphhopper.storage.GraphHopperStorage;
-import com.replica.api.IsochroneRouter;
-import com.replica.api.MatrixRouter;
-import com.replica.api.StreetRouter;
-import com.replica.api.TransitRouter;
+import com.replica.api.*;
 import com.timgroup.statsd.StatsDClient;
 import io.grpc.stub.StreamObserver;
 import router.RouterOuterClass.*;
@@ -43,6 +40,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     private TransitRouter transitRouter;
     private MatrixRouter matrixRouter;
     private IsochroneRouter isochroneRouter;
+    private TransitIsochroneRouter transitIsochroneRouter;
 
     public RouterImpl(GraphHopper graphHopper, PtRouter ptRouter, MatrixAPI matrixAPI,
                       Map<String, String> gtfsLinkMappings,
@@ -56,6 +54,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 gtfsRouteInfo, gtfsFeedIdMapping, statsDClient, regionName);
         this.matrixRouter = new MatrixRouter(matrixAPI, statsDClient, regionName);
         this.isochroneRouter = new IsochroneRouter(graphHopper, new JTSTriangulator(graphHopper.getRouterConfig()));
+        this.transitIsochroneRouter = new TransitIsochroneRouter(graphHopper);
     }
 
     @Override
@@ -83,5 +82,10 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     @Override
     public void routeIsochrone(IsochroneRouteRequest request, StreamObserver<IsochroneRouteReply> responseObserver) {
         isochroneRouter.routeIsochrone(request, responseObserver);
+    }
+
+    @Override
+    public void routePtIsochrone(PtIsochroneRouteRequest request, StreamObserver<IsochroneRouteReply> responseObserver) {
+        transitIsochroneRouter.routePtIsochrone(request, responseObserver);
     }
 }
