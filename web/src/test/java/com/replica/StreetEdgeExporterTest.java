@@ -34,7 +34,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1102357, records.size());
+        assertEquals(1109143, records.size());
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
 
