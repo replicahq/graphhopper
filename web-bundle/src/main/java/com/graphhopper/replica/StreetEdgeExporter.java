@@ -8,8 +8,11 @@ import com.graphhopper.routing.ev.RoadClass;
 import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.routing.util.CarFlagEncoder;
 import com.graphhopper.routing.util.EncodingManager;
+import com.graphhopper.routing.util.FlagEncoder;
+import com.graphhopper.routing.util.spatialrules.TransportationMode;
 import com.graphhopper.stableid.StableIdEncodedValues;
 import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.storage.IntsRef;
 import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.DistanceCalcEarth;
 import com.graphhopper.util.EdgeIteratorState;
@@ -17,20 +20,23 @@ import com.graphhopper.util.FetchMode;
 import com.graphhopper.util.PointList;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.glassfish.jersey.internal.guava.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class StreetEdgeExporter {
     private static final Logger logger = LoggerFactory.getLogger(StreetEdgeExporter.class);
 
+    private static final Map<TransportationMode, String> ACCESSIBILITY_MODE_MAP = Map.of(
+            TransportationMode.MOTOR_VEHICLE, "CAR",
+            TransportationMode.BICYCLE, "BIKE",
+            TransportationMode.FOOT, "PEDESTRIAN"
+    );
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
@@ -48,6 +54,7 @@ public class StreetEdgeExporter {
     private DecimalEncodedValue avgSpeedEnc;
     private StableIdEncodedValues stableIdEncodedValues;
     private EnumEncodedValue<RoadClass> roadClassEnc;
+    private EncodingManager encodingManager;
 
     public StreetEdgeExporter(GraphHopper configuredGraphHopper, Map<Long, Map<String, String>> osmIdToLaneTags, Map<Integer, Long> ghIdToOsmId, Map<Long, List<String>> osmIdToAccessFlags, Map<Long, String> osmIdToStreetName, Map<Long, String> osmIdToHighway) {
         this.osmIdToLaneTags = osmIdToLaneTags;
@@ -58,14 +65,14 @@ public class StreetEdgeExporter {
 
         // Grab edge/node iterators for graph loaded from pre-built GH files
         GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
-        nodes = graphHopperStorage.getNodeAccess();
+        this.nodes = graphHopperStorage.getNodeAccess();
 
         // Setup encoders for determining speed and road type info for each edge
-        EncodingManager encodingManager = configuredGraphHopper.getEncodingManager();
-        stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(encodingManager);
-        roadClassEnc = encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
-        CarFlagEncoder carFlagEncoder = (CarFlagEncoder)encodingManager.getEncoder("car");
-        avgSpeedEnc = carFlagEncoder.getAverageSpeedEnc();
+        this.encodingManager = configuredGraphHopper.getEncodingManager();
+        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager);
+        this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
+        CarFlagEncoder carFlagEncoder = (CarFlagEncoder)this.encodingManager.getEncoder("car");
+        this.avgSpeedEnc = carFlagEncoder.getAverageSpeedEnc();
     }
 
     public List<StreetEdgeExportRecord> generateRecords(EdgeIteratorState iteratorState) {
@@ -109,8 +116,18 @@ public class StreetEdgeExporter {
 
         // Set accessibility flags for each edge direction
         // Returned flags are from the set {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}
-        String forwardFlags = OsmHelper.getFlagsForGhEdge(ghEdgeId, false, osmIdToAccessFlags, ghIdToOsmId);
-        String backwardFlags = OsmHelper.getFlagsForGhEdge(ghEdgeId, true, osmIdToAccessFlags, ghIdToOsmId);
+        IntsRef edgeFlags = iteratorState.getFlags();
+        Set<String> forwardFlags = Sets.newHashSet();
+        Set<String> backwardFlags = Sets.newHashSet();
+        for (FlagEncoder encoder: encodingManager.fetchEdgeEncoders()) {
+            String mode = ACCESSIBILITY_MODE_MAP.get(encoder.getTransportationMode());
+            if (encoder.getAccessEnc().getBool(false, edgeFlags)) {
+                forwardFlags.add("ALLOWS_" + mode);
+            }
+            if (encoder.getAccessEnc().getBool(true, edgeFlags)) {
+                backwardFlags.add("ALLOWS_" + mode);
+            }
+        }
 
         // Calculate number of lanes for edge, as done in R5, based on OSM tags + edge direction
         int overallLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes");
@@ -151,12 +168,12 @@ public class StreetEdgeExporter {
             if (!(forwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, startVertex, endVertex,
                         startLat, startLon, endLat, endLon, geometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, forwardFlags, forwardLanes, highwayTag));
+                        distanceMillimeters, osmId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag));
             }
             if (!(backwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, endVertex, startVertex,
                         endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, backwardFlags, backwardLanes, highwayTag));
+                        distanceMillimeters, osmId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag));
             }
         }
 
