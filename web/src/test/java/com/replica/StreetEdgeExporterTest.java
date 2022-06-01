@@ -62,7 +62,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         // Copied from writeStreetEdgesCsv
         StreetEdgeExporter exporter = new StreetEdgeExporter(
                 configuredGraphHopper, gh.getOsmIdToLaneTags(), ghIdToOsmId,
-                gh.getOsmIdToAccessFlags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
+                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
         );
         GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
         AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();

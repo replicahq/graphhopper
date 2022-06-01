@@ -33,7 +33,7 @@ public class ExportNationwideCommand extends ConfiguredCommand<GraphHopperServer
 
         // Write processed street network out to CSV
         StreetEdgeExporter.writeStreetEdgesCsv(gh, gh.getOsmIdToLaneTags(), gh.getGhIdToOsmId(),
-                gh.getOsmIdToAccessFlags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag());
+                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag());
         gh.close();
     }
 }
