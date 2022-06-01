@@ -163,12 +163,12 @@ public class StreetEdgeExporter {
             // Inaccessible edges have no flags set; flags are stored as stringified lists,
             // so innaccessible edges will have a flag equal to "[]", the empty list's toString().
             // Only remove inaccessible edges with highway tags of motorway or motorway_link
-            if (!(forwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
+            if (!(forwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, startVertex, endVertex,
                         startLat, startLon, endLat, endLon, geometryString, streetName,
                         distanceMillimeters, osmId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag));
             }
-            if (!(backwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
+            if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, endVertex, startVertex,
                         endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
                         distanceMillimeters, osmId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag));
