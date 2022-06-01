@@ -159,10 +159,8 @@ public class StreetEdgeExporter {
         // Copy R5's logic; filter out edges with unwanted highway tags and negative OSM IDs
         // todo: do negative OSM ids happen in GH? This might have been R5-specific
         if (!HIGHWAY_FILTER_TAGS.contains(highwayTag) && osmId >= 0) {
-            // Print line for each edge direction, if edge is accessible.
-            // Inaccessible edges have no flags set; flags are stored as stringified lists,
-            // so innaccessible edges will have a flag equal to "[]", the empty list's toString().
-            // Only remove inaccessible edges with highway tags of motorway or motorway_link
+            // Print line for each edge direction, if edge is accessible; inaccessible edges should have
+            // no flags set. Only remove inaccessible edges with highway tags of motorway or motorway_link
             if (!(forwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, startVertex, endVertex,
                         startLat, startLon, endLat, endLon, geometryString, streetName,
