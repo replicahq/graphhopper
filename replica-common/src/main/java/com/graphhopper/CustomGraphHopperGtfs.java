@@ -4,13 +4,20 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.graphhopper.gtfs.GraphHopperGtfs;
+import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
+import com.graphhopper.reader.osm.CustomOsmReader;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
+import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.stableid.StableIdEncodedValues;
+import com.graphhopper.storage.DataAccess;
+import com.graphhopper.storage.Directory;
+import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.util.BitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +49,10 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     private Map<Long, String> osmIdToStreetName;
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
+    private DataAccess edgeMapping;
+    private DataAccess nodeMapping;
+    private BitUtil bitUtil;
+    private Directory dir;
 
 
     public CustomGraphHopperGtfs(GraphHopperConfig ghConfig) {
@@ -56,6 +67,41 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     protected void registerCustomEncodedValues(EncodingManager.Builder emBuilder) {
         super.registerCustomEncodedValues(emBuilder);
         StableIdEncodedValues.createAndAddEncodedValues(emBuilder);
+    }
+
+    @Override
+    public boolean load(String graphHopperFolder) {
+        boolean loaded = super.load(graphHopperFolder);
+        dir = getGraphHopperStorage().getDirectory();
+        bitUtil = BitUtil.get(dir.getByteOrder());
+        edgeMapping = dir.find("edge_mapping");
+        nodeMapping = dir.find("node_mapping");
+
+        if(loaded) {
+            edgeMapping.loadExisting();
+            nodeMapping.loadExisting();
+        }
+
+        return loaded;
+    }
+
+    @Override
+    protected void flush() {
+        super.flush();
+        edgeMapping.flush();
+        nodeMapping.flush();
+    }
+
+    public OsmHelper getOsmHelper(){
+        return new OsmHelper(edgeMapping, nodeMapping, bitUtil,
+                getGraphHopperStorage().getNodes(),
+                getGraphHopperStorage().getEdges());
+    }
+
+    @Override
+    protected DataReader createReader(GraphHopperStorage ghStorage) {
+        OSMReader reader = new CustomOsmReader(ghStorage);
+        return initDataReader(reader);
     }
 
     public void collectOsmInfo() {

@@ -32,8 +32,8 @@ public class ExportNationwideCommand extends ConfiguredCommand<GraphHopperServer
         logger.info("Done building graph from OSM, parsing tags, and setting stable edge IDs");
 
         // Write processed street network out to CSV
-        StreetEdgeExporter.writeStreetEdgesCsv(gh, gh.getOsmIdToLaneTags(), gh.getGhIdToOsmId(),
-                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag());
+        StreetEdgeExporter.writeStreetEdgesCsv(gh, gh.getOsmIdToLaneTags(),
+                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper());
         gh.close();
     }
 }

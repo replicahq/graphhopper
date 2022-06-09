@@ -8,13 +8,13 @@ import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
-import com.graphhopper.reader.osm.GraphHopperOSM;
-import com.graphhopper.reader.osm.OSMInput;
-import com.graphhopper.reader.osm.OSMInputFile;
-import com.graphhopper.reader.osm.OSMReader;
+import com.graphhopper.reader.osm.*;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.stableid.StableIdEncodedValues;
+import com.graphhopper.storage.DataAccess;
+import com.graphhopper.storage.Directory;
 import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.util.BitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,20 +41,21 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
 
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of GH edge ID to OSM way ID
-    private Map<Integer, Long> ghIdToOsmId;
     // Map of OSM ID to street name. Name is parsed directly from Way, unless name field isn't present,
     // in which case the name is taken from the Relation containing the Way, if one exists
     private Map<Long, String> osmIdToStreetName;
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
+    private DataAccess edgeMapping;
+    private DataAccess nodeMapping;
+    private BitUtil bitUtil;
+    private Directory dir;
 
 
     public CustomGraphHopperOSM(JsonFeatureCollection landmarkSplittingFeatureCollection, GraphHopperConfig ghConfig) {
         super(landmarkSplittingFeatureCollection);
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
-        this.ghIdToOsmId = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
     }
@@ -63,6 +64,35 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
     protected void registerCustomEncodedValues(EncodingManager.Builder emBuilder) {
         super.registerCustomEncodedValues(emBuilder);
         StableIdEncodedValues.createAndAddEncodedValues(emBuilder);
+    }
+
+    @Override
+    public boolean load(String graphHopperFolder) {
+        boolean loaded = super.load(graphHopperFolder);
+        dir = getGraphHopperStorage().getDirectory();
+        bitUtil = BitUtil.get(dir.getByteOrder());
+        edgeMapping = dir.find("edge_mapping");
+        nodeMapping = dir.find("node_mapping");
+
+        if(loaded) {
+            edgeMapping.loadExisting();
+            nodeMapping.loadExisting();
+        }
+
+        return loaded;
+    }
+
+    @Override
+    protected void flush() {
+        super.flush();
+        edgeMapping.flush();
+        nodeMapping.flush();
+    }
+
+    public OsmHelper getOsmHelper(){
+        return new OsmHelper(edgeMapping, nodeMapping, bitUtil,
+                getGraphHopperStorage().getNodes(),
+                getGraphHopperStorage().getEdges());
     }
 
     /**
@@ -77,14 +107,7 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
      */
     @Override
     protected DataReader createReader(GraphHopperStorage ghStorage) {
-        OSMReader reader = new OSMReader(ghStorage) {
-            // Hacky override used to populate GH ID -> OSM ID map; called during standard GH import process
-            @Override
-            protected void storeOsmWayID(int edgeId, long osmWayId) {
-                super.storeOsmWayID(edgeId, osmWayId);
-                ghIdToOsmId.put(edgeId, osmWayId);
-            }
-        };
+        OSMReader reader = new CustomOsmReader(ghStorage);
         return initDataReader(reader);
     }
 
@@ -183,10 +206,6 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
 
     public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
         return osmIdToLaneTags;
-    }
-
-    public Map<Integer, Long> getGhIdToOsmId() {
-        return ghIdToOsmId;
     }
 
     public Map<Long, String> getOsmIdToStreetName() {

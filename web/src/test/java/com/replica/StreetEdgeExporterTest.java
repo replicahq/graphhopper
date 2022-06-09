@@ -3,6 +3,7 @@ package com.replica;
 import com.google.common.collect.Maps;
 import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.GraphHopper;
+import com.graphhopper.reader.osm.CustomOsmReader;
 import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.replica.StreetEdgeExportRecord;
 import com.graphhopper.replica.StreetEdgeExporter;
@@ -45,24 +46,18 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         CustomGraphHopperGtfs gh = (CustomGraphHopperGtfs) configuredGraphHopper;
         gh.collectOsmInfo();
 
+        /*
         // Hacky override used to populate GH ID -> OSM ID map, normally stored in-memory during nationwide export
         // All other OSM-derived info is parsed in above call to collectOsmInfo()
         Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
         GraphHopperStorage s = new GraphHopperStorage(new GHDirectory(EXPORT_FILES_DIR, DAType.RAM_STORE), gh.getEncodingManager(), false);
-        OSMReader reader = new OSMReader(s) {
-            @Override
-            protected void storeOsmWayID(int edgeId, long osmWayId) {
-                super.storeOsmWayID(edgeId, osmWayId);
-                ghIdToOsmId.put(edgeId, osmWayId);
-            }
-        };
+        OSMReader reader = new CustomOsmReader(s);
         reader.setFile(new File(gh.getOSMFile()));
         reader.readGraph();
-
+*/
         // Copied from writeStreetEdgesCsv
         StreetEdgeExporter exporter = new StreetEdgeExporter(
-                configuredGraphHopper, gh.getOsmIdToLaneTags(), ghIdToOsmId,
-                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
+                configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper()
         );
         GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
         AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();

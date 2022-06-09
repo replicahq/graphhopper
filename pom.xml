@@ -18,6 +18,7 @@
         <module>web-bundle</module>
         <module>web</module>
         <module>grpc</module>
+        <module>reader</module>
     </modules>
     <build>
         <plugins>
