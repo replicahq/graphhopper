@@ -51,6 +51,8 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     private Map<Long, String> osmIdToHighwayTag;
     private DataAccess edgeMapping;
     private DataAccess nodeMapping;
+    private DataAccess edgeAdjacentMapping;
+    private DataAccess edgeBaseMapping;
     private BitUtil bitUtil;
     private Directory dir;
 
@@ -76,10 +78,14 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         bitUtil = BitUtil.get(dir.getByteOrder());
         edgeMapping = dir.find("edge_mapping");
         nodeMapping = dir.find("node_mapping");
+        edgeAdjacentMapping = dir.find("edge_adjacent_mapping");
+        edgeBaseMapping = dir.find("edge_base_mapping");
 
         if(loaded) {
             edgeMapping.loadExisting();
             nodeMapping.loadExisting();
+            edgeAdjacentMapping.loadExisting();
+            edgeBaseMapping.loadExisting();
         }
 
         return loaded;
@@ -90,11 +96,13 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         super.flush();
         edgeMapping.flush();
         nodeMapping.flush();
+        edgeAdjacentMapping.flush();
+        edgeBaseMapping.flush();
     }
 
     public OsmHelper getOsmHelper(){
-        return new OsmHelper(edgeMapping, nodeMapping, bitUtil,
-                getGraphHopperStorage().getNodes(),
+        return new OsmHelper(edgeMapping, nodeMapping,
+                edgeAdjacentMapping, edgeBaseMapping, bitUtil,
                 getGraphHopperStorage().getEdges());
     }
 

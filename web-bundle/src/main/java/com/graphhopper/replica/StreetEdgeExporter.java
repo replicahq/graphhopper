@@ -41,7 +41,8 @@ public class StreetEdgeExporter {
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
-            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway", "startOsmNode", "endOsmNode"};
+            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
+            "startOsmNode", "endOsmNode"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
     // Some sticky members
@@ -110,6 +111,24 @@ public class StreetEdgeExporter {
 
         long startOsmNode = osmHelper.getOSMNode(startVertex);
         long endOsmNode = osmHelper.getOSMNode(endVertex);
+
+        if (startOsmNode == 0) {
+            // int origFirstEdgeId = iteratorState.getOrigEdgeFirst();
+            long baseNode = osmHelper.getBaseNodeForEdge(ghEdgeId);
+            startOsmNode = osmHelper.getOSMNode(baseNode);
+            // System.out.println("Start osm node ID is 0. base node ID " + baseNode + " for gh edge id " + ghEdgeId + "; Replaced start osm node ID with " + startOsmNode);
+        }
+        if (endOsmNode == 0) {
+            // int origLastEdgeId = iteratorState.getOrigEdgeLast();
+            long adjacendNode = osmHelper.getNodeAdjacentToEdge(ghEdgeId);
+            endOsmNode = osmHelper.getOSMNode(adjacendNode);
+            // System.out.println("end osm node ID is 0. adj node ID " + adjacendNode + " for gh edge id " + ghEdgeId + "; Replaced end osm node ID with " + endOsmNode);
+        }
+
+        if (startOsmNode == endOsmNode){
+            // System.out.println("Start and end node were the same ID : " + startOsmNode + " ; removing edge from export");
+            return output;
+        }
 
         // Use street name parsed from Ways/Relations, if it exists; otherwise, use default GH edge name
         String streetName = osmIdToStreetName.getOrDefault(osmWayId, iteratorState.getName());
@@ -211,7 +230,8 @@ public class StreetEdgeExporter {
                     }
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
-                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag, r.startOsmNode, r.endOsmNode);
+                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
+                                r.startOsmNode, r.endOsmNode);
                     }
                 }
             }
