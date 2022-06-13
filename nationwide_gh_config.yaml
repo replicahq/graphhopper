@@ -2,7 +2,7 @@
 # 1 profile loaded with default speeds is defined for each vehicle type
 
 graphhopper:
-  datareader.file: 
+  datareader.file:
   graph.location: transit_data/graphhopper
   routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
