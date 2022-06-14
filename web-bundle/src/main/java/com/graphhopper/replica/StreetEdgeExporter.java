@@ -109,24 +109,24 @@ public class StreetEdgeExporter {
             return output;
         }
 
+        // Fetch OSM Node IDs for each node of edge
         long startOsmNode = osmHelper.getOSMNode(startVertex);
         long endOsmNode = osmHelper.getOSMNode(endVertex);
 
+        // If startVertex/endVertex are not associated with an OSM node ID, check for an OSM node ID
+        // using the (graphhopper) vertex IDs that were stored at the same time we parsed the OSM
+        // node ID information. startVertex/endVertex won't necessarily line up with the "original"
+        // vertex IDs of the edge, due to graph processing that created additional edges during or
+        // after the initial OSM parsing stage
         if (startOsmNode == 0) {
-            // int origFirstEdgeId = iteratorState.getOrigEdgeFirst();
-            long baseNode = osmHelper.getBaseNodeForEdge(ghEdgeId);
-            startOsmNode = osmHelper.getOSMNode(baseNode);
-            // System.out.println("Start osm node ID is 0. base node ID " + baseNode + " for gh edge id " + ghEdgeId + "; Replaced start osm node ID with " + startOsmNode);
+            startOsmNode = osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId));
         }
         if (endOsmNode == 0) {
-            // int origLastEdgeId = iteratorState.getOrigEdgeLast();
-            long adjacendNode = osmHelper.getNodeAdjacentToEdge(ghEdgeId);
-            endOsmNode = osmHelper.getOSMNode(adjacendNode);
-            // System.out.println("end osm node ID is 0. adj node ID " + adjacendNode + " for gh edge id " + ghEdgeId + "; Replaced end osm node ID with " + endOsmNode);
+            endOsmNode = osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId));
         }
 
+        // Skip records containing "dummy" edges, where OSM endpoints are identical
         if (startOsmNode == endOsmNode){
-            // System.out.println("Start and end node were the same ID : " + startOsmNode + " ; removing edge from export");
             return output;
         }
 
