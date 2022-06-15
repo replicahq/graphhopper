@@ -2,7 +2,9 @@ package com.graphhopper.reader.osm;
 
 import com.carrotsearch.hppc.LongIndexedContainer;
 import com.graphhopper.storage.*;
-import com.graphhopper.util.*;
+import com.graphhopper.util.BitUtil;
+import com.graphhopper.util.EdgeIteratorState;
+import com.graphhopper.util.PointList;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -184,7 +186,6 @@ public class CustomOsmReader extends OSMReader {
             System.out.println("Couldn't properly add edge with osm ids:" + osmNodeIds);
             throw ex;
         }
-        System.out.println("Done adding edges for way " + wayOsmId);
         return newEdges;
     }
 

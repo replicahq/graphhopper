@@ -27,7 +27,7 @@ public class ExportNationwideCommand extends ConfiguredCommand<GraphHopperServer
         CustomGraphHopperOSM gh = (CustomGraphHopperOSM) graphHopper.getGraphHopper();
         gh.importOrLoad();
         gh.collectOsmInfo();
-        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh);
+        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh, gh.getOsmHelper());
         stableEdgeIdManager.setStableEdgeIds();
         logger.info("Done building graph from OSM, parsing tags, and setting stable edge IDs");
 

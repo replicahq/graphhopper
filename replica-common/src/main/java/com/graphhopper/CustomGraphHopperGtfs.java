@@ -54,8 +54,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     private DataAccess edgeAdjacentMapping;
     private DataAccess edgeBaseMapping;
     private BitUtil bitUtil;
-    private Directory dir;
-
 
     public CustomGraphHopperGtfs(GraphHopperConfig ghConfig) {
         super(ghConfig);
@@ -74,7 +72,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     @Override
     public boolean load(String graphHopperFolder) {
         boolean loaded = super.load(graphHopperFolder);
-        dir = getGraphHopperStorage().getDirectory();
+        Directory dir = getGraphHopperStorage().getDirectory();
         bitUtil = BitUtil.get(dir.getByteOrder());
         edgeMapping = dir.find("edge_mapping");
         nodeMapping = dir.find("node_mapping");
@@ -112,6 +110,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         return initDataReader(reader);
     }
 
+    // todo: can we move this logic into CustomOsmReader?
     public void collectOsmInfo() {
         LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
         List<ReaderRelation> roadRelations = Lists.newArrayList();

@@ -51,8 +51,6 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
     private DataAccess edgeAdjacentMapping;
     private DataAccess edgeBaseMapping;
     private BitUtil bitUtil;
-    private Directory dir;
-
 
     public CustomGraphHopperOSM(JsonFeatureCollection landmarkSplittingFeatureCollection, GraphHopperConfig ghConfig) {
         super(landmarkSplittingFeatureCollection);
@@ -71,7 +69,7 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
     @Override
     public boolean load(String graphHopperFolder) {
         boolean loaded = super.load(graphHopperFolder);
-        dir = getGraphHopperStorage().getDirectory();
+        Directory dir = getGraphHopperStorage().getDirectory();
         bitUtil = BitUtil.get(dir.getByteOrder());
         edgeMapping = dir.find("edge_mapping");
         nodeMapping = dir.find("node_mapping");
@@ -103,22 +101,13 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
                 getGraphHopperStorage().getEdges());
     }
 
-    /**
-     * Override creation of OSM reader to read the file once at initialization time, for the sole purpose of storing
-     * OSM information that will be used later in the export script.
-     *
-     * Note that this approach requires reading the OSM file twice: once during the static initialization code, and
-     * once during the call to importOrLoad() in ExportCommand.java, which is where the modified storeOsmWayID method
-     * overridden below is called to populate the ghIdToOsmId map.
-     *
-     * todo: figure out if it's possible to eliminate the need for two OSM read operations
-     */
     @Override
     protected DataReader createReader(GraphHopperStorage ghStorage) {
         OSMReader reader = new CustomOsmReader(ghStorage);
         return initDataReader(reader);
     }
 
+    // todo: can we move this logic into CustomOsmReader?
     public void collectOsmInfo() {
         LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
         List<ReaderRelation> roadRelations = Lists.newArrayList();

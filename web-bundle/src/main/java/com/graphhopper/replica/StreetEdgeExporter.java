@@ -73,7 +73,7 @@ public class StreetEdgeExporter {
 
         // Setup encoders for determining speed and road type info for each edge
         this.encodingManager = configuredGraphHopper.getEncodingManager();
-        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager);
+        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
         CarFlagEncoder carFlagEncoder = (CarFlagEncoder)this.encodingManager.getEncoder("car");
         this.avgSpeedEnc = carFlagEncoder.getAverageSpeedEnc();
@@ -103,30 +103,26 @@ public class StreetEdgeExporter {
         // Convert GH's distance in meters to millimeters to match R5's implementation
         long distanceMillimeters = distanceMeters * 1000;
 
-        // Fetch OSM Way ID, skipping edges from PT meta-graph that have no IDs set (getOSMWay returns -1)
+        // Fetch OSM Way ID, skipping edges that have no IDs set (getOSMWay returns -1)
         long osmWayId = osmHelper.getOSMWay(ghEdgeId);
         if (osmWayId == -1L) {
             return output;
         }
 
         // Fetch OSM Node IDs for each node of edge
-        long startOsmNode = osmHelper.getOSMNode(startVertex);
-        long endOsmNode = osmHelper.getOSMNode(endVertex);
+        long startOsmNode = osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId));
+        long endOsmNode = osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId));
 
-        // If startVertex/endVertex are not associated with an OSM node ID, check for an OSM node ID
-        // using the (graphhopper) vertex IDs that were stored at the same time we parsed the OSM
-        // node ID information. startVertex/endVertex won't necessarily line up with the "original"
-        // vertex IDs of the edge, due to graph processing that created additional edges during or
-        // after the initial OSM parsing stage
-        if (startOsmNode == 0) {
-            startOsmNode = osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId));
-        }
-        if (endOsmNode == 0) {
-            endOsmNode = osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId));
+        // Filter out single-point "edges" + edges with identical start/end point locations
+        // and no intermediate points (as would exist in the case of road loops)
+        if (wayGeometry.size() <= 1) {
+            return output;
+        } else if (wayGeometry.size() == 2 && (wayGeometry.get(0).equals(wayGeometry.get(1)))) {
+            return output;
         }
 
-        // Skip records containing "dummy" edges, where OSM endpoints are identical
-        if (startOsmNode == endOsmNode){
+        // Filter out edges where we didn't set a start/end OSM node ID (very infrequent)
+        if (startOsmNode == 0 || endOsmNode == 0) {
             return output;
         }
 
