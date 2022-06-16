@@ -1,6 +1,5 @@
 package com.replica;
 
-import com.google.common.collect.Maps;
 import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.reader.osm.CustomOsmReader;
@@ -22,7 +21,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -35,7 +33,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1102288, records.size());
+        assertEquals(1067210, records.size());
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
 
@@ -47,14 +45,15 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         gh.collectOsmInfo();
 
         /*
-        // Hacky override used to populate GH ID -> OSM ID map, normally stored in-memory during nationwide export
-        // All other OSM-derived info is parsed in above call to collectOsmInfo()
-        Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
+        // Hacky override used to populate GH ID -> OSM ID maps for edges + nodes, normally stored
+        // in-memory during nationwide export. All other OSM-derived info is parsed in above
+        // call to collectOsmInfo()
         GraphHopperStorage s = new GraphHopperStorage(new GHDirectory(EXPORT_FILES_DIR, DAType.RAM_STORE), gh.getEncodingManager(), false);
         OSMReader reader = new CustomOsmReader(s);
         reader.setFile(new File(gh.getOSMFile()));
         reader.readGraph();
-*/
+        */
+
         // Copied from writeStreetEdgesCsv
         StreetEdgeExporter exporter = new StreetEdgeExporter(
                 configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper()
