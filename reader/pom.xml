@@ -19,7 +19,7 @@
         <dependency>
             <groupId>com.graphhopper</groupId>
             <artifactId>graphhopper-reader-osm</artifactId>
-            <version>25e75af3774df54413a5e291091248d3c069220f</version>
+            <version>2a5bbde1819d78e5b22deb2f50aa37c89c4a80d2</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

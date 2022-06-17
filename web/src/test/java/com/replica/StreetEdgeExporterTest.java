@@ -2,13 +2,9 @@ package com.replica;
 
 import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.GraphHopper;
-import com.graphhopper.reader.osm.CustomOsmReader;
-import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.replica.StreetEdgeExportRecord;
 import com.graphhopper.replica.StreetEdgeExporter;
 import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.storage.DAType;
-import com.graphhopper.storage.GHDirectory;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 import org.apache.commons.csv.CSVFormat;
@@ -33,7 +29,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1067210, records.size());
+        assertEquals(1095756, records.size());
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
 
@@ -43,16 +39,6 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         GraphHopper configuredGraphHopper = graphHopperManaged.getGraphHopper();
         CustomGraphHopperGtfs gh = (CustomGraphHopperGtfs) configuredGraphHopper;
         gh.collectOsmInfo();
-
-        /*
-        // Hacky override used to populate GH ID -> OSM ID maps for edges + nodes, normally stored
-        // in-memory during nationwide export. All other OSM-derived info is parsed in above
-        // call to collectOsmInfo()
-        GraphHopperStorage s = new GraphHopperStorage(new GHDirectory(EXPORT_FILES_DIR, DAType.RAM_STORE), gh.getEncodingManager(), false);
-        OSMReader reader = new CustomOsmReader(s);
-        reader.setFile(new File(gh.getOSMFile()));
-        reader.readGraph();
-        */
 
         // Copied from writeStreetEdgesCsv
         StreetEdgeExporter exporter = new StreetEdgeExporter(
