@@ -47,7 +47,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         }
         assertEquals(0, emptyNodeIdCount);
         assertEquals(0, emptyWayIdCount);
-        assertTrue(observedStableEdgeIds.size() == 10000);
+        assertEquals(10000, observedStableEdgeIds.size());
 
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
