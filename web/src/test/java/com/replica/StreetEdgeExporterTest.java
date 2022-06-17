@@ -41,7 +41,6 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         for (int i = 1; i < 10001; i++) {
             CSVRecord record = records.get(i);
             observedStableEdgeIds.add(record.get("stableEdgeId"));
-            System.out.println(record.get("startOsmNode"));
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("endOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("osmid")) <= 0) emptyWayIdCount++;
