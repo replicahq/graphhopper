@@ -6,7 +6,7 @@
   "dependencies": {
     "css-loader": "^5.2.1",
     "google-protobuf": "^3.15.8",
-    "graphhopper-js-ui": "file:web",
+    "graphhopper-js-ui": "file:grpc",
     "grpc": "^1.24.6",
     "grpc-web": "1.2.1",
     "protoc-gen-grpc-web": "1.2.1",
