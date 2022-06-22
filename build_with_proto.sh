@@ -1,4 +1,15 @@
 #!/bin/sh
+
+# Script to setup + compile components necessary for the functionality of the Java code in this repo.
+# Specifically, this ensures the idls repo is pulled + updated, builds the protobuf objects defined
+# in that repo for use in Java + JS contexts, and builds all JS + Java components so main codebase +
+# GUI code function properly
+
+if [[ -z "$(ls -A ../idls)" ]]; then
+  cd .. && git clone git@github.com:replicahq/idls.git
+fi
+cd idls && git pull && cd ../graphhopper
+
 mkdir -p ./grpc/src/main/proto
 cp ./idls/model/router.proto ./grpc/src/main/proto/router.proto
 mkdir -p ./grpc/src/main/resources/assets/pt/src/grpc
@@ -14,11 +25,6 @@ npm install
 npm run build -- --config grpc/src/main/resources/assets/pt/webpack.config.js
 
 # Bundle files needed for non-PT GUI
-cd grpc && npm install && npm run bundle
-cd ..
+cd grpc && npm install && npm run bundle && cd ..
 
-# mvn -s maven_settings.xml --projects grpc -am -DskipTests=true package
-# mvn -s maven_settings.xml --projects web -am -DskipTests=true package
-
-# For some reason, below command is what works locally - above commands cause mvn to loop (?)
 mvn -s maven_settings.xml -am -DskipTests=true package
