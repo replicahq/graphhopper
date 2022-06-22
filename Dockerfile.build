@@ -62,5 +62,4 @@ COPY --from=test-build ./graphhopper/web/test-data ./web/test-data
 COPY --from=test-build ./graphhopper/test_gh_config.yaml ./test_gh_config.yaml
 COPY --from=test-build ./graphhopper/test_gh_config_one_feed.yaml ./test_gh_config_one_feed.yaml
 
-RUN mvn -s maven_settings.xml --projects grpc -am -DskipTests=true package && \
-    mvn -s maven_settings.xml --projects web -am -DskipTests=true package
+RUN mvn -s maven_settings.xml -am -DskipTests=true package
