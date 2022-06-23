@@ -186,6 +186,13 @@ def transit_ratio_mean_percent_change(
     return (1 / matched_count) * sum_of_changes
 
 
+# Check that for each response, stable_edge_ids and edge_durations_millis lists are equal length
+def validate_edge_ids_and_durations(response_set: dict):
+    for r in response_set.values():
+        for p in r["paths"]:
+            assert len(p["stable_edge_ids"]) == len(p["edge_durations_millis"])
+
+
 def run_all_validations(
     golden_response_set: dict, responses_to_validate: dict, is_transit: bool
 ):
@@ -253,6 +260,8 @@ def run_all_validations(
             validation_results["90th_percentile_query_time"]
             <= STREET_90TH_PERCENTILE_QUERY_TIME_THRESHOLD_MS
         )
+        # For street responses, check that stable edge ID + edge durations lists are equal length
+        validate_edge_ids_and_durations(responses_to_validate)
 
 
 if __name__ == "__main__":

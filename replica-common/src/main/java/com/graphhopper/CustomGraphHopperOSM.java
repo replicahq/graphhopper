@@ -3,9 +3,6 @@ package com.graphhopper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.graphhopper.export.TraversalPermissionLabeler;
-import com.graphhopper.export.USTraversalPermissionLabeler;
-import com.graphhopper.export.Way;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
@@ -18,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,12 +34,8 @@ public class CustomGraphHopperOSM extends GraphHopper {
     // Tags considered by R5 when calculating the value of the `lanes` column
     private static final Set<String> LANE_TAGS = Sets.newHashSet("lanes", "lanes:forward", "lanes:backward");
     private String osmPath;
-
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of OSM way ID to access flags for each edge direction (each created from set
-    // {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}), stored in list in order [forward, backward]
-    private Map<Long, List<String>> osmIdToAccessFlags;
     // Map of OSM ID to street name. Name is parsed directly from Way, unless name field isn't present,
     // in which case the name is taken from the Relation containing the Way, if one exists
     private Map<Long, String> osmIdToStreetName;
@@ -54,7 +46,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
         super();
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
-        this.osmIdToAccessFlags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
         StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
@@ -67,7 +58,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
         List<ReaderRelation> roadRelations = Lists.newArrayList();
         int readCount = 0;
         try (OSMInput input = new OSMInputFile(new File(osmPath)).setWorkerThreads(2).open()) {
-            TraversalPermissionLabeler flagLabeler = new USTraversalPermissionLabeler();
             ReaderElement next;
             while((next = input.getNext()) != null) {
                 if (next.isType(ReaderElement.WAY)) {
@@ -103,20 +93,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
                             }
                         }
                     }
-
-                    // Parse all tags that will be considered for determining accessibility flags for edge
-                    Map<String, String> wayTagsToConsider = Maps.newHashMap();
-                    for (String consideredTag : flagLabeler.getAllConsideredTags()) {
-                        if (ghReaderWay.hasTag(consideredTag)) {
-                            wayTagsToConsider.put(consideredTag, ghReaderWay.getTag(consideredTag));
-                        }
-                    }
-
-                    // Compute accessibility flags for edge in both directions
-                    Way way = new Way(wayTagsToConsider);
-                    List<EnumSet<TraversalPermissionLabeler.EdgeFlag>> flags = flagLabeler.getPermissions(way);
-                    List<String> flagStrings = Lists.newArrayList(flags.get(0).toString(), flags.get(1).toString());
-                    osmIdToAccessFlags.put(ghReaderWay.getId(), flagStrings);
                 } else if (next.isType(ReaderElement.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
@@ -192,10 +168,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
             }
         }
         return ghIdToOsmId;
-    }
-
-    public Map<Long, List<String>> getOsmIdToAccessFlags() {
-        return osmIdToAccessFlags;
     }
 
     public Map<Long, String> getOsmIdToStreetName() {

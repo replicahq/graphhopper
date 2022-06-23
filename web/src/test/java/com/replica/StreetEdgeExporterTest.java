@@ -1,14 +1,10 @@
 package com.replica;
 
-import com.google.common.collect.Maps;
 import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.GraphHopper;
-import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.replica.StreetEdgeExportRecord;
 import com.graphhopper.replica.StreetEdgeExporter;
 import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.storage.DAType;
-import com.graphhopper.storage.GHDirectory;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 import org.apache.commons.csv.CSVFormat;
@@ -21,7 +17,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -34,7 +29,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1105256, records.size());
+        assertEquals(1102288, records.size());
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
 
@@ -48,7 +43,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         // Copied from writeStreetEdgesCsv
         StreetEdgeExporter exporter = new StreetEdgeExporter(
                 configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getGhIdToOsmId(),
-                gh.getOsmIdToAccessFlags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
+                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
         );
         GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
         AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
