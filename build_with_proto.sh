@@ -4,9 +4,9 @@
 # Specifically, this ensures the idls repo is pulled + updated, builds the protobuf objects defined
 # in that repo for use in Java + JS contexts, and builds all JS + Java components so main codebase +
 # GUI code function properly
-
+cd ..
 if [[ -z "$(ls -A ../idls)" ]]; then
-  cd .. && git clone git@github.com:replicahq/idls.git
+  git clone git@github.com:replicahq/idls.git
 fi
 cd idls && git pull && cd ../graphhopper
 
