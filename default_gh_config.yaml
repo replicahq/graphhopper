@@ -7,7 +7,8 @@ graphhopper:
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,bike,foot,truck
+  graph.flag_encoders: car,bike,foot # ,truck
+  graph.encoded_values: stable_id_byte_0,stable_id_byte_1,stable_id_byte_2,stable_id_byte_3,stable_id_byte_4,stable_id_byte_5,stable_id_byte_6,stable_id_byte_7,reverse-stable_id_byte_0,reverse-stable_id_byte_1,reverse-stable_id_byte_2,reverse-stable_id_byte_3,reverse-stable_id_byte_4,reverse-stable_id_byte_5,reverse-stable_id_byte_6,reverse-stable_id_byte_7,reverse-stable_id_byte_8,osmid
   prepare.ch.threads: 16
 
   # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies

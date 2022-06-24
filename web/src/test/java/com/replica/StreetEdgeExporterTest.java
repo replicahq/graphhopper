@@ -5,7 +5,6 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.replica.StreetEdgeExportRecord;
 import com.graphhopper.replica.StreetEdgeExporter;
 import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -45,8 +44,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
                 configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getGhIdToOsmId(),
                 gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
         );
-        GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
-        AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
+        AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
 
         // Generate the rows for the first item in the edge iterator
         edgeIterator.next();

@@ -26,9 +26,8 @@ import com.google.rpc.Status;
 import com.graphhopper.*;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
-import com.graphhopper.routing.*;
+import com.graphhopper.storage.BaseGraph;
 import com.graphhopper.util.DistanceCalcEarth;
-import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.PMap;
 import com.graphhopper.util.exceptions.PointNotFoundException;
 import com.graphhopper.util.shapes.GHPoint;
@@ -163,8 +162,12 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
     @Override
     public void info(InfoRequest request, StreamObserver<InfoReply> responseObserver) {
-        GraphHopperStorage storage = graphHopper.getGraphHopperStorage();
-        responseObserver.onNext(InfoReply.newBuilder().addAllBbox(Arrays.asList(storage.getBounds().minLon, storage.getBounds().minLat, storage.getBounds().maxLon, storage.getBounds().maxLat)).build());
+        BaseGraph baseGraph = graphHopper.getBaseGraph();
+        responseObserver.onNext(InfoReply.newBuilder().addAllBbox(
+                Arrays.asList(
+                        baseGraph.getBounds().minLon, baseGraph.getBounds().minLat,
+                        baseGraph.getBounds().maxLon, baseGraph.getBounds().maxLat
+                )).build());
         responseObserver.onCompleted();
     }
 

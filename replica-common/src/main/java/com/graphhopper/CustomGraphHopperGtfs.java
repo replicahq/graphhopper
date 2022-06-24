@@ -9,9 +9,7 @@ import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
-import com.graphhopper.routing.ev.IntEncodedValueImpl;
 import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.stableid.StableIdEncodedValues;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,9 +48,9 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         this.osmIdToLaneTags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
-        StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
-        this.getEncodingManagerBuilder().add(new OsmIdTagParser());
-        getEncodingManagerBuilder().add(new IntEncodedValueImpl("osmid", 31, false));
+        // StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
+        // this.getEncodingManagerBuilder().add(new OsmIdTagParser());
+        // getEncodingManagerBuilder().add(new IntEncodedValueImpl("osmid", 31, false));
     }
 
     public void collectOsmInfo() {
@@ -163,7 +161,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
     public Map<Integer, Long> getGhIdToOsmId() {
         Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
-        AllEdgesIterator allEdges = getGraphHopperStorage().getAllEdges();
+        AllEdgesIterator allEdges = getBaseGraph().getAllEdges();
         while (allEdges.next()) {
             // Ignore setting OSM IDs for transit edges, which have a distance of 0
             if (allEdges.getDistance() != 0) {

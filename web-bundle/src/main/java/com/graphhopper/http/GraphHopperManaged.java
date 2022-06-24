@@ -19,10 +19,8 @@
 package com.graphhopper.http;
 
 import com.graphhopper.*;
-import com.graphhopper.replica.TruckFlagEncoder;
-import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
-import com.graphhopper.routing.util.FlagEncoder;
-import com.graphhopper.routing.util.FlagEncoderFactory;
+import com.graphhopper.routing.ev.EncodedValueLookup;
+import com.graphhopper.routing.util.*;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
 import com.graphhopper.util.PMap;
@@ -44,19 +42,21 @@ public class GraphHopperManaged implements Managed {
             graphHopper = new CustomGraphHopperOSM(configuration);
         }
 
-        graphHopper.setFlagEncoderFactory(new FlagEncoderFactory() {
-            private FlagEncoderFactory delegate = new DefaultFlagEncoderFactory();
+        graphHopper.setVehicleTagParserFactory(new DefaultVehicleTagParserFactory() {
+           private VehicleTagParserFactory delegate = new DefaultVehicleTagParserFactory();
 
-            @Override
-            public FlagEncoder createFlagEncoder(String name, PMap configuration) {
-                if (name.equals("truck")) {
-                    return TruckFlagEncoder.createTruck(configuration, "truck");
-                } else {
-                    return delegate.createFlagEncoder(name, configuration);
-                }
-            }
+           @Override
+            public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
+               // if (name.equals("truck")) {
+                   // return new TruckTagParser();
+               // }
+               // else {
+                   return delegate.createParser(lookup, name, configuration);
+               // }
+           }
         });
         graphHopper.setEncodedValueFactory(new EncodedValueFactoryWithStableId());
+        graphHopper.setTagParserFactory(new TagParserFactoryWithOsmId());
         graphHopper.init(configuration);
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
         graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
@@ -69,7 +69,7 @@ public class GraphHopperManaged implements Managed {
                 graphHopper.getGraphHopperLocation(), graphHopper.getOSMFile(),
                 graphHopper.getEncodingManager().toEncodedValuesAsString(),
                 graphHopper.getEncodingManager().getIntsForFlags(),
-                graphHopper.getGraphHopperStorage().toDetailsString());
+                graphHopper.getBaseGraph().toDetailsString());
     }
 
     public GraphHopper getGraphHopper() {

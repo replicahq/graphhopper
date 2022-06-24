@@ -81,9 +81,9 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         PtRouter ptRouter = null;
         if (graphHopper instanceof GraphHopperGtfs) {
             ptRouter = new PtRouterImpl(graphHopperConfiguration,
-                    graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(),
-                    graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(),
-                    RealtimeFeed.empty(((GraphHopperGtfs) graphHopper).getGtfsStorage()),
+                    graphHopper.getTranslationMap(), graphHopper.getBaseGraph(),
+                    graphHopper.getEncodingManager(), graphHopper.getLocationIndex(),
+                    ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(),
                     graphHopper.getPathDetailsBuilderFactory());
         }
 

@@ -4,7 +4,6 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.stableid.StableIdEncodedValues;
-import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.storage.NodeAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,9 +17,8 @@ public class StableEdgeIdManager {
     }
 
     public void setStableEdgeIds() {
-        GraphHopperStorage graphHopperStorage = graphHopper.getGraphHopperStorage();
-        AllEdgesIterator edgesIterator = graphHopperStorage.getAllEdges();
-        NodeAccess nodes = graphHopperStorage.getNodeAccess();
+        AllEdgesIterator edgesIterator = graphHopper.getBaseGraph().getAllEdges();
+        NodeAccess nodes = graphHopper.getBaseGraph().getNodeAccess();
         EncodingManager encodingManager = graphHopper.getEncodingManager();
         StableIdEncodedValues stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(encodingManager);
 
@@ -34,7 +32,7 @@ public class StableEdgeIdManager {
                 assignedIdCount++;
             }
         }
-        graphHopperStorage.flush();
+        graphHopper.getBaseGraph().flush();
         logger.info("Total number of bidirectional edges assigned with stable edge IDs: " + assignedIdCount);
     }
 }

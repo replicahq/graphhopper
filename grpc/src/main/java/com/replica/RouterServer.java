@@ -100,7 +100,7 @@ public class RouterServer {
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         PtRouter ptRouter = null;
         if (graphHopper instanceof GraphHopperGtfs) {
-            ptRouter = new PtRouterImpl(graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getGraphHopperStorage(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(((GraphHopperGtfs) graphHopper).getGtfsStorage()), graphHopper.getPathDetailsBuilderFactory());
+            ptRouter = new PtRouterImpl(graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getBaseGraph(), graphHopper.getEncodingManager(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(), graphHopper.getPathDetailsBuilderFactory());
         }
 
         // Load GTFS link mapping and GTFS info maps for use in building responses

@@ -33,6 +33,7 @@ public class StableIdEncodedValues {
         return new StableIdEncodedValues(encodingManager);
     }
 
+    /*
     public static void createAndAddEncodedValues(EncodingManager.Builder emBuilder) {
         for (int i=0; i<8; i++) {
             emBuilder.add(new IntEncodedValueImpl("stable_id_byte_" + i, 8, false));
@@ -41,6 +42,7 @@ public class StableIdEncodedValues {
             emBuilder.add(new IntEncodedValueImpl("reverse_stable_id_byte_" + i, 8, false));
         }
     }
+    */
 
     public final String getStableId(boolean reverse, EdgeIteratorState edge) {
         byte[] stableId = new byte[8];

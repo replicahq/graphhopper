@@ -7,7 +7,6 @@ import com.graphhopper.routing.ev.EnumEncodedValue;
 import com.graphhopper.routing.ev.RoadClass;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.stableid.StableIdEncodedValues;
-import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.storage.IntsRef;
 import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.DistanceCalcEarth;
@@ -28,10 +27,10 @@ import java.util.*;
 public class StreetEdgeExporter {
     private static final Logger logger = LoggerFactory.getLogger(StreetEdgeExporter.class);
 
-    private static final Map<TransportationMode, String> ACCESSIBILITY_MODE_MAP = Map.of(
-            TransportationMode.CAR, "CAR",
-            TransportationMode.BIKE, "BIKE",
-            TransportationMode.FOOT, "PEDESTRIAN"
+    private static final Map<String, String> ACCESSIBILITY_MODE_MAP = Map.of(
+            "car", "CAR",
+            "bike", "BIKE",
+            "foot", "PEDESTRIAN"
     );
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
@@ -62,15 +61,14 @@ public class StreetEdgeExporter {
         this.osmIdToHighway = osmIdToHighway;
 
         // Grab edge/node iterators for graph loaded from pre-built GH files
-        GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
-        this.nodes = graphHopperStorage.getNodeAccess();
+        this.nodes = configuredGraphHopper.getBaseGraph().getNodeAccess();
 
         // Setup encoders for determining speed and road type info for each edge
         this.encodingManager = configuredGraphHopper.getEncodingManager();
         this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
-        CarFlagEncoder carFlagEncoder = (CarFlagEncoder)this.encodingManager.getEncoder("car");
-        this.avgSpeedEnc = carFlagEncoder.getAverageSpeedEnc();
+        CarTagParser carTagParser = (CarTagParser)this.encodingManager.getEncoder("car");
+        this.avgSpeedEnc = carTagParser.getAverageSpeedEnc();
     }
 
     public List<StreetEdgeExportRecord> generateRecords(EdgeIteratorState iteratorState) {
@@ -118,7 +116,7 @@ public class StreetEdgeExporter {
         Set<String> forwardFlags = Sets.newHashSet();
         Set<String> backwardFlags = Sets.newHashSet();
         for (FlagEncoder encoder: encodingManager.fetchEdgeEncoders()) {
-            String mode = ACCESSIBILITY_MODE_MAP.get(encoder.getTransportationMode());
+            String mode = ACCESSIBILITY_MODE_MAP.get(encoder.getName());
             if (encoder.getAccessEnc().getBool(false, edgeFlags)) {
                 forwardFlags.add("ALLOWS_" + mode);
             }
@@ -181,8 +179,7 @@ public class StreetEdgeExporter {
                                             Map<Long, String> osmIdToStreetName,
                                             Map<Long, String> osmIdToHighway) {
         StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId, osmIdToStreetName, osmIdToHighway);
-        GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
-        AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
+        AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
         File outputFile = new File(configuredGraphHopper.getGraphHopperLocation() + "/street_edges.csv");
 
         logger.info("Writing street edges...");
