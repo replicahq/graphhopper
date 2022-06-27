@@ -8,13 +8,13 @@ import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
-import com.graphhopper.reader.osm.GraphHopperOSM;
-import com.graphhopper.reader.osm.OSMInput;
-import com.graphhopper.reader.osm.OSMInputFile;
-import com.graphhopper.reader.osm.OSMReader;
+import com.graphhopper.reader.osm.*;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.stableid.StableIdEncodedValues;
+import com.graphhopper.storage.DataAccess;
+import com.graphhopper.storage.Directory;
 import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.util.BitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,20 +41,21 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
 
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of GH edge ID to OSM way ID
-    private Map<Integer, Long> ghIdToOsmId;
     // Map of OSM ID to street name. Name is parsed directly from Way, unless name field isn't present,
     // in which case the name is taken from the Relation containing the Way, if one exists
     private Map<Long, String> osmIdToStreetName;
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
-
+    private DataAccess edgeMapping;
+    private DataAccess nodeMapping;
+    private DataAccess edgeAdjacentMapping;
+    private DataAccess edgeBaseMapping;
+    private BitUtil bitUtil;
 
     public CustomGraphHopperOSM(JsonFeatureCollection landmarkSplittingFeatureCollection, GraphHopperConfig ghConfig) {
         super(landmarkSplittingFeatureCollection);
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
-        this.ghIdToOsmId = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
     }
@@ -65,29 +66,48 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
         StableIdEncodedValues.createAndAddEncodedValues(emBuilder);
     }
 
-    /**
-     * Override creation of OSM reader to read the file once at initialization time, for the sole purpose of storing
-     * OSM information that will be used later in the export script.
-     *
-     * Note that this approach requires reading the OSM file twice: once during the static initialization code, and
-     * once during the call to importOrLoad() in ExportCommand.java, which is where the modified storeOsmWayID method
-     * overridden below is called to populate the ghIdToOsmId map.
-     *
-     * todo: figure out if it's possible to eliminate the need for two OSM read operations
-     */
+    @Override
+    public boolean load(String graphHopperFolder) {
+        boolean loaded = super.load(graphHopperFolder);
+        Directory dir = getGraphHopperStorage().getDirectory();
+        bitUtil = BitUtil.get(dir.getByteOrder());
+        edgeMapping = dir.find("edge_mapping");
+        nodeMapping = dir.find("node_mapping");
+        edgeAdjacentMapping = dir.find("edge_adjacent_mapping");
+        edgeBaseMapping = dir.find("edge_base_mapping");
+
+        if(loaded) {
+            edgeMapping.loadExisting();
+            nodeMapping.loadExisting();
+            edgeAdjacentMapping.loadExisting();
+            edgeBaseMapping.loadExisting();
+        }
+
+        return loaded;
+    }
+
+    @Override
+    protected void flush() {
+        super.flush();
+        edgeMapping.flush();
+        nodeMapping.flush();
+        edgeAdjacentMapping.flush();
+        edgeBaseMapping.flush();
+    }
+
+    public OsmHelper getOsmHelper(){
+        return new OsmHelper(edgeMapping, nodeMapping,
+                edgeAdjacentMapping, edgeBaseMapping, bitUtil,
+                getGraphHopperStorage().getEdges());
+    }
+
     @Override
     protected DataReader createReader(GraphHopperStorage ghStorage) {
-        OSMReader reader = new OSMReader(ghStorage) {
-            // Hacky override used to populate GH ID -> OSM ID map; called during standard GH import process
-            @Override
-            protected void storeOsmWayID(int edgeId, long osmWayId) {
-                super.storeOsmWayID(edgeId, osmWayId);
-                ghIdToOsmId.put(edgeId, osmWayId);
-            }
-        };
+        OSMReader reader = new CustomOsmReader(ghStorage);
         return initDataReader(reader);
     }
 
+    // todo: can we move this logic into CustomOsmReader?
     public void collectOsmInfo() {
         LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
         List<ReaderRelation> roadRelations = Lists.newArrayList();
@@ -183,10 +203,6 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
 
     public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
         return osmIdToLaneTags;
-    }
-
-    public Map<Integer, Long> getGhIdToOsmId() {
-        return ghIdToOsmId;
     }
 
     public Map<Long, String> getOsmIdToStreetName() {

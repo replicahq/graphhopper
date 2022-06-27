@@ -1,14 +1,11 @@
 package com.replica;
 
-import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.GraphHopper;
-import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.replica.StreetEdgeExportRecord;
 import com.graphhopper.replica.StreetEdgeExporter;
 import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.storage.DAType;
-import com.graphhopper.storage.GHDirectory;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 import org.apache.commons.csv.CSVFormat;
@@ -21,9 +18,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith({ReplicaGraphHopperTestExtention.class})
 public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
@@ -34,7 +32,23 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1102288, records.size());
+        assertEquals(1095756, records.size());
+
+        // Sanity check OSM node + edge coverage and stable edge ID uniqueness
+        int emptyNodeIdCount = 0;
+        int emptyWayIdCount = 0;
+        Set<String> observedStableEdgeIds = Sets.newHashSet();
+        for (int i = 1; i < 10001; i++) {
+            CSVRecord record = records.get(i);
+            observedStableEdgeIds.add(record.get("stableEdgeId"));
+            if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
+            if (Long.parseLong(record.get("endOsmNode")) <= 0) emptyNodeIdCount++;
+            if (Long.parseLong(record.get("osmid")) <= 0) emptyWayIdCount++;
+        }
+        assertEquals(0, emptyNodeIdCount);
+        assertEquals(0, emptyWayIdCount);
+        assertEquals(10000, observedStableEdgeIds.size());
+
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
 
@@ -45,24 +59,9 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         CustomGraphHopperGtfs gh = (CustomGraphHopperGtfs) configuredGraphHopper;
         gh.collectOsmInfo();
 
-        // Hacky override used to populate GH ID -> OSM ID map, normally stored in-memory during nationwide export
-        // All other OSM-derived info is parsed in above call to collectOsmInfo()
-        Map<Integer, Long> ghIdToOsmId = Maps.newHashMap();
-        GraphHopperStorage s = new GraphHopperStorage(new GHDirectory(EXPORT_FILES_DIR, DAType.RAM_STORE), gh.getEncodingManager(), false);
-        OSMReader reader = new OSMReader(s) {
-            @Override
-            protected void storeOsmWayID(int edgeId, long osmWayId) {
-                super.storeOsmWayID(edgeId, osmWayId);
-                ghIdToOsmId.put(edgeId, osmWayId);
-            }
-        };
-        reader.setFile(new File(gh.getOSMFile()));
-        reader.readGraph();
-
         // Copied from writeStreetEdgesCsv
         StreetEdgeExporter exporter = new StreetEdgeExporter(
-                configuredGraphHopper, gh.getOsmIdToLaneTags(), ghIdToOsmId,
-                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
+                configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper()
         );
         GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
         AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
