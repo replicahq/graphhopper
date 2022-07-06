@@ -139,7 +139,7 @@ public class RouterServer {
                     .build();
         }
 
-        logger.info("Metrics agent host IP is: " + System.getenv("METRICS_AGENT_HOST"));
+        logger.info("Metrics agent host IP is: " + metricsHost);
 
         // Start server
         int grpcPort = 50051;
