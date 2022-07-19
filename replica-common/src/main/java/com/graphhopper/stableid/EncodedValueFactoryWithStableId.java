@@ -41,22 +41,22 @@ public class EncodedValueFactoryWithStableId extends DefaultEncodedValueFactory 
             return new IntEncodedValueImpl("stable_id_byte_6", 8, false);
         } else if (encodedValueString.startsWith("stable_id_byte_7")) {
             return new IntEncodedValueImpl("stable_id_byte_7", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_0")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_0", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_1")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_1", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_2")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_2", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_3")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_3", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_4")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_4", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_5")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_5", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_6")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_6", 8, false);
-        } else if (encodedValueString.startsWith("reverse-stable_id_byte_7")) {
-            return new IntEncodedValueImpl("reverse-stable_id_byte_7", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_0")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_0", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_1")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_1", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_2")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_2", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_3")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_3", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_4")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_4", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_5")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_5", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_6")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_6", 8, false);
+        } else if (encodedValueString.startsWith("reverse_stable_id_byte_7")) {
+            return new IntEncodedValueImpl("reverse_stable_id_byte_7", 8, false);
         } else if (encodedValueString.startsWith("osmid")) {
             return new IntEncodedValueImpl("osmid", 31, false);
         } else {
