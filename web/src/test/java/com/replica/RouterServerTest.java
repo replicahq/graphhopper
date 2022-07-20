@@ -109,7 +109,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         InProcessServerBuilder.forName(uniqueName)
                 .directExecutor() // directExecutor is fine for unit tests
                 .addService(new RouterImpl(graphHopper, ptRouter, matrixAPI, gtfsLinkMappings,
-                        gtfsRouteInfo, gtfsFeedIdMapping, null, TEST_REGION_NAME))
+                        gtfsRouteInfo, gtfsFeedIdMapping, null, TEST_REGION_NAME, TEST_RELEASE_NAME))
                 .addService(ProtoReflectionService.newInstance())
                 .build().start();
         ManagedChannel channel = InProcessChannelBuilder.forName(uniqueName)
