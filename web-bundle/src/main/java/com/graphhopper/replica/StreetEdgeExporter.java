@@ -67,8 +67,8 @@ public class StreetEdgeExporter {
         this.encodingManager = configuredGraphHopper.getEncodingManager();
         this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
-        CarTagParser carTagParser = (CarTagParser)this.encodingManager.getEncoder("car");
-        this.avgSpeedEnc = carTagParser.getAverageSpeedEnc();
+        FlagEncoder car = this.encodingManager.getEncoder("car");
+        this.avgSpeedEnc = car.getAverageSpeedEnc();
     }
 
     public List<StreetEdgeExportRecord> generateRecords(EdgeIteratorState iteratorState) {
