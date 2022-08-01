@@ -46,9 +46,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
         this.osmIdToLaneTags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
-        // StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
-        // this.getEncodingManagerBuilder().add(new OsmIdTagParser());
-        // getEncodingManagerBuilder().add(new IntEncodedValueImpl("osmid", 31, false));
     }
 
     public void collectOsmInfo() {

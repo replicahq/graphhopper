@@ -19,6 +19,7 @@
 package com.replica;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.protobuf.Timestamp;
 import com.google.rpc.Code;
@@ -57,21 +58,24 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     private Map<String, List<String>> gtfsRouteInfo;
     private Map<String, String> gtfsFeedIdMapping;
     private final StatsDClient statsDClient;
-    private String regionName;
+    private Map<String, String> customTags;
 
     public RouterImpl(GraphHopper graphHopper, PtRouter ptRouter,
                       Map<String, String> gtfsLinkMappings,
                       Map<String, List<String>> gtfsRouteInfo,
                       Map<String, String> gtfsFeedIdMapping,
                       StatsDClient statsDClient,
-                      String regionName) {
+                      String regionName,
+                      String releaseName) {
         this.graphHopper = graphHopper;
         this.ptRouter = ptRouter;
         this.gtfsLinkMappings = gtfsLinkMappings;
         this.gtfsRouteInfo = gtfsRouteInfo;
         this.gtfsFeedIdMapping = gtfsFeedIdMapping;
         this.statsDClient = statsDClient;
-        this.regionName = regionName;
+        this.customTags = Maps.newHashMap();
+        customTags.put("replica_region", regionName);
+        customTags.put("release_name", releaseName);
     }
 
     @Override
@@ -105,7 +109,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
-                tags = applyRegionName(tags, regionName);
+                tags = applyCustomTags(tags, customTags);
                 sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 Status status = Status.newBuilder()
@@ -135,7 +139,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
-                tags = applyRegionName(tags, regionName);
+                tags = applyCustomTags(tags, customTags);
                 sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 responseObserver.onNext(replyBuilder.build());
@@ -149,7 +153,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
-            tags = applyRegionName(tags, regionName);
+            tags = applyCustomTags(tags, customTags);
             sendDatadogStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
@@ -272,7 +276,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
-                tags = applyRegionName(tags, regionName);
+                tags = applyCustomTags(tags, customTags);
                 sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 Status status = Status.newBuilder()
@@ -297,7 +301,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:pt", "api:grpc", "routes_found:true"};
-                tags = applyRegionName(tags, regionName);
+                tags = applyCustomTags(tags, customTags);
                 sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 responseObserver.onNext(replyBuilder.build());
@@ -311,7 +315,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
-            tags = applyRegionName(tags, regionName);
+            tags = applyCustomTags(tags, customTags);
             sendDatadogStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
@@ -324,7 +328,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:pt", "api:grpc", "routes_found:error"};
-            tags = applyRegionName(tags, regionName);
+            tags = applyCustomTags(tags, customTags);
             sendDatadogStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
@@ -493,13 +497,20 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         }
     }
 
-    // If a region name has been set, add it to tag list
-    private static String[] applyRegionName(String[] tags, String regionName) {
-        if (regionName == null) {
+    // Apply region + helm release tags, if they exist
+    private static String[] applyCustomTags(String[] tags, Map<String, String> customTags) {
+        for (String tagName : customTags.keySet()) {
+            tags = applyTag(tags, tagName, customTags.get(tagName));
+        }
+        return tags;
+    }
+
+    private static String[] applyTag(String[] tags, String tagName, String tagValue) {
+        if (tagValue == null) {
             return tags;
         } else {
             List<String> newTags = Lists.newArrayList(tags);
-            newTags.add("replica_region:" + regionName);
+            newTags.add(tagName + ":" + tagValue);
             return newTags.toArray(new String[newTags.size()]);
         }
     }
