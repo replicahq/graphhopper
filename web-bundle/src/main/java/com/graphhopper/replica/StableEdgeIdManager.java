@@ -1,6 +1,7 @@
 package com.graphhopper.replica;
 
 import com.graphhopper.GraphHopper;
+import com.graphhopper.OsmHelper;
 import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.stableid.StableIdEncodedValues;

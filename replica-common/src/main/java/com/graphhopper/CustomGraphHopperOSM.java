@@ -9,6 +9,9 @@ import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
 import com.graphhopper.routing.util.AllEdgesIterator;
+import com.graphhopper.storage.DataAccess;
+import com.graphhopper.storage.Directory;
+import com.graphhopper.util.BitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +42,10 @@ public class CustomGraphHopperOSM extends GraphHopper {
     private Map<Long, String> osmIdToStreetName;
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
+    private DataAccess edgeMapping;
+    private DataAccess nodeMapping;
+    private DataAccess edgeAdjacentMapping;
+    private DataAccess edgeBaseMapping;
 
     public CustomGraphHopperOSM(GraphHopperConfig ghConfig) {
         super();
@@ -46,6 +53,40 @@ public class CustomGraphHopperOSM extends GraphHopper {
         this.osmIdToLaneTags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
+    }
+
+    @Override
+    public boolean load() {
+        boolean loaded = super.load();
+        Directory dir = getBaseGraph().getDirectory();
+        edgeMapping = dir.create("edge_mapping");
+        nodeMapping = dir.create("node_mapping");
+        edgeAdjacentMapping = dir.create("edge_adjacent_mapping");
+        edgeBaseMapping = dir.create("edge_base_mapping");
+
+        if(loaded) {
+            edgeMapping.loadExisting();
+            nodeMapping.loadExisting();
+            edgeAdjacentMapping.loadExisting();
+            edgeBaseMapping.loadExisting();
+        }
+
+        return loaded;
+    }
+
+    @Override
+    protected void flush() {
+        super.flush();
+        edgeMapping.flush();
+        nodeMapping.flush();
+        edgeAdjacentMapping.flush();
+        edgeBaseMapping.flush();
+    }
+
+    public OsmHelper getOsmHelper(){
+        return new OsmHelper(edgeMapping, nodeMapping,
+                edgeAdjacentMapping, edgeBaseMapping,
+                getBaseGraph().getEdges());
     }
 
     public void collectOsmInfo() {

@@ -15,12 +15,12 @@ public class OsmHelper {
 
     public OsmHelper(DataAccess edgeMapping, DataAccess nodeMapping,
                      DataAccess edgeAdjacentMapping, DataAccess edgeBaseMapping,
-                     BitUtil bitUtil, long edgeCount) {
+                     long edgeCount) {
         this.edgeMapping = edgeMapping;
         this.nodeMapping = nodeMapping;
         this.edgeAdjacentMapping = edgeAdjacentMapping;
         this.edgeBaseMapping = edgeBaseMapping;
-        this.bitUtil = bitUtil;
+        this.bitUtil = BitUtil.LITTLE;
         this.edgeCount = edgeCount;
     }
 
