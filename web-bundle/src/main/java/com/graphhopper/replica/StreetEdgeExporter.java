@@ -2,8 +2,10 @@ package com.graphhopper.replica;
 
 import com.google.common.collect.Lists;
 import com.graphhopper.GraphHopper;
+import com.graphhopper.OsmHelper;
 import com.graphhopper.routing.ev.DecimalEncodedValue;
 import com.graphhopper.routing.ev.EnumEncodedValue;
+import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.ev.RoadClass;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.stableid.StableIdEncodedValues;
@@ -35,12 +37,12 @@ public class StreetEdgeExporter {
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
-            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway"};
+            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
+            "startOsmNode", "endOsmNode"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
     // Some sticky members
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    private Map<Integer, Long> ghIdToOsmId;
     private Map<Long, String> osmIdToStreetName;
     private Map<Long, String> osmIdToHighway;
 
@@ -48,27 +50,30 @@ public class StreetEdgeExporter {
     private DecimalEncodedValue avgSpeedEnc;
     private StableIdEncodedValues stableIdEncodedValues;
     private EnumEncodedValue<RoadClass> roadClassEnc;
+    private IntEncodedValue osmWayIdEnc;
     private EncodingManager encodingManager;
+    private OsmHelper osmHelper;
 
     public StreetEdgeExporter(GraphHopper configuredGraphHopper,
                               Map<Long, Map<String, String>> osmIdToLaneTags,
-                              Map<Integer, Long> ghIdToOsmId,
                               Map<Long, String> osmIdToStreetName,
-                              Map<Long, String> osmIdToHighway) {
+                              Map<Long, String> osmIdToHighway,
+                              OsmHelper osmHelper) {
         this.osmIdToLaneTags = osmIdToLaneTags;
-        this.ghIdToOsmId = ghIdToOsmId;
         this.osmIdToStreetName = osmIdToStreetName;
         this.osmIdToHighway = osmIdToHighway;
+        this.osmHelper = osmHelper;
 
         // Grab edge/node iterators for graph loaded from pre-built GH files
         this.nodes = configuredGraphHopper.getBaseGraph().getNodeAccess();
 
         // Setup encoders for determining speed and road type info for each edge
         this.encodingManager = configuredGraphHopper.getEncodingManager();
-        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager);
+        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
         FlagEncoder car = this.encodingManager.getEncoder("car");
         this.avgSpeedEnc = car.getAverageSpeedEnc();
+        this.osmWayIdEnc = this.encodingManager.getIntEncodedValue("osmid");
     }
 
     public List<StreetEdgeExportRecord> generateRecords(EdgeIteratorState iteratorState) {
@@ -77,7 +82,6 @@ public class StreetEdgeExporter {
         int ghEdgeId = iteratorState.getEdge();
         int startVertex = iteratorState.getBaseNode();
         int endVertex = iteratorState.getAdjNode();
-
         double startLat = nodes.getLat(startVertex);
         double startLon = nodes.getLon(startVertex);
         double endLat = nodes.getLat(endVertex);
@@ -96,17 +100,36 @@ public class StreetEdgeExporter {
         // Convert GH's distance in meters to millimeters to match R5's implementation
         long distanceMillimeters = distanceMeters * 1000;
 
-        // Fetch OSM ID, skipping edges from PT meta-graph that have no IDs set (getOsmIdForGhEdge returns -1)
-        long osmId = OsmHelper.getOsmIdForGhEdge(ghEdgeId, ghIdToOsmId);
-        if (osmId == -1L) {
+        // Fetch OSM Way ID, skipping edges that have no IDs set (getOSMWay returns -1)
+        long osmWayId = iteratorState.get(osmWayIdEnc); // osmHelper.getOSMWay(ghEdgeId);
+        if (osmWayId == -1L) {
+            System.out.println("Osm way ID was -1, shouldn't happen!");
+            // return output;
+        }
+
+        // Fetch OSM Node IDs for each node of edge
+        long startOsmNode = osmHelper.getOSMNode(startVertex); // osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId));
+        long endOsmNode = osmHelper.getOSMNode(endVertex); // osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId));
+
+        // Filter out single-point "edges" + edges with identical start/end point locations
+        // and no intermediate points (as would exist in the case of road loops)
+        if (wayGeometry.size() <= 1) {
+            return output;
+        } else if (wayGeometry.size() == 2 && (wayGeometry.get(0).equals(wayGeometry.get(1)))) {
             return output;
         }
 
+        // Filter out edges where we didn't set a start/end OSM node ID (very infrequent)
+        if (startOsmNode == 0 || endOsmNode == 0) {
+            System.out.println("start or end OSM node ID == 0! Shouldn't happen!");
+            // return output;
+        }
+
         // Use street name parsed from Ways/Relations, if it exists; otherwise, use default GH edge name
-        String streetName = osmIdToStreetName.getOrDefault(osmId, iteratorState.getName());
+        String streetName = osmIdToStreetName.getOrDefault(osmWayId, iteratorState.getName());
 
         // Grab OSM highway type and encoded stable IDs for both edge directions
-        String highwayTag = osmIdToHighway.getOrDefault(osmId, iteratorState.get(roadClassEnc).toString());
+        String highwayTag = osmIdToHighway.getOrDefault(osmWayId, iteratorState.get(roadClassEnc).toString());
         String forwardStableEdgeId = stableIdEncodedValues.getStableId(false, iteratorState);
         String backwardStableEdgeId = stableIdEncodedValues.getStableId(true, iteratorState);
 
@@ -126,9 +149,9 @@ public class StreetEdgeExporter {
         }
 
         // Calculate number of lanes for edge, as done in R5, based on OSM tags + edge direction
-        int overallLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes");
-        int forwardLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes:forward");
-        int backwardLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes:backward");
+        int overallLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes");
+        int forwardLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes:forward");
+        int backwardLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes:backward");
 
         if (!backwardFlags.contains("ALLOWS_CAR")) {
             backwardLanes = 0;
@@ -161,12 +184,12 @@ public class StreetEdgeExporter {
             if (!(forwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, startVertex, endVertex,
                         startLat, startLon, endLat, endLon, geometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag));
+                        distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag, startOsmNode, endOsmNode));
             }
             if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, endVertex, startVertex,
                         endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag));
+                        distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag, endOsmNode, startOsmNode));
             }
         }
 
@@ -174,11 +197,12 @@ public class StreetEdgeExporter {
     }
 
     public static void writeStreetEdgesCsv(GraphHopper configuredGraphHopper,
-                                            Map<Long, Map<String, String>> osmIdToLaneTags,
-                                            Map<Integer, Long> ghIdToOsmId,
-                                            Map<Long, String> osmIdToStreetName,
-                                            Map<Long, String> osmIdToHighway) {
-        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId, osmIdToStreetName, osmIdToHighway);
+                                           Map<Long, Map<String, String>> osmIdToLaneTags,
+                                           Map<Long, String> osmIdToStreetName,
+                                           Map<Long, String> osmIdToHighway,
+                                           OsmHelper osmHelper) {
+        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags,
+                osmIdToStreetName, osmIdToHighway, osmHelper);
         AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
         File outputFile = new File(configuredGraphHopper.getGraphHopperLocation() + "/street_edges.csv");
 
@@ -199,7 +223,8 @@ public class StreetEdgeExporter {
                     }
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
-                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag);
+                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
+                                r.startOsmNode, r.endOsmNode);
                     }
                 }
             }

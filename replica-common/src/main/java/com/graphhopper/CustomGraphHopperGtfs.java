@@ -7,16 +7,29 @@ import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
+import com.graphhopper.reader.osm.CustomOsmReader;
 import com.graphhopper.reader.osm.OSMInput;
 import com.graphhopper.reader.osm.OSMInputFile;
 import com.graphhopper.routing.util.AllEdgesIterator;
+import com.graphhopper.routing.util.AreaIndex;
+import com.graphhopper.routing.util.CustomArea;
+import com.graphhopper.storage.DataAccess;
+import com.graphhopper.storage.GHDirectory;
+import com.graphhopper.util.BitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static com.graphhopper.util.GHUtility.readCountries;
+import static com.graphhopper.util.Helper.createFormatter;
+import static com.graphhopper.util.Helper.isEmpty;
 
 /**
  * Custom implementation of internal class GraphHopper uses to parse OSM files into GH's internal graph data structures.
@@ -41,6 +54,11 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     private Map<Long, String> osmIdToStreetName;
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
+    private DataAccess edgeMapping;
+    private DataAccess nodeMapping;
+    private DataAccess edgeAdjacentMapping;
+    private DataAccess edgeBaseMapping;
+    private BitUtil bitUtil;
 
     public CustomGraphHopperGtfs(GraphHopperConfig ghConfig) {
         super(ghConfig);
@@ -53,6 +71,94 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         // getEncodingManagerBuilder().add(new IntEncodedValueImpl("osmid", 31, false));
     }
 
+    @Override
+    public boolean load() {
+        boolean loaded = super.load();
+        GHDirectory dir = (GHDirectory) getBaseGraph().getDirectory();
+        bitUtil = BitUtil.LITTLE;
+        edgeMapping = dir.create("edge_mapping");
+        nodeMapping = dir.create("node_mapping");
+        edgeAdjacentMapping = dir.create("edge_adjacent_mapping");
+        edgeBaseMapping = dir.create("edge_base_mapping");
+
+        if(loaded) {
+            edgeMapping.loadExisting();
+            nodeMapping.loadExisting();
+            edgeAdjacentMapping.loadExisting();
+            edgeBaseMapping.loadExisting();
+        }
+
+        return loaded;
+    }
+
+    @Override
+    protected void flush() {
+        super.flush();
+        edgeMapping.flush();
+        nodeMapping.flush();
+        edgeAdjacentMapping.flush();
+        edgeBaseMapping.flush();
+    }
+
+    public OsmHelper getOsmHelper(){
+        return new OsmHelper(edgeMapping, nodeMapping,
+                edgeAdjacentMapping, edgeBaseMapping, bitUtil,
+                getBaseGraph().getEdges());
+    }
+
+    @Override
+    protected void importOSM() {
+        if (this.getOSMFile() == null)
+            throw new IllegalStateException("Couldn't load from existing folder: " + this.getGraphHopperLocation()
+                    + " but also cannot use file for DataReader as it wasn't specified!");
+
+        List<CustomArea> customAreas = readCountries();
+        if (isEmpty(this.getCustomAreasDirectory())) {
+            LOG.info("No custom areas are used, custom_areas.directory not given");
+        } else {
+            throw new RuntimeException("Custom areas are not currently supported in Replica's Graphhopper instance!");
+        }
+        AreaIndex<CustomArea> areaIndex = new AreaIndex<>(customAreas);
+
+        if (this.getCountryRuleFactory() == null || this.getCountryRuleFactory().getCountryToRuleMap().isEmpty()) {
+            LOG.info("No country rules available");
+        } else {
+            LOG.info("Applying rules for the following countries: {}", this.getCountryRuleFactory().getCountryToRuleMap().keySet());
+        }
+
+        LOG.info("start creating graph from " + this.getOSMFile());
+        CustomOsmReader reader = new CustomOsmReader(this.getBaseGraph().getBaseGraph(), this.getEncodingManager(), this.getOSMParsers(), this.getReaderConfig())
+                .setFile(_getOSMFile()).
+                setAreaIndex(areaIndex).
+                setElevationProvider(this.getElevationProvider()).
+                setCountryRuleFactory(this.getCountryRuleFactory());
+
+        createBaseGraphAndProperties();
+
+        try {
+            reader.readGraph();
+        } catch (IOException ex) {
+            throw new RuntimeException("Cannot read file " + getOSMFile(), ex);
+        }
+        DateFormat f = createFormatter();
+        this.getProperties().put("datareader.import.date", f.format(new Date()));
+        if (reader.getDataDate() != null)
+            this.getProperties().put("datareader.data.date", f.format(reader.getDataDate()));
+
+        writeOsmNodeIds(reader.getGhNodeIdToOsmNodeIdMap());
+    }
+
+    public void writeOsmNodeIds(Map<Integer, Long> ghToOsmNodeIds) {
+        for (int nodeId : ghToOsmNodeIds.keySet()) {
+            long osmNodeId = ghToOsmNodeIds.get(nodeId);
+            long pointer = 8L * nodeId;
+            nodeMapping.ensureCapacity(pointer + 8L);
+            nodeMapping.setInt(pointer, bitUtil.getIntLow(osmNodeId));
+            nodeMapping.setInt(pointer + 4, bitUtil.getIntHigh(osmNodeId));
+        }
+    }
+
+    // todo: can we move this logic into CustomOsmReader?
     public void collectOsmInfo() {
         LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
         List<ReaderRelation> roadRelations = Lists.newArrayList();
@@ -179,5 +285,4 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     public Map<Long, String> getOsmIdToHighwayTag() {
         return osmIdToHighwayTag;
     }
-
 }

@@ -4,23 +4,24 @@ import com.google.common.base.Charsets;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Longs;
-import com.graphhopper.routing.ev.EnumEncodedValue;
-import com.graphhopper.routing.ev.IntEncodedValueImpl;
-import com.graphhopper.routing.ev.RoadClass;
+import com.graphhopper.OsmHelper;
 import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.storage.NodeAccess;
-import com.graphhopper.util.AngleCalc;
 import com.graphhopper.util.EdgeIteratorState;
+import com.graphhopper.util.FetchMode;
+import com.graphhopper.util.PointList;
 
 public class StableIdEncodedValues {
 
     private IntEncodedValue[] stableIdEnc = new IntEncodedValue[8];
     private IntEncodedValue[] reverseStableIdEnc = new IntEncodedValue[8];
-    private EnumEncodedValue<RoadClass> roadClassEnc;
+    private IntEncodedValue osmWayIdEnc;
+    private OsmHelper osmHelper;
 
-    private StableIdEncodedValues(EncodingManager encodingManager) {
-        this.roadClassEnc = encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
+    private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper) {
+        this.osmHelper = osmHelper;
+        this.osmWayIdEnc = encodingManager.getIntEncodedValue("osmid");
+
         for (int i=0; i<8; i++) {
             stableIdEnc[i] = encodingManager.getIntEncodedValue("stable_id_byte_"+i);
         }
@@ -29,8 +30,14 @@ public class StableIdEncodedValues {
         }
     }
 
+    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, OsmHelper osmHelper) {
+        return new StableIdEncodedValues(encodingManager, osmHelper);
+    }
+
+    // Used only for instances where stable edge IDs are being accessed (not set)
+    // ie, StableIdPathDetailsBuilder
     public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager) {
-        return new StableIdEncodedValues(encodingManager);
+        return new StableIdEncodedValues(encodingManager, null);
     }
 
     /*
@@ -53,8 +60,37 @@ public class StableIdEncodedValues {
         return Long.toUnsignedString(Longs.fromByteArray(stableId));
     }
 
-    public final void setStableId(boolean reverse, EdgeIteratorState edge, NodeAccess nodes) {
-        byte[] stableId = calculateStableEdgeId(reverse, edge, this.roadClassEnc, nodes);
+    public final void setStableId(boolean reverse, EdgeIteratorState edge) {
+        int ghEdgeId = edge.getEdge();
+        int startVertex = edge.getBaseNode();
+        int endVertex = edge.getAdjNode();
+
+        /*
+        long startOsmNodeId = reverse ? osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId)) :
+                osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId));
+        long endOsmNodeId = reverse ? osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId)) :
+                osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId));
+        */
+
+        long startOsmNodeId = reverse ? osmHelper.getOSMNode(endVertex) : osmHelper.getOSMNode(startVertex);
+        long endOsmNodeId = reverse ? osmHelper.getOSMNode(startVertex) : osmHelper.getOSMNode(endVertex);
+
+
+        long osmWayId = edge.get(osmWayIdEnc);
+
+        PointList wayGeometry = edge.fetchWayGeometry(FetchMode.ALL);
+        String geometryString = wayGeometry.toLineString(false).toString();
+        if (reverse) {
+            wayGeometry.reverse();
+            geometryString = wayGeometry.toLineString(false).toString();
+        }
+
+        // Only set stable edge IDs for edges with complete OSM info stored (ie, the edges we export)
+        if (startOsmNodeId == 0L || endOsmNodeId == 0L || osmWayId == -1L) {
+            return;
+        }
+
+        byte[] stableId = calculateStableEdgeId(startOsmNodeId, endOsmNodeId, osmWayId, geometryString);
         if (stableId.length != 8)
             throw new IllegalArgumentException("stable ID must be 8 bytes: " + new String(stableId));
 
@@ -64,51 +100,10 @@ public class StableIdEncodedValues {
         }
     }
 
-    private static byte[] calculateStableEdgeId(boolean reverse, EdgeIteratorState edge,
-                                                EnumEncodedValue<RoadClass> roadClassEnc, NodeAccess nodes) {
-        String highwayTag = edge.get(roadClassEnc).toString();
-
-        // Because GH edges are technically bi-directional, swap start/end nodes if calculating reverse ID
-        int startVertex = reverse ? edge.getAdjNode() : edge.getBaseNode();
-        int endVertex = reverse ? edge.getBaseNode() : edge.getAdjNode();
-        double startLat = nodes.getLat(startVertex);
-        double startLon = nodes.getLon(startVertex);
-        double endLat = nodes.getLat(endVertex);
-        double endLon = nodes.getLon(endVertex);
-
-        return calculateStableEdgeId(highwayTag, startLat, startLon, endLat, endLon);
-    }
-
-    private static byte[] calculateStableEdgeId(String highwayTag, double startLat, double startLon,
-                                                double endLat, double endLon) {
-        int formOfWay = getFormOfWay(highwayTag);
-        long bearing = Math.round(AngleCalc.ANGLE_CALC.calcAzimuth(startLat, startLon, endLat, endLon));
-
-        String hashString = String.format("Reference %d %.6f %.6f %.6f %.6f %d",
-                formOfWay, startLon, startLat, endLon, endLat, bearing);
+    private static byte[] calculateStableEdgeId(long startOsmNodeId, long endOsmNodeId, long osmWayId, String geometryString) {
+        String hashString = String.format("%d %d %d %s", startOsmNodeId, endOsmNodeId, osmWayId, geometryString);
 
         HashCode hc = Hashing.farmHashFingerprint64().hashString(hashString, Charsets.UTF_8);
         return hc.asBytes();
-    }
-
-    // Based off of shared streets' definition of "form of way"
-    private static int getFormOfWay(String highwayTag) {
-        highwayTag = highwayTag == null ? "" : highwayTag;
-        switch (highwayTag) {
-            case "motorway":
-                return 1;
-            case "primary":
-            case "trunk":
-                return 2;
-            case "secondary":
-            case "tertiary":
-            case "residential":
-            case "unclassified":
-                return 3;
-            case "roundabout":
-                return 4;
-            default:
-                return 7;
-        }
     }
 }
