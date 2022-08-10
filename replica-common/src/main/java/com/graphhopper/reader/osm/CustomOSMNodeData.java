@@ -34,7 +34,7 @@ import static java.util.Collections.emptyMap;
  *   a different mapping, because we store node tags for only a small fraction of all OSM nodes.
  * </pre>
  */
-class OSMNodeData {
+class CustomOSMNodeData {
     static final int JUNCTION_NODE = -2;
     static final int EMPTY_NODE = -1;
     static final int END_NODE = 0;
@@ -62,7 +62,7 @@ class OSMNodeData {
     // we use negative ids to create artificial OSM node ids
     private long nextArtificialOSMNodeId = -Long.MAX_VALUE;
 
-    public OSMNodeData(PointAccess nodeAccess, Directory directory) {
+    public CustomOSMNodeData(PointAccess nodeAccess, Directory directory) {
         // we use GHLongIntBTree, because it is based on a tree, not an array, so it can store as many entries as there
         // are longs. this also makes it memory efficient, because there is no need to pre-allocate memory for empty
         // entries.

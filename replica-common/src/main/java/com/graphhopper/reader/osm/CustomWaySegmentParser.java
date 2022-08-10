@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 import java.util.function.LongToIntFunction;
 import java.util.function.Predicate;
 
-import static com.graphhopper.reader.osm.OSMNodeData.*;
+import static com.graphhopper.reader.osm.CustomOSMNodeData.*;
 import static com.graphhopper.util.Helper.nf;
 import static java.util.Collections.emptyMap;
 
@@ -46,7 +46,7 @@ import static java.util.Collections.emptyMap;
  * <p>
  * The main difficulty is that the OSM ID range is very large (64bit integers) and to be able to provide the full
  * node information for each segment we have to efficiently store the node data temporarily. This is addressed by
- * {@link OSMNodeData}.
+ * {@link CustomOSMNodeData}.
  */
 public class CustomWaySegmentParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomWaySegmentParser.class);
@@ -60,7 +60,7 @@ public class CustomWaySegmentParser {
     private final EdgeHandler edgeHandler;
     private final int workerThreads;
 
-    private final OSMNodeData nodeData;
+    private final CustomOSMNodeData nodeData;
     private Date timestamp;
 
     private CustomWaySegmentParser(PointAccess nodeAccess, Directory directory, ElevationProvider eleProvider,
@@ -76,7 +76,7 @@ public class CustomWaySegmentParser {
         this.edgeHandler = edgeHandler;
         this.workerThreads = workerThreads;
 
-        this.nodeData = new OSMNodeData(nodeAccess, directory);
+        this.nodeData = new CustomOSMNodeData(nodeAccess, directory);
     }
 
     /**
