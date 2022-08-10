@@ -84,7 +84,9 @@ class CustomOSMNodeData {
     public Map<Integer, Long> getGhIdToOsmIdMap() {
         Map<Integer, Long> ret = Maps.newHashMap();
         for (Long osmNodeId : allOsmNodeIds) {
-            ret.put(idsByOsmNodeIds.get(osmNodeId), osmNodeId);
+            if (idsByOsmNodeIds.get(osmNodeId) > 0) {
+                ret.put(idsByOsmNodeIds.get(osmNodeId), osmNodeId);
+            }
         }
         return ret;
     }
