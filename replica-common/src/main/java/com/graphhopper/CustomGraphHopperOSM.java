@@ -12,6 +12,7 @@ import com.graphhopper.reader.osm.OSMInputFile;
 import com.graphhopper.routing.util.AllEdgesIterator;
 import com.graphhopper.routing.util.AreaIndex;
 import com.graphhopper.routing.util.CustomArea;
+import com.graphhopper.storage.DAType;
 import com.graphhopper.storage.DataAccess;
 import com.graphhopper.storage.GHDirectory;
 import com.graphhopper.util.BitUtil;
@@ -71,7 +72,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
     @Override
     public boolean load() {
         boolean loaded = super.load();
-        GHDirectory dir = (GHDirectory) getBaseGraph().getDirectory();
+        GHDirectory dir = new GHDirectory(this.getGraphHopperLocation(), DAType.RAM_STORE);
         bitUtil = BitUtil.LITTLE;
         edgeMapping = dir.create("edge_mapping");
         nodeMapping = dir.create("node_mapping");
