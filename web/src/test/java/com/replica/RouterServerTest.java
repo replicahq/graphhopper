@@ -265,7 +265,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertFalse(ptMetadata.getRouteType().isEmpty());
             assertFalse(ptMetadata.getDirection().isEmpty());
         }
-        assertEquals(path.getDistanceMeters(), observedDistanceMeters);
+        assertEquals(path.getDistanceMeters(), observedDistanceMeters, 1.0E-10);
 
 
         // Check stops in first PT leg

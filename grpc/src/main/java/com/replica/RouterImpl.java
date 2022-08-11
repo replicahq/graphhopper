@@ -215,44 +215,17 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                     if (leg instanceof Trip.WalkLeg) {
                         Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
                         String travelSegmentType;
-                        // We only expect graphhopper to return ACCESS + EGRESS walk legs
                         if (i == 0) {
                             travelSegmentType = "ACCESS";
-                        } else {
+                        } else if (i == legs.size() - 1) {
                             travelSegmentType = "EGRESS";
+                        } else {
+                            travelSegmentType = "TRANSFER";
                         }
                         path.getLegs().add(new CustomWalkLeg(thisLeg, fetchWalkLegStableIds(thisLeg), travelSegmentType));
                     } else if (leg instanceof Trip.PtLeg) {
                         Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
                         path.getLegs().add(getCustomPtLeg(thisLeg));
-
-                        // If this PT leg is followed by another PT leg, add a TRANSFER walk leg between them
-                        if (i < legs.size() - 1 && legs.get(i + 1) instanceof Trip.PtLeg) {
-                            Trip.PtLeg nextLeg = (Trip.PtLeg) legs.get(i + 1);
-                            Trip.Stop lastStopOfThisLeg = thisLeg.stops.get(thisLeg.stops.size() - 1);
-                            Trip.Stop firstStopOfNextLeg = nextLeg.stops.get(0);
-                            if (!lastStopOfThisLeg.stop_id.equals(firstStopOfNextLeg.stop_id)) {
-                                GHRequest r = new GHRequest(
-                                        lastStopOfThisLeg.geometry.getY(), lastStopOfThisLeg.geometry.getX(),
-                                        firstStopOfNextLeg.geometry.getY(), firstStopOfNextLeg.geometry.getX());
-                                r.setProfile("foot");
-                                r.setPathDetails(Arrays.asList("stable_edge_ids"));
-                                GHResponse transfer = graphHopper.route(r);
-                                if (!transfer.hasErrors()) {
-                                    ResponsePath transferPath = transfer.getBest();
-                                    Trip.WalkLeg transferLeg = new Trip.WalkLeg(
-                                            lastStopOfThisLeg.stop_name,
-                                            thisLeg.getArrivalTime(),
-                                            transferPath.getPoints().getCachedLineString(false),
-                                            transferPath.getDistance(),
-                                            transferPath.getInstructions(),
-                                            transferPath.getPathDetails(),
-                                            Date.from(thisLeg.getArrivalTime().toInstant().plusMillis(transferPath.getTime()))
-                                    );
-                                    path.getLegs().add(new CustomWalkLeg(transferLeg, fetchWalkLegStableIds(transferLeg), "TRANSFER"));
-                                }
-                            }
-                        }
                     }
                 }
 
