@@ -150,7 +150,12 @@ public class CustomGraphHopperOSM extends GraphHopper {
         for (int nodeId : ghToOsmNodeIds.keySet()) {
             long osmNodeId = ghToOsmNodeIds.get(nodeId);
             long pointer = 8L * nodeId;
-            nodeMapping.ensureCapacity(pointer + 8L);
+            try {
+                nodeMapping.ensureCapacity(pointer + 8L);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Capacity not there! nodeId: " + nodeId + "; osmNodeId: " + osmNodeId);
+                throw e;
+            }
             nodeMapping.setInt(pointer, bitUtil.getIntLow(osmNodeId));
             nodeMapping.setInt(pointer + 4, bitUtil.getIntHigh(osmNodeId));
         }

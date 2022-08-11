@@ -44,7 +44,9 @@ class CustomOSMNodeData {
     // this map stores our internal node id for each OSM node
     private final LongIntMap idsByOsmNodeIds;
 
-    private Set<Long> allOsmNodeIds;
+    // Replica-specific map that stores mapping of gh node id -> OSM node id
+    // Note: this is the reverse of idsByOsmNodeIds
+    private Map<Integer, Long> ghToOsmNodeIds;
 
     // here we store node coordinates, separated for pillar and tower nodes
     private final PillarInfo pillarNodes;
@@ -72,7 +74,7 @@ class CustomOSMNodeData {
 
         nodeTagIndicesByOsmNodeIds = new GHLongIntBTree(200);
         nodeTags = new ArrayList<>();
-        allOsmNodeIds = Sets.newHashSet();
+        ghToOsmNodeIds = Maps.newHashMap();
     }
 
     /**
@@ -82,26 +84,9 @@ class CustomOSMNodeData {
      * Only call this after second pass of way segment parsing is complete!
      */
     public Map<Integer, Long> getGhIdToOsmIdMap() {
-        Map<Integer, Long> ret = Maps.newHashMap();
-        for (Long osmNodeId : allOsmNodeIds) {
-            if (idsByOsmNodeIds.get(osmNodeId) > 0) {
-                ret.put(idsByOsmNodeIds.get(osmNodeId), osmNodeId);
-            }
-        }
-        return ret;
+        return ghToOsmNodeIds;
     }
 
-    /**
-     * "Override" for storing of OSM node id -> GH node ID mapping, that stores all real (non-negative)
-     * OSM node IDs in a set. This allows us later on to retrieve all items in idsByOsmNodeIds,
-     * which by default doesn't easily allow its contents to be dumped
-     */
-    public int addToIdsByOsmNodeIds(long osmNodeId, int ghNodeId) {
-        if (osmNodeId > 0) {
-            allOsmNodeIds.add(osmNodeId);
-        }
-        return idsByOsmNodeIds.put(osmNodeId, ghNodeId);
-    }
 
     public boolean is3D() {
         return towerNodes.is3D();
@@ -132,9 +117,9 @@ class CustomOSMNodeData {
     public void setOrUpdateNodeType(long osmNodeId, int newNodeType, IntUnaryOperator nodeTypeUpdate) {
         int curr = idsByOsmNodeIds.get(osmNodeId);
         if (curr == EMPTY_NODE)
-            addToIdsByOsmNodeIds(osmNodeId, newNodeType);
+            idsByOsmNodeIds.put(osmNodeId, newNodeType);
         else
-            addToIdsByOsmNodeIds(osmNodeId, nodeTypeUpdate.applyAsInt(curr));
+            idsByOsmNodeIds.put(osmNodeId, nodeTypeUpdate.applyAsInt(curr));
     }
 
     /**
@@ -173,7 +158,11 @@ class CustomOSMNodeData {
     private int addTowerNode(long osmId, double lat, double lon, double ele) {
         towerNodes.setNode(nextTowerId, lat, lon, ele);
         int id = towerNodeToId(nextTowerId);
-        addToIdsByOsmNodeIds(osmId, id);
+        idsByOsmNodeIds.put(osmId, id);
+
+        // Store raw tower node ID -> OSM node ID in replica-specific mapping
+        ghToOsmNodeIds.put(nextTowerId, osmId);
+
         nextTowerId++;
         return id;
     }
@@ -181,7 +170,7 @@ class CustomOSMNodeData {
     private int addPillarNode(long osmId, double lat, double lon, double ele) {
         pillarNodes.setNode(nextPillarId, lat, lon, ele);
         int id = pillarNodeToId(nextPillarId);
-        addToIdsByOsmNodeIds(osmId, id);
+        idsByOsmNodeIds.put(osmId, id);
         nextPillarId++;
         return id;
     }
@@ -196,7 +185,7 @@ class CustomOSMNodeData {
         if (point == null)
             throw new IllegalStateException("Cannot copy node : " + node.osmNodeId + ", because it is missing");
         final long newOsmId = nextArtificialOSMNodeId++;
-        if (addToIdsByOsmNodeIds(newOsmId, INTERMEDIATE_NODE) != EMPTY_NODE)
+        if (idsByOsmNodeIds.put(newOsmId, INTERMEDIATE_NODE) != EMPTY_NODE)
             throw new IllegalStateException("Artificial osm node id already exists: " + newOsmId);
         int id = addPillarNode(newOsmId, point.getLat(), point.getLon(), point.getEle());
         return new SegmentNode(newOsmId, id);
