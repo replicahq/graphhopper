@@ -36,8 +36,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         int emptyNodeIdCount = 0;
         int emptyWayIdCount = 0;
         Set<String> observedStableEdgeIds = Sets.newHashSet();
-        for (int i = 1; i < 10001; i++) {
-            CSVRecord record = records.get(i);
+        for (CSVRecord record : records) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("endOsmNode")) <= 0) emptyNodeIdCount++;
@@ -45,7 +44,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         }
         assertEquals(0, emptyNodeIdCount);
         assertEquals(0, emptyWayIdCount);
-        assertEquals(10000, observedStableEdgeIds.size());
+        assertEquals(1105264, observedStableEdgeIds.size());
 
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
