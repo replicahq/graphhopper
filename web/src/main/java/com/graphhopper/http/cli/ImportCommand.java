@@ -18,7 +18,7 @@
 
 package com.graphhopper.http.cli;
 
-import com.graphhopper.GraphHopper;
+import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.http.GraphHopperManaged;
 import com.graphhopper.http.GraphHopperServerConfiguration;
 import com.graphhopper.replica.StableEdgeIdManager;
@@ -35,9 +35,9 @@ public class ImportCommand extends ConfiguredCommand<GraphHopperServerConfigurat
     @Override
     protected void run(Bootstrap<GraphHopperServerConfiguration> bootstrap, Namespace namespace, GraphHopperServerConfiguration configuration) {
         final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration());
-        GraphHopper gh = graphHopper.getGraphHopper();
+        CustomGraphHopperGtfs gh = (CustomGraphHopperGtfs) graphHopper.getGraphHopper();
         gh.importOrLoad();
-        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh);
+        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh, gh.getOsmHelper());
         stableEdgeIdManager.setStableEdgeIds();
         gh.close();
     }
