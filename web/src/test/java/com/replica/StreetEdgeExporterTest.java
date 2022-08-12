@@ -28,7 +28,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1105358, records.size());
+        assertEquals(1097267, records.size());
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
 
@@ -41,8 +41,8 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
 
         // Copied from writeStreetEdgesCsv
         StreetEdgeExporter exporter = new StreetEdgeExporter(
-                configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getGhIdToOsmId(),
-                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag()
+                configuredGraphHopper, gh.getOsmIdToLaneTags(),
+                gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper()
         );
         AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
 
