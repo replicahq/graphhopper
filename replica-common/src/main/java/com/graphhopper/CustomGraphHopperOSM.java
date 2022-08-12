@@ -53,10 +53,8 @@ public class CustomGraphHopperOSM extends GraphHopper {
     private Map<Long, String> osmIdToStreetName;
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
-    private DataAccess edgeMapping;
     private DataAccess nodeMapping;
-    private DataAccess edgeAdjacentMapping;
-    private DataAccess edgeBaseMapping;
+    private DataAccess artificialIdToOsmNodeIdMapping;
     private BitUtil bitUtil;
 
     public CustomGraphHopperOSM(GraphHopperConfig ghConfig) {
@@ -64,9 +62,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
         this.osmIdToLaneTags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
-        // StableIdEncodedValues.createAndAddEncodedValues(this.getEncodingManagerBuilder());
-        // this.getEncodingManagerBuilder().add(new OsmIdTagParser());
-        // getEncodingManagerBuilder().add(new IntEncodedValueImpl("osmid", 31, false));
     }
 
     @Override
@@ -74,16 +69,12 @@ public class CustomGraphHopperOSM extends GraphHopper {
         boolean loaded = super.load();
         GHDirectory dir = new GHDirectory(this.getGraphHopperLocation(), DAType.RAM_STORE);
         bitUtil = BitUtil.LITTLE;
-        edgeMapping = dir.create("edge_mapping");
         nodeMapping = dir.create("node_mapping");
-        edgeAdjacentMapping = dir.create("edge_adjacent_mapping");
-        edgeBaseMapping = dir.create("edge_base_mapping");
+        artificialIdToOsmNodeIdMapping = dir.create("artificial_id_mapping");
 
         if(loaded) {
-            edgeMapping.loadExisting();
             nodeMapping.loadExisting();
-            edgeAdjacentMapping.loadExisting();
-            edgeBaseMapping.loadExisting();
+            artificialIdToOsmNodeIdMapping.loadExisting();
         }
 
         return loaded;
@@ -92,16 +83,16 @@ public class CustomGraphHopperOSM extends GraphHopper {
     @Override
     protected void flush() {
         super.flush();
-        edgeMapping.flush();
         nodeMapping.flush();
-        edgeAdjacentMapping.flush();
-        edgeBaseMapping.flush();
+        artificialIdToOsmNodeIdMapping.flush();
     }
 
     public OsmHelper getOsmHelper(){
-        return new OsmHelper(edgeMapping, nodeMapping,
-                edgeAdjacentMapping, edgeBaseMapping, bitUtil,
-                getBaseGraph().getEdges());
+        return new OsmHelper(
+                nodeMapping,
+                artificialIdToOsmNodeIdMapping,
+                bitUtil
+        );
     }
 
     @Override
@@ -144,6 +135,17 @@ public class CustomGraphHopperOSM extends GraphHopper {
             this.getProperties().put("datareader.data.date", f.format(reader.getDataDate()));
 
         writeOsmNodeIds(reader.getGhNodeIdToOsmNodeIdMap());
+        writeArtificialIdMapping(reader.getArtificialIdToOsmNodeIds());
+    }
+
+    public void writeArtificialIdMapping(Map<Long, Long> artificialIdToOsmNodeId) {
+        for (long artificialId : artificialIdToOsmNodeId.keySet()) {
+            long realId = artificialIdToOsmNodeId.get(artificialId);
+            long pointer = 8L * artificialId;
+            artificialIdToOsmNodeIdMapping.ensureCapacity(pointer + 8L);
+            artificialIdToOsmNodeIdMapping.setInt(pointer, bitUtil.getIntLow(realId));
+            artificialIdToOsmNodeIdMapping.setInt(pointer + 4, bitUtil.getIntHigh(realId));
+        }
     }
 
     public void writeOsmNodeIds(Map<Integer, Long> ghToOsmNodeIds) {

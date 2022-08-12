@@ -6,7 +6,6 @@ import com.google.common.collect.Maps;
 import com.graphhopper.coll.GHIntLongHashMap;
 import com.graphhopper.coll.GHLongHashSet;
 import com.graphhopper.coll.GHLongLongHashMap;
-import com.graphhopper.coll.LongIntMap;
 import com.graphhopper.reader.*;
 import com.graphhopper.reader.dem.EdgeSampling;
 import com.graphhopper.reader.dem.ElevationProvider;
@@ -67,8 +66,7 @@ public class CustomOsmReader {
     private IntLongMap edgeIdToOsmWayIdMap;
 
     private Map<Integer, Long> ghNodeIdToOsmNodeIdMap;
-    private Map<Integer, Integer> edgeBaseMapping;
-    private Map<Integer, Integer> edgeAdjacentMapping;
+    private Map<Long, Long> artificialIdToOsmNodeIds;
 
     public CustomOsmReader(BaseGraph baseGraph, EncodingManager encodingManager, OSMParsers osmParsers, OSMReaderConfig config) {
         this.baseGraph = baseGraph;
@@ -87,20 +85,15 @@ public class CustomOsmReader {
             throw new IllegalArgumentException("OSMReader cannot use relation flags with != 2 integers");
 
         ghNodeIdToOsmNodeIdMap = Maps.newHashMap();
-        edgeBaseMapping = Maps.newHashMap();
-        edgeAdjacentMapping = Maps.newHashMap();
+        artificialIdToOsmNodeIds = Maps.newHashMap();
     }
 
     public Map<Integer, Long> getGhNodeIdToOsmNodeIdMap() {
         return ghNodeIdToOsmNodeIdMap;
     }
 
-    public Map<Integer, Integer> getEdgeBaseMapping() {
-        return edgeBaseMapping;
-    }
-
-    public Map<Integer, Integer> getEdgeAdjacentMapping() {
-        return edgeAdjacentMapping;
+    public Map<Long, Long> getArtificialIdToOsmNodeIds() {
+        return artificialIdToOsmNodeIds;
     }
 
     /**
@@ -167,6 +160,7 @@ public class CustomOsmReader {
                 osmFile.getAbsolutePath(), nf(baseGraph.getNodes()), nf(baseGraph.getEdges()), nf(zeroCounter));
 
         this.ghNodeIdToOsmNodeIdMap = waySegmentParser.getGhNodeIdToOsmNodeIdMap();
+        this.artificialIdToOsmNodeIds = waySegmentParser.getArtificialIdToOsmNodeIds();
 
         finishedReading();
     }
@@ -334,10 +328,6 @@ public class CustomOsmReader {
         // the storage does not allow too long Strings
         String name = Helper.cutStringForKV(way.getTag("way_name", ""));
         EdgeIteratorState edge = baseGraph.edge(fromIndex, toIndex).setDistance(distance).setFlags(edgeFlags).setName(name);
-
-        // [Replica-specific]: store mapping of edge ID to internal base+adjacent node IDs of edge
-        edgeBaseMapping.put(edge.getEdge(), fromIndex);
-        edgeAdjacentMapping.put(edge.getEdge(), toIndex);
 
         // If the entire way is just the first and last point, do not waste space storing an empty way geometry
         if (pointList.size() > 2) {

@@ -119,6 +119,10 @@ public class CustomWaySegmentParser {
         return nodeData.getGhIdToOsmIdMap();
     }
 
+    public Map<Long, Long> getArtificialIdToOsmNodeIds() {
+        return nodeData.getArtificialIdToOsmNodeIds();
+    }
+
     /**
      * @return the timestamp read from the OSM file, or null if nothing was read yet
      */

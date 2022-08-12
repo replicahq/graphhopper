@@ -9,7 +9,6 @@ import com.graphhopper.storage.Directory;
 import com.graphhopper.util.PointAccess;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint3D;
-import org.glassfish.jersey.internal.guava.Sets;
 
 import java.util.*;
 import java.util.function.IntUnaryOperator;
@@ -47,6 +46,8 @@ class CustomOSMNodeData {
     // Replica-specific map that stores mapping of gh node id -> OSM node id
     // Note: this is the reverse of idsByOsmNodeIds
     private Map<Integer, Long> ghToOsmNodeIds;
+    private Map<Long, Long> artificialIdToOsmNodeIds;
+
 
     // here we store node coordinates, separated for pillar and tower nodes
     private final PillarInfo pillarNodes;
@@ -75,6 +76,7 @@ class CustomOSMNodeData {
         nodeTagIndicesByOsmNodeIds = new GHLongIntBTree(200);
         nodeTags = new ArrayList<>();
         ghToOsmNodeIds = Maps.newHashMap();
+        artificialIdToOsmNodeIds = Maps.newHashMap();
     }
 
     /**
@@ -87,6 +89,9 @@ class CustomOSMNodeData {
         return ghToOsmNodeIds;
     }
 
+    public Map<Long, Long> getArtificialIdToOsmNodeIds() {
+        return artificialIdToOsmNodeIds;
+    }
 
     public boolean is3D() {
         return towerNodes.is3D();
@@ -185,6 +190,9 @@ class CustomOSMNodeData {
         if (point == null)
             throw new IllegalStateException("Cannot copy node : " + node.osmNodeId + ", because it is missing");
         final long newOsmId = nextArtificialOSMNodeId++;
+
+        artificialIdToOsmNodeIds.put(newOsmId, node.osmNodeId);
+
         if (idsByOsmNodeIds.put(newOsmId, INTERMEDIATE_NODE) != EMPTY_NODE)
             throw new IllegalStateException("Artificial osm node id already exists: " + newOsmId);
         int id = addPillarNode(newOsmId, point.getLat(), point.getLon(), point.getEle());

@@ -101,15 +101,26 @@ public class StreetEdgeExporter {
         long distanceMillimeters = distanceMeters * 1000;
 
         // Fetch OSM Way ID, skipping edges that have no IDs set (getOSMWay returns -1)
-        long osmWayId = iteratorState.get(osmWayIdEnc); // osmHelper.getOSMWay(ghEdgeId);
-        if (osmWayId == -1L) {
-            System.out.println("Osm way ID was -1, shouldn't happen!");
-            // return output;
+        long osmWayId = iteratorState.get(osmWayIdEnc);
+        if (osmWayId <= 0L) {
+            throw new RuntimeException("OSM Way ID <= 0 for edge " + ghEdgeId + "! This shouldn't happen");
         }
 
         // Fetch OSM Node IDs for each node of edge
-        long startOsmNode = osmHelper.getOSMNode(startVertex); // osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId));
-        long endOsmNode = osmHelper.getOSMNode(endVertex); // osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId));
+        long startOsmNode = osmHelper.getOSMNode(startVertex);
+        long endOsmNode = osmHelper.getOSMNode(endVertex);
+
+        // Check if start or end node IDs are artificial IDs; if so, replace them with real IDs
+        if (startOsmNode <= 0) {
+            startOsmNode = osmHelper.getRealNodeIdFromArtificial(startOsmNode);
+        }
+        if (endOsmNode <= 0) {
+            endOsmNode = osmHelper.getRealNodeIdFromArtificial(endOsmNode);
+        }
+
+        if (startOsmNode <= 0 || endOsmNode <= 0) {
+            throw new RuntimeException("Start or end OSM node ID is <= 0! This shouldn't happen");
+        }
 
         // Filter out single-point "edges" + edges with identical start/end point locations
         // and no intermediate points (as would exist in the case of road loops)
@@ -117,12 +128,6 @@ public class StreetEdgeExporter {
             return output;
         } else if (wayGeometry.size() == 2 && (wayGeometry.get(0).equals(wayGeometry.get(1)))) {
             return output;
-        }
-
-        // Filter out edges where we didn't set a start/end OSM node ID (very infrequent)
-        if (startOsmNode == 0 || endOsmNode == 0) {
-            System.out.println("start or end OSM node ID == 0! Shouldn't happen!");
-            // return output;
         }
 
         // Use street name parsed from Ways/Relations, if it exists; otherwise, use default GH edge name
