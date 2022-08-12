@@ -103,8 +103,7 @@ public class StreetEdgeExporter {
         // Fetch OSM Way ID, skipping edges that have no IDs set (getOSMWay returns -1)
         long osmWayId = iteratorState.get(osmWayIdEnc); // osmHelper.getOSMWay(ghEdgeId);
         if (osmWayId == -1L) {
-            System.out.println("Osm way ID was -1, shouldn't happen!");
-            // return output;
+            throw new RuntimeException("Osm way ID was -1, shouldn't happen!");
         }
 
         // Fetch OSM Node IDs for each node of edge
@@ -121,8 +120,7 @@ public class StreetEdgeExporter {
 
         // Filter out edges where we didn't set a start/end OSM node ID (very infrequent)
         if (startOsmNode == 0 || endOsmNode == 0) {
-            System.out.println("start or end OSM node ID == 0! Shouldn't happen!");
-            // return output;
+            throw new RuntimeException("start or end OSM node ID == 0! Shouldn't happen!");
         }
 
         // Use street name parsed from Ways/Relations, if it exists; otherwise, use default GH edge name
