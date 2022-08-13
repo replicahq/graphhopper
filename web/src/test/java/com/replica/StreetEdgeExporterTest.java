@@ -16,8 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -30,21 +29,42 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1105264, records.size());
+        assertEquals(1097267, records.size());
 
         // Sanity check OSM node + edge coverage and stable edge ID uniqueness
         int emptyNodeIdCount = 0;
         int emptyWayIdCount = 0;
         Set<String> observedStableEdgeIds = Sets.newHashSet();
+
+        // Remove header row
+        records.remove(0);
+
+        // Remove small number of non-unique rows in output (expected due to OSM node ID parsing method).
+        // We unique rows before uploading to BQ, so this mimics the actualy results of our street export.
+        // Note the gross method used to unique these records is due to CSVRecord not implementing toCompare(),
+        // so plopping them in a Set doesn't work
+        Set<String> allUniqueRowStrings = Sets.newHashSet();
+        Set<CSVRecord> allUniqueRows = Sets.newHashSet();
         for (CSVRecord record : records) {
+            String rowString = record.toMap().values().toString();
+            if (!allUniqueRowStrings.contains(rowString)) {
+                allUniqueRowStrings.add(rowString);
+                allUniqueRows.add(record);
+            }
+        }
+
+        System.out.println(records.size());
+        System.out.println(allUniqueRows.size());
+
+        for (CSVRecord record : allUniqueRows) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("endOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("osmid")) <= 0) emptyWayIdCount++;
         }
-        assertEquals(0, emptyNodeIdCount);
-        assertEquals(0, emptyWayIdCount);
-        assertEquals(1105264, observedStableEdgeIds.size());
+        assertEquals(0, emptyNodeIdCount); // no empty/negative OSM node IDs
+        assertEquals(0, emptyWayIdCount); // no empty/negative OSM way IDs
+        assertEquals(allUniqueRows.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
 
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
