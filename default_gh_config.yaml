@@ -8,7 +8,7 @@ graphhopper:
   graph.location: transit_data/graphhopper
   routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,bike,foot,truck
+  graph.flag_encoders: car,bike,foot,truck,small_truck,van
   prepare.ch.threads: 16
 
   # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
@@ -30,12 +30,20 @@ graphhopper:
     - name: truck
       vehicle: truck
       weighting: fastest
+    - name: small_truck
+      vehicle: small_truck
+      weighting: fastest
+    - name: van
+      vehicle: van
+      weighting: fastest
 
   profiles_ch:
     - profile: car
     - profile: bike
     - profile: foot
     - profile: truck
+    - profile: small_truck
+    - profile: van
 
 server:
   min_threads: 4

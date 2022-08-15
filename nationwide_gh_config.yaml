@@ -6,7 +6,7 @@ graphhopper:
   graph.location: transit_data/graphhopper
   routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,bike,foot,truck
+  graph.flag_encoders: car,bike,foot,truck,small_truck,van
   prepare.ch.threads: 16
 
   # Profiles specifying vehicle and weightings for each mode type.
@@ -23,6 +23,12 @@ graphhopper:
       weighting: fastest
     - name: truck
       vehicle: truck
+      weighting: fastest
+    - name: small_truck
+      vehicle: small_truck
+      weighting: fastest
+    - name: van
+      vehicle: van
       weighting: fastest
 
 server:
