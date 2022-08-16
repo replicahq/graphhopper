@@ -228,11 +228,11 @@ $(document).ready(function (e) {
            }
 
 
-           var profiles = ["car", "foot", "bike", "truck"];
+           var profiles = ["car", "foot", "bike", "truck", "van", "small_truck"];
            ghRequest.profiles = profiles;
            var showAllProfiles = true;
 
-           var numVehiclesWhenCollapsed = 4;
+           var numVehiclesWhenCollapsed = 6;
            var hiddenVehicles = [];
            for (var i = 0; i < profiles.length; ++i) {
                var btn = createButton(profiles[i], !showAllProfiles && i >= numVehiclesWhenCollapsed);
