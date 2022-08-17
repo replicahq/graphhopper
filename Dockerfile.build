@@ -32,9 +32,13 @@ COPY ./web ./web
 COPY ./web-bundle ./web-bundle
 COPY ./package.json ./package.json
 COPY --from=protoc-build ./graphhopper/grpc ./grpc
+
+# Build PT GUI
 RUN npm install
 RUN npm run build -- --config grpc/src/main/resources/assets/pt/webpack.config.js
 
+# Bundle files needed for non-PT GUI
+RUN cd web && npm install && npm run bundle && cd ..
 
 # Download + set up files needed for tests
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:latest as test-build
