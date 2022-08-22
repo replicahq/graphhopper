@@ -837,16 +837,16 @@ function routeLatLng(request, doQuery) {
     var from = new Router.Point();
     from.setLat(request.from.lat);
     from.setLon(request.from.lng);
-    console.log(from);
     var to = new Router.Point();
     to.setLat(request.to.lat);
     to.setLon(request.to.lng);
-    console.log(to);
     streetRouteRequest.addPoints(from);
     streetRouteRequest.addPoints(to);
     streetRouteRequest.setAlternateRouteMaxPaths($('#alt_route_max_paths').val());
     streetRouteRequest.setAlternateRouteMaxWeightFactor($('#alt_route_max_weight_factor').val());
     streetRouteRequest.setAlternateRouteMaxShareFactor($('#alt_route_max_share_factor').val());
+    console.log($('#alt_route_max_paths').val());
+    console.log(streetRouteRequest.toObject());
 
     var router = new Router.RouterClient('/api');
     router.routeStreetMode(streetRouteRequest, null, function(err, response) {
