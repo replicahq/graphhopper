@@ -50,6 +50,14 @@
 
                     </span>
         </div>
+        <div id="alt_route_options">
+            <label for="alt_route_max_paths">Alternate route max paths:</label>
+            <input type="number" id="alt_route_max_paths" name="alt_route_max_paths" value="5"><br>
+            <label for="alt_route_max_weight_factor">Alternate route max weight factor:</label>
+            <input type="number" id="alt_route_max_weight_factor" name="alt_route_max_weight_factor" value="2.0"><br>
+            <label for="alt_route_max_share_factor">Alternate route max share factor:</label>
+            <input type="number" id="alt_route_max_share_factor" name="alt_route_max_share_factor" value="0.4"><br>
+        </div>
         <form id="locationform">
             <div class="time_input">
                 <input id="input_date_0" class="flatpickr input_date" type="text" placeholder="Select Date &amp; Time"/>
@@ -60,9 +68,7 @@
             <div class="clear"></div>
             <input id="searchButton" type="submit" value="Search">
         </form>
-        <div id="flex-input-link" class="left" style="cursor: pointer"><small>flex</small></div>
-        <div id="export-link" class="left"><a href="/maps/"><img src='img/link.png'></a></div>
-        <div id="gpxExportButton"><a href=""><img alt="gpx" src='img/gpx.png'></a></div>
+        <div id="flex-input-link" class="left" style="cursor: pointer"><small>Use Custom Model</small></div>
         <div id="flex-input" style="display: none">
             <div class="small_text" style="float: right; padding-right: 10px">
                 <a href="https://www.graphhopper.com/blog/2020/05/31/examples-for-customizable-routing/">Intro</a> |

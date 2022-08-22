@@ -844,9 +844,9 @@ function routeLatLng(request, doQuery) {
     console.log(to);
     streetRouteRequest.addPoints(from);
     streetRouteRequest.addPoints(to);
-    streetRouteRequest.setAlternateRouteMaxPaths(5);
-    streetRouteRequest.setAlternateRouteMaxWeightFactor(2.0);
-    streetRouteRequest.setAlternateRouteMaxShareFactor(0.4);
+    streetRouteRequest.setAlternateRouteMaxPaths($('#alt_route_max_paths').val());
+    streetRouteRequest.setAlternateRouteMaxWeightFactor($('#alt_route_max_weight_factor').val());
+    streetRouteRequest.setAlternateRouteMaxShareFactor($('#alt_route_max_share_factor').val());
 
     var router = new Router.RouterClient('/api');
     router.routeStreetMode(streetRouteRequest, null, function(err, response) {
