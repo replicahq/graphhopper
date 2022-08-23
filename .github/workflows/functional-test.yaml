@@ -89,6 +89,16 @@ jobs:
           build-args: |
             BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
 
+      - name: build the sandbox
+          uses: docker/build-push-action@v2
+          with:
+            context: .
+            push: true
+            file: Dockerfile.sandbox
+            tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-server-sandbox"
+            build-args: |
+              BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
+
       - name: Install golang
         uses: actions/setup-go@v2
         with:
