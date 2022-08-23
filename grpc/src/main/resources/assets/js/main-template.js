@@ -105,15 +105,11 @@ $(document).ready(function (e) {
            return;
        }
 
-       var points = [];
-       for(var idx = 0; idx < ghRequest.route.size(); idx++) {
-           var point = ghRequest.route.getIndex(idx);
-           if (point.isResolved()) {
-               points.push([point.lng, point.lat]);
-           } else {
-               routeResultsDiv.html("Unresolved points");
-               return;
-           }
+       var fromPoint = ghRequest.from;
+       var toPoint = ghRequest.to;
+       if (!fromPoint.isResolved() || !toPoint.isResolved()) {
+            routeResultsDiv.html("Unresolved points!");
+            return;
        }
 
        var jsonModel;
@@ -128,11 +124,11 @@ $(document).ready(function (e) {
        customRouteRequest.setProfile(ghRequest.api_params.profile);
 
        var from = new Router.Point();
-       from.setLat(points[0].lat);
-       from.setLon(points[0].lng);
+       from.setLat(fromPoint.lat);
+       from.setLon(fromPoint.lng);
        var to = new Router.Point();
-       to.setLat(points[1].lat);
-       to.setLon(points[1].lng);
+       to.setLat(toPoint.lat);
+       to.setLon(toPoint.lng);
        customRouteRequest.addPoints(from);
        customRouteRequest.addPoints(to);
 
@@ -148,7 +144,7 @@ $(document).ready(function (e) {
             if (err) {
                 console.log("Error handling request!")
                 console.log(err)
-                console.log(streetRouteRequest);
+                console.log(customRouteRequest);
             } else {
                 console.log(response.toObject());
 
