@@ -226,15 +226,15 @@ $(document).ready(function (e) {
                     mapLayer.addDataToRoutingLayer(geojsonFeature);
                     var oneTab = $("<div class='route_result_tab'>");
                     routeResultsDiv.append(oneTab);
-                    tabHeader.click(createClickHandler(geoJsons, pathIndex, tabHeader, oneTab, request.hasElevation(), path.details));
+                    tabHeader.click(createClickHandler(geoJsons, pathIndex, tabHeader, oneTab, ghRequest.hasElevation(), path.details));
 
                     var routeInfo = $("<div class='route_description'>");
 
-                    var kmButton = $("<button class='plain_text_button " + (request.useMiles ? "gray" : "") + "'>");
+                    var kmButton = $("<button class='plain_text_button " + (ghRequest.useMiles ? "gray" : "") + "'>");
                     kmButton.text(translate.tr2("km_abbr"));
                     kmButton.click(createUnitsChooserButtonClickHandler(false));
 
-                    var miButton = $("<button class='plain_text_button " + (request.useMiles ? "" : "gray") + "'>");
+                    var miButton = $("<button class='plain_text_button " + (ghRequest.useMiles ? "" : "gray") + "'>");
                     miButton.text(translate.tr2("mi_abbr"));
                     miButton.click(createUnitsChooserButtonClickHandler(true));
 
