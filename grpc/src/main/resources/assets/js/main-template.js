@@ -84,7 +84,7 @@ $(document).ready(function (e) {
         mapLayer.adjustMapSize();
     });
     $("#flex-example").click(function() {
-         $("#flex-input-text").val("speed_factor:\n  road_class:\n    motorway: 0.8\npriority:\n  road_environment:\n    tunnel: 0.0\n  road_class:\n    residential: 0.7\n  max_weight:\n    \">3\": 0.0");
+         $("#flex-input-text").val("speed_factor:\n  road_class:\n    motorway: 0.8\npriority:\n  road_class:\n    residential: 0.7\n");
          return false;
     });
 
