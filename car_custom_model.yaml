@@ -1,0 +1,6 @@
+speed_factor:
+  road_class:
+    motorway: 0.5
+priority:
+  road_class:
+    secondary: 0.5
