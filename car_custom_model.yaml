@@ -1,6 +1,13 @@
 speed_factor:
   road_class:
-    motorway: 0.5
+    trunk: 0.9
+    primary: 0.9
+    secondary: 0.8
+    tertiary: 0.6
+    residential: 0.6
 priority:
   road_class:
-    secondary: 0.5
+    primary: 0.9
+    secondary: 0.9
+    tertiary: 0.9
+    residential: 0.8
