@@ -62,4 +62,6 @@ if grep -q TEST_GTFS ./test_gh_config.yaml; then
   sed -i -e "s/{{ TEST_GTFS }}/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
 fi
 
+cat ./test_gh_config_one_feed.yaml
+
 echo "Setup complete! Tests can now be run with 'mvn test'"

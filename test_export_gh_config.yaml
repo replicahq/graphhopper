@@ -8,6 +8,7 @@ graphhopper:
   routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
   graph.flag_encoders: car,bike,foot,truck
+  graph.encoded_values: road_class
   prepare.ch.threads: 16
 
   # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
@@ -19,7 +20,8 @@ graphhopper:
   profiles:
     - name: car
       vehicle: car
-      weighting: fastest
+      weighting: custom
+      custom_model_file: car_custom_model.yaml
     - name: bike
       vehicle: bike
       weighting: fastest
