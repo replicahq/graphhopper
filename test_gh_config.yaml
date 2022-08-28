@@ -22,7 +22,7 @@ graphhopper:
     - name: car
       vehicle: car
       weighting: custom
-      custom_model_file: car_custom_model.yaml
+      custom_model_file: ../car_custom_model.yaml
     - name: bike
       vehicle: bike
       weighting: fastest
