@@ -20,7 +20,9 @@ package com.graphhopper.http;
 
 import com.graphhopper.*;
 import com.graphhopper.routing.ev.EncodedValueLookup;
-import com.graphhopper.routing.util.*;
+import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
+import com.graphhopper.routing.util.VehicleTagParser;
+import com.graphhopper.routing.util.VehicleTagParserFactory;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
 import com.graphhopper.util.PMap;
@@ -42,21 +44,9 @@ public class GraphHopperManaged implements Managed {
             graphHopper = new CustomGraphHopperOSM(configuration);
         }
 
-        graphHopper.setVehicleTagParserFactory(new DefaultVehicleTagParserFactory() {
-           private VehicleTagParserFactory delegate = new DefaultVehicleTagParserFactory();
-
-           @Override
-            public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
-               // if (name.equals("truck")) {
-                   // return new TruckTagParser();
-               // }
-               // else {
-                   return delegate.createParser(lookup, name, configuration);
-               // }
-           }
-        });
         graphHopper.setEncodedValueFactory(new EncodedValueFactoryWithStableId());
         graphHopper.setTagParserFactory(new TagParserFactoryWithOsmId());
+        graphHopper.setVehicleTagParserFactory(new VehicleTagParserFactoryWithTrucks());
         graphHopper.init(configuration);
         graphHopper.setEncodedValuesString("osmid,stable_id_byte_0,stable_id_byte_1,stable_id_byte_2,stable_id_byte_3,stable_id_byte_4,stable_id_byte_5,stable_id_byte_6,stable_id_byte_7,reverse_stable_id_byte_0,reverse_stable_id_byte_1,reverse_stable_id_byte_2,reverse_stable_id_byte_3,reverse_stable_id_byte_4,reverse_stable_id_byte_5,reverse_stable_id_byte_6,reverse_stable_id_byte_7");
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
