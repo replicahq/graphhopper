@@ -132,7 +132,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                             .collect(Collectors.toList());
 
                     replyBuilder.addPaths(StreetPath.newBuilder()
-                            .setDurationMillis(responsePath.getTime())
+                            .setDurationMillis(1)
                             .setDistanceMeters(responsePath.getDistance())
                             .addAllStableEdgeIds(pathStableEdgeIds)
                             .addAllEdgeDurationsMillis(edgeTimes)
