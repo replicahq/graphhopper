@@ -95,7 +95,18 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         GHRequest ghRequest = new GHRequest(
                 request.getPointsList().stream().map(p -> new GHPoint(p.getLat(), p.getLon())).collect(Collectors.toList())
         );
-        ghRequest.setProfile(request.getProfile());
+
+        // If profile is `car`, we'll do 2 requests - one for `car_local`, one for `car_freeway`.
+        // Set profile to `car_local` to start, and later on, if `isCar` is true, we'll also route
+        // for `car_freeway` and combine the resulting paths
+        String profile = request.getProfile();
+        boolean isCar = false;
+        if (profile.equals("car")) {
+            profile = "car_local";
+            isCar = true;
+        }
+
+        ghRequest.setProfile(profile);
         ghRequest.setLocale(Locale.US);
         ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
 
@@ -145,6 +156,68 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                             .addAllEdgeDurationsMillis(edgeTimes)
                             .setPoints(responsePath.getPoints().toLineString(false).toString())
                     );
+                }
+
+                // If we're routing for cars, we've only done "local" routing so far; follow that
+                // up with routing using the `car_highway` profile, and combine the paths of both
+                // requests.
+                if (isCar) {
+                    profile = "car_freeway";
+                    ghRequest.setProfile(profile);
+                    try {
+                        ghResponse = graphHopper.route(ghRequest);
+                        if (ghResponse.hasErrors()) {
+                            String message = "Path could not be found between "
+                                    + ghRequest.getPoints().get(0).lat + "," + ghRequest.getPoints().get(0).lon + " to "
+                                    + ghRequest.getPoints().get(1).lat + "," + ghRequest.getPoints().get(1).lon;
+                            // logger.warn(message);
+
+                            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                            String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
+                            tags = applyCustomTags(tags, customTags);
+                            sendDatadogStats(statsDClient, tags, durationSeconds);
+
+                            Status status = Status.newBuilder()
+                                    .setCode(Code.NOT_FOUND.getNumber())
+                                    .setMessage(message)
+                                    .build();
+                            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
+                        } else {
+                            for (ResponsePath responsePath : ghResponse.getAll()) {
+                                List<String> pathStableEdgeIds = responsePath.getPathDetails().get("stable_edge_ids").stream()
+                                        .map(pathDetail -> (String) pathDetail.getValue())
+                                        .collect(Collectors.toList());
+
+                                List<Long> edgeTimes = responsePath.getPathDetails().get("time").stream()
+                                        .map(pathDetail -> (Long) pathDetail.getValue())
+                                        .collect(Collectors.toList());
+
+                                replyBuilder.addPaths(StreetPath.newBuilder()
+                                        .setDurationMillis(responsePath.getTime())
+                                        .setDistanceMeters(responsePath.getDistance())
+                                        .addAllStableEdgeIds(pathStableEdgeIds)
+                                        .addAllEdgeDurationsMillis(edgeTimes)
+                                        .setPoints(responsePath.getPoints().toLineString(false).toString())
+                                );
+                            }
+                        }
+                    } catch (Exception e) {
+                        String message = "GH internal error! Path could not be found between "
+                                + ghRequest.getPoints().get(0).lat + "," + ghRequest.getPoints().get(0).lon + " to "
+                                + ghRequest.getPoints().get(1).lat + "," + ghRequest.getPoints().get(1).lon;
+                        logger.error(message, e);
+
+                        double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                        String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
+                        tags = applyCustomTags(tags, customTags);
+                        sendDatadogStats(statsDClient, tags, durationSeconds);
+
+                        Status status = Status.newBuilder()
+                                .setCode(Code.INTERNAL.getNumber())
+                                .setMessage(message)
+                                .build();
+                        responseObserver.onError(StatusProto.toStatusRuntimeException(status));
+                    }
                 }
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
