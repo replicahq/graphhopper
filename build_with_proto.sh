@@ -17,4 +17,4 @@ npm run build -- --config grpc/src/main/resources/assets/pt/webpack.config.js
 cd web && npm install && npm run bundle
 cd ..
 
-mvn clean package -DskipTests
+mvn -s maven_settings.xml clean package -DskipTests
