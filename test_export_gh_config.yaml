@@ -3,25 +3,18 @@
 
 graphhopper:
   datareader.file: ./test-data/micro_nor_cal.osm.pbf
-  gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/export_test/graphhopper
   routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
   graph.flag_encoders: car,bike,foot,truck
-  graph.encoded_values: road_class,road_class_link
   prepare.ch.threads: 16
 
-  # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
-  # prepare.ch.edge_based: edge_and_node
-  # graph.flag_encoders: car|turn_costs=true
-  # graph.bytes_for_flags: 64
-
   # Profiles specifying vehicle and weightings for each mode type.
+  # For export, save time by not building contraction hierarchies
   profiles:
     - name: car
       vehicle: car
-      weighting: custom
-      custom_model_file: ../car_custom_model.yaml  # ../ needed because mvn test runs from subdirs, not base graphhopper dir
+      weighting: fastest
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -31,12 +24,6 @@ graphhopper:
     - name: truck
       vehicle: truck
       weighting: fastest
-
-  profiles_ch:
-    - profile: car
-    - profile: bike
-    - profile: foot
-    - profile: truck
 
 server:
   min_threads: 4
