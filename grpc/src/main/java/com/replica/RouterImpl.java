@@ -18,6 +18,8 @@
 
 package com.replica;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -27,10 +29,13 @@ import com.google.rpc.Status;
 import com.graphhopper.*;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
+import com.graphhopper.jackson.Jackson;
 import com.graphhopper.routing.*;
+import com.graphhopper.routing.util.CustomModel;
 import com.graphhopper.util.DistanceCalcEarth;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.PMap;
+import com.graphhopper.util.Parameters;
 import com.graphhopper.util.exceptions.PointNotFoundException;
 import com.graphhopper.util.shapes.GHPoint;
 import com.timgroup.statsd.StatsDClient;
@@ -61,6 +66,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     private Map<String, String> gtfsFeedIdMapping;
     private final StatsDClient statsDClient;
     private Map<String, String> customTags;
+    private final ObjectMapper yamlOM = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
+    private final ObjectMapper jsonOM = Jackson.newObjectMapper();
 
     public RouterImpl(GraphHopper graphHopper, PtRouter ptRouter, MatrixAPI matrixAPI,
                       Map<String, String> gtfsLinkMappings,
@@ -105,6 +112,104 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         try {
             GHResponse ghResponse = graphHopper.route(ghRequest);
             if (ghResponse.hasErrors()) {
+                String message = "Path could not be found between "
+                        + ghRequest.getPoints().get(0).lat + "," + ghRequest.getPoints().get(0).lon + " to "
+                        + ghRequest.getPoints().get(1).lat + "," + ghRequest.getPoints().get(1).lon;
+                // logger.warn(message);
+
+                double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
+                tags = applyCustomTags(tags, customTags);
+                sendDatadogStats(statsDClient, tags, durationSeconds);
+
+                Status status = Status.newBuilder()
+                        .setCode(Code.NOT_FOUND.getNumber())
+                        .setMessage(message)
+                        .build();
+                responseObserver.onError(StatusProto.toStatusRuntimeException(status));
+            } else {
+                StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
+                for (ResponsePath responsePath : ghResponse.getAll()) {
+                    List<String> pathStableEdgeIds = responsePath.getPathDetails().get("stable_edge_ids").stream()
+                            .map(pathDetail -> (String) pathDetail.getValue())
+                            .collect(Collectors.toList());
+
+                    List<Long> edgeTimes = responsePath.getPathDetails().get("time").stream()
+                            .map(pathDetail -> (Long) pathDetail.getValue())
+                            .collect(Collectors.toList());
+
+                    replyBuilder.addPaths(StreetPath.newBuilder()
+                            .setDurationMillis(responsePath.getTime())
+                            .setDistanceMeters(responsePath.getDistance())
+                            .addAllStableEdgeIds(pathStableEdgeIds)
+                            .addAllEdgeDurationsMillis(edgeTimes)
+                            .setPoints(responsePath.getPoints().toLineString(false).toString())
+                    );
+                }
+
+                double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
+                tags = applyCustomTags(tags, customTags);
+                sendDatadogStats(statsDClient, tags, durationSeconds);
+
+                responseObserver.onNext(replyBuilder.build());
+                responseObserver.onCompleted();
+            }
+        } catch (Exception e) {
+            String message = "GH internal error! Path could not be found between "
+                    + ghRequest.getPoints().get(0).lat + "," + ghRequest.getPoints().get(0).lon + " to "
+                    + ghRequest.getPoints().get(1).lat + "," + ghRequest.getPoints().get(1).lon;
+            logger.error(message, e);
+
+            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+            String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
+            tags = applyCustomTags(tags, customTags);
+            sendDatadogStats(statsDClient, tags, durationSeconds);
+
+            Status status = Status.newBuilder()
+                    .setCode(Code.INTERNAL.getNumber())
+                    .setMessage(message)
+                    .build();
+            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
+        }
+    }
+
+    @Override
+    public void routeCustom(CustomRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
+        long startTime = System.currentTimeMillis();
+
+        GHRequest ghRequest = new GHRequest(
+                request.getPointsList().stream().map(p -> new GHPoint(p.getLat(), p.getLon())).collect(Collectors.toList())
+        );
+        ghRequest.setProfile(request.getProfile());
+        ghRequest.setLocale(Locale.US);
+        ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
+
+        PMap hints = new PMap();
+        CustomModel customModel;
+        try {
+            customModel = (request.getCustomModel().startsWith("{") ? jsonOM : yamlOM).readValue(request.getCustomModel(), CustomModel.class);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            logger.error(e.getStackTrace().toString());
+            throw new RuntimeException("Couldn't read custom model from GH request! Full request: " + request.toString());
+        }
+        hints.putObject(Parameters.CH.DISABLE, true);
+        hints.putObject(CustomModel.KEY, customModel);
+
+        hints.putObject(INSTRUCTIONS, false);
+        if (request.getAlternateRouteMaxPaths() > 1) {
+            ghRequest.setAlgorithm("alternative_route");
+            hints.putObject("alternative_route.max_paths", request.getAlternateRouteMaxPaths());
+            hints.putObject("alternative_route.max_weight_factor", request.getAlternateRouteMaxWeightFactor());
+            hints.putObject("alternative_route.max_share_factor", request.getAlternateRouteMaxShareFactor());
+        }
+        ghRequest.getHints().putAll(hints);
+
+        try {
+            GHResponse ghResponse = graphHopper.route(ghRequest);
+            if (ghResponse.hasErrors()) {
+                logger.error(ghResponse.toString());
                 String message = "Path could not be found between "
                         + ghRequest.getPoints().get(0).lat + "," + ghRequest.getPoints().get(0).lon + " to "
                         + ghRequest.getPoints().get(1).lat + "," + ghRequest.getPoints().get(1).lon;
