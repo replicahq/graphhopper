@@ -16,23 +16,22 @@
  *  limitations under the License.
  */
 
-package com.replica;
+package com.replica.router;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.protobuf.Timestamp;
 import com.google.rpc.Code;
 import com.google.rpc.Status;
 import com.graphhopper.*;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
 import com.graphhopper.routing.*;
-import com.graphhopper.util.DistanceCalcEarth;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.PMap;
 import com.graphhopper.util.exceptions.PointNotFoundException;
 import com.graphhopper.util.shapes.GHPoint;
+import com.replica.router.util.MetricUtils;
+import com.replica.router.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
 import io.grpc.protobuf.StatusProto;
 import io.grpc.stub.StreamObserver;
@@ -49,8 +48,6 @@ import static com.graphhopper.util.Parameters.Routing.INSTRUCTIONS;
 import static java.util.stream.Collectors.*;
 
 public class RouterImpl extends router.RouterGrpc.RouterImplBase {
-
-    final Set<Integer> STREET_BASED_ROUTE_TYPES = Sets.newHashSet(0, 3, 5);
 
     private static final Logger logger = LoggerFactory.getLogger(RouterImpl.class);
     private final GraphHopper graphHopper;
@@ -112,8 +109,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
-                tags = applyCustomTags(tags, customTags);
-                sendDatadogStats(statsDClient, tags, durationSeconds);
+                tags = MetricUtils.applyCustomTags(tags, customTags);
+                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 Status status = Status.newBuilder()
                         .setCode(Code.NOT_FOUND.getNumber())
@@ -142,8 +139,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
-                tags = applyCustomTags(tags, customTags);
-                sendDatadogStats(statsDClient, tags, durationSeconds);
+                tags = MetricUtils.applyCustomTags(tags, customTags);
+                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 responseObserver.onNext(replyBuilder.build());
                 responseObserver.onCompleted();
@@ -156,8 +153,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
-            tags = applyCustomTags(tags, customTags);
-            sendDatadogStats(statsDClient, tags, durationSeconds);
+            tags = MetricUtils.applyCustomTags(tags, customTags);
+            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
                     .setCode(Code.INTERNAL.getNumber())
@@ -241,8 +238,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getMode() + "_matrix", "api:grpc", "routes_found:true"};
-            tags = applyCustomTags(tags, customTags);
-            sendDatadogStats(statsDClient, tags, durationSeconds);
+            tags = MetricUtils.applyCustomTags(tags, customTags);
+            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
             MatrixRouteReply result = MatrixRouteReply.newBuilder().addAllTimes(timeRows).addAllDistances(distanceRows).build();
             responseObserver.onNext(result);
@@ -252,8 +249,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getMode() + "_matrix", "api:grpc", "routes_found:false"};
-            tags = applyCustomTags(tags, customTags);
-            sendDatadogStats(statsDClient, tags, durationSeconds);
+            tags = MetricUtils.applyCustomTags(tags, customTags);
+            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
                     .setCode(Code.INTERNAL.getNumber())
@@ -316,10 +313,10 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                         } else {
                             travelSegmentType = "EGRESS";
                         }
-                        path.getLegs().add(new CustomWalkLeg(thisLeg, fetchWalkLegStableIds(thisLeg), travelSegmentType));
+                        path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
                     } else if (leg instanceof Trip.PtLeg) {
                         Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
-                        path.getLegs().add(getCustomPtLeg(thisLeg));
+                        path.getLegs().add(RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo));
 
                         // If this PT leg is followed by another PT leg, add a TRANSFER walk leg between them
                         if (i < legs.size() - 1 && legs.get(i + 1) instanceof Trip.PtLeg) {
@@ -344,7 +341,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                                             transferPath.getPathDetails(),
                                             Date.from(thisLeg.getArrivalTime().toInstant().plusMillis(transferPath.getTime()))
                                     );
-                                    path.getLegs().add(new CustomWalkLeg(transferLeg, fetchWalkLegStableIds(transferLeg), "TRANSFER"));
+                                    path.getLegs().add(RouterConverters.toCustomWalkLeg(transferLeg, "TRANSFER"));
                                 }
                             }
                         }
@@ -371,8 +368,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
-                tags = applyCustomTags(tags, customTags);
-                sendDatadogStats(statsDClient, tags, durationSeconds);
+                tags = MetricUtils.applyCustomTags(tags, customTags);
+                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 Status status = Status.newBuilder()
                         .setCode(Code.NOT_FOUND.getNumber())
@@ -383,7 +380,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 PtRouteReply.Builder replyBuilder = PtRouteReply.newBuilder();
                 for (ResponsePath responsePath : pathsWithStableIds) {
                     List<PtLeg> legs = responsePath.getLegs().stream()
-                            .map(RouterImpl::createPtLeg)
+                            .map(RouterConverters::toPtLeg)
                             .collect(toList());
 
                     replyBuilder.addPaths(PtPath.newBuilder()
@@ -396,8 +393,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:pt", "api:grpc", "routes_found:true"};
-                tags = applyCustomTags(tags, customTags);
-                sendDatadogStats(statsDClient, tags, durationSeconds);
+                tags = MetricUtils.applyCustomTags(tags, customTags);
+                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 responseObserver.onNext(replyBuilder.build());
                 responseObserver.onCompleted();
@@ -410,8 +407,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
-            tags = applyCustomTags(tags, customTags);
-            sendDatadogStats(statsDClient, tags, durationSeconds);
+            tags = MetricUtils.applyCustomTags(tags, customTags);
+            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
                     .setCode(Code.NOT_FOUND.getNumber())
@@ -423,8 +420,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:pt", "api:grpc", "routes_found:error"};
-            tags = applyCustomTags(tags, customTags);
-            sendDatadogStats(statsDClient, tags, durationSeconds);
+            tags = MetricUtils.applyCustomTags(tags, customTags);
+            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
                     .setCode(Code.INTERNAL.getNumber())
@@ -432,181 +429,6 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                             fromPoint.getLon() + " to " + toPoint.getLat() + "," + toPoint.getLon())
                     .build();
             responseObserver.onError(StatusProto.toStatusRuntimeException(status));
-        }
-    }
-
-    private static List<String> fetchWalkLegStableIds(Trip.WalkLeg leg) {
-        return leg.details.get("stable_edge_ids").stream()
-                .map(idPathDetail -> (String) idPathDetail.getValue())
-                .filter(id -> id.length() == 20)
-                .collect(toList());
-    }
-
-    private static PtLeg createPtLeg(Trip.Leg leg) {
-        if (leg.type.equals("walk")) {
-            CustomWalkLeg walkLeg = (CustomWalkLeg) leg;
-            return PtLeg.newBuilder()
-                    .setDepartureTime(Timestamp.newBuilder()
-                            .setSeconds(walkLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
-                            .build())
-                    .setArrivalTime(Timestamp.newBuilder()
-                            .setSeconds(walkLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
-                            .build())
-                    .setDistanceMeters(walkLeg.getDistance())
-                    .addAllStableEdgeIds(walkLeg.stableEdgeIds)
-                    .setTravelSegmentType(walkLeg.travelSegmentType)
-                    .build();
-        } else { // leg is a PT leg
-            CustomPtLeg ptLeg = (CustomPtLeg) leg;
-            TransitMetadata ptMetadata = TransitMetadata.newBuilder()
-                    .setTripId(ptLeg.trip_id)
-                    .setRouteId(ptLeg.route_id)
-                    .setAgencyName(ptLeg.agencyName)
-                    .setRouteShortName(ptLeg.routeShortName)
-                    .setRouteLongName(ptLeg.routeLongName)
-                    .setRouteType(ptLeg.routeType)
-                    .setDirection(ptLeg.trip_headsign)
-                    .addAllStops(ptLeg.stops.stream().map(stop -> Stop.newBuilder()
-                            .setStopId(stop.stop_id)
-                            .setStopName(stop.stop_name)
-                            .setArrivalTime(stop.arrivalTime == null ? Timestamp.newBuilder().build()
-                                    : Timestamp.newBuilder().setSeconds(stop.arrivalTime.getTime() / 1000).build())
-                            .setDepartureTime(stop.departureTime == null ? Timestamp.newBuilder().build()
-                                    : Timestamp.newBuilder().setSeconds(stop.departureTime.getTime() / 1000).build())
-                            .setPoint(Point.newBuilder().setLat(stop.geometry.getY()).setLon(stop.geometry.getX()).build())
-                            .build()).collect(toList())
-                    ).build();
-            return PtLeg.newBuilder()
-                    .setDepartureTime(Timestamp.newBuilder()
-                            .setSeconds(ptLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
-                            .build())
-                    .setArrivalTime(Timestamp.newBuilder()
-                            .setSeconds(ptLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
-                            .build())
-                    .setDistanceMeters(ptLeg.getDistance())
-                    .addAllStableEdgeIds(ptLeg.stableEdgeIds)
-                    .setTransitMetadata(ptMetadata)
-                    .build();
-        }
-    }
-
-    public static class CustomWalkLeg extends Trip.WalkLeg {
-        public final List<String> stableEdgeIds;
-        public final String type;
-        public final String travelSegmentType;
-
-        public CustomWalkLeg(Trip.WalkLeg leg, List<String> stableEdgeIds, String travelSegmentType) {
-            super(leg.departureLocation, leg.getDepartureTime(), leg.geometry,
-                    leg.distance, leg.instructions, leg.details, leg.getArrivalTime());
-            this.stableEdgeIds = stableEdgeIds;
-            this.details.clear();
-            this.type = "foot";
-            this.travelSegmentType = travelSegmentType;
-        }
-    }
-
-    // Create new version of PtLeg class that stores stable edge IDs in class var;
-    // this var will automatically get added to JSON response
-    public static class CustomPtLeg extends Trip.PtLeg {
-        public final List<String> stableEdgeIds;
-        public final String agencyName;
-        public final String routeShortName;
-        public final String routeLongName;
-        public final String routeType;
-
-        public CustomPtLeg(Trip.PtLeg leg, List<String> stableEdgeIds, List<Trip.Stop> updatedStops, double distance,
-                           String agencyName, String routeShortName, String routeLongName, String routeType) {
-            super(leg.feed_id, leg.isInSameVehicleAsPrevious, leg.trip_id, leg.route_id,
-                    leg.trip_headsign, updatedStops, distance, leg.travelTime, leg.geometry);
-            this.stableEdgeIds = stableEdgeIds;
-            this.agencyName = agencyName;
-            this.routeShortName = routeShortName;
-            this.routeLongName = routeLongName;
-            this.routeType = routeType;
-        }
-    }
-
-    private CustomPtLeg getCustomPtLeg(Trip.PtLeg leg) {
-        // Ordered list of GTFS route info, containing agency_name, route_short_name, route_long_name, route_type
-        List<String> routeInfo = gtfsRouteInfo.getOrDefault(gtfsRouteInfoKey(leg), Lists.newArrayList("", "", "", ""));
-        String routeType = routeInfo.get(3);
-
-        List<Trip.Stop> stops = leg.stops;
-        double legDistance = 0.0;
-        List<String> stableEdgeIdSegments = Lists.newArrayList();
-        for (int i = 0; i < stops.size() - 1; i++) {
-            Trip.Stop from = stops.get(i);
-            Trip.Stop to = stops.get(i + 1);
-            legDistance += DistanceCalcEarth.DIST_EARTH.calcDist(
-                    from.geometry.getY(), from.geometry.getX(), to.geometry.getY(), to.geometry.getX()
-            );
-
-            if (STREET_BASED_ROUTE_TYPES.contains(Integer.parseInt(routeType))) {
-                // Retrieve stable edge IDs for each stop->stop segment of leg
-                String stopPair = gtfsFeedIdMapping.get(leg.feed_id) + ":" + from.stop_id + "," + to.stop_id;
-                if (gtfsLinkMappings.containsKey(stopPair)) {
-                    if (!gtfsLinkMappings.get(stopPair).isEmpty()) {
-                        stableEdgeIdSegments.add(gtfsLinkMappings.get(stopPair));
-                    }
-                }
-            }
-        }
-         List<String> stableEdgeIdsList = stableEdgeIdSegments.stream()
-                    .flatMap(segment -> Arrays.stream(segment.split(",")))
-                    .collect(toList());
-
-        // Remove duplicates from stable ID list while retaining order;
-        // needed because start/end of sequential segments overlap by 1 edge
-        Set<String> stableEdgeIdsWithoutDuplicates = Sets.newLinkedHashSet(stableEdgeIdsList);
-        stableEdgeIdsList.clear();
-        stableEdgeIdsList.addAll(stableEdgeIdsWithoutDuplicates);
-
-        // Convert any missing info to empty string to prevent NPE
-        routeInfo = routeInfo.stream().map(info -> info == null ? "" : info).collect(toList());
-
-        if (!gtfsRouteInfo.containsKey(gtfsRouteInfoKey(leg))) {
-            logger.info("Failed to find route info for route " + leg.route_id + " for PT trip leg " + leg.toString());
-        }
-
-        // Add proper GTFS feed ID as prefix to all stop names in Leg
-        List<Trip.Stop> updatedStops = Lists.newArrayList();
-        for (Trip.Stop stop : leg.stops) {
-            String updatedStopId = gtfsFeedIdMapping.get(leg.feed_id) + ":" + stop.stop_id;
-            updatedStops.add(new Trip.Stop(updatedStopId, stop.stop_name, stop.geometry, stop.arrivalTime,
-                    stop.plannedArrivalTime, stop.predictedArrivalTime, stop.arrivalCancelled, stop.departureTime,
-                    stop.plannedDepartureTime, stop.predictedDepartureTime, stop.departureCancelled));
-        }
-
-        return new CustomPtLeg(leg, stableEdgeIdsList, updatedStops, legDistance,
-                routeInfo.get(0), routeInfo.get(1), routeInfo.get(2), routeType);
-    }
-
-    private static String gtfsRouteInfoKey(Trip.PtLeg leg) {
-        return leg.feed_id + ":" + leg.route_id;
-    }
-
-    private static void sendDatadogStats(StatsDClient statsDClient, String[] tags, double durationSeconds) {
-        if (statsDClient != null) {
-            statsDClient.incrementCounter("routers.num_requests", tags);
-            statsDClient.distribution("routers.request_seconds", durationSeconds, tags);
-        }
-    }
-
-    // Apply region + helm release tags, if they exist
-    private static String[] applyCustomTags(String[] tags, Map<String, String> customTags) {
-        for (String tagName : customTags.keySet()) {
-            tags = applyTag(tags, tagName, customTags.get(tagName));
-        }
-        return tags;
-    }
-
-    private static String[] applyTag(String[] tags, String tagName, String tagValue) {
-        if (tagValue == null) {
-            return tags;
-        } else {
-            List<String> newTags = Lists.newArrayList(tags);
-            newTags.add(tagName + ":" + tagValue);
-            return newTags.toArray(new String[newTags.size()]);
         }
     }
 }
