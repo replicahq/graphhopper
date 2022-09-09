@@ -19,10 +19,14 @@ graphhopper:
 
   # Profiles specifying vehicle and weightings for each mode type.
   profiles:
-    - name: car
+    - name: car_local
       vehicle: car
       weighting: custom
-      custom_model_file: ../car_custom_model.yaml  # ../ needed because mvn test runs from subdirs, not base graphhopper dir
+      custom_model_file: ../local_car_custom_model.yaml # ../ needed because mvn test runs from subdirs, not base graphhopper dir
+    - name: car_freeway
+      vehicle: car
+      weighting: custom
+      custom_model_file: ../freeway_car_custom_model.yaml # ../ needed because mvn test runs from subdirs, not base graphhopper dir
     - name: bike
       vehicle: bike
       weighting: fastest
