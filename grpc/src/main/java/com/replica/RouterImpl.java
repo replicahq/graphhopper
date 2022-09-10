@@ -185,15 +185,15 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                     .setMessage(message)
                     .build();
             responseObserver.onError(StatusProto.toStatusRuntimeException(status));
+        } else {
+            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+            String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
+            tags = applyCustomTags(tags, customTags);
+            sendDatadogStats(statsDClient, tags, durationSeconds);
+
+            responseObserver.onNext(replyBuilder.build());
+            responseObserver.onCompleted();
         }
-
-        double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-        String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
-        tags = applyCustomTags(tags, customTags);
-        sendDatadogStats(statsDClient, tags, durationSeconds);
-
-        responseObserver.onNext(replyBuilder.build());
-        responseObserver.onCompleted();
     }
 
     @Override
