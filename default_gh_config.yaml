@@ -38,7 +38,8 @@ graphhopper:
       weighting: fastest
 
   profiles_ch:
-    - profile: car
+    - profile: car_local
+    - profile: car_freeway
     - profile: bike
     - profile: foot
     - profile: truck
