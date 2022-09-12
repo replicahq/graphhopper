@@ -5,6 +5,7 @@ import com.google.common.collect.Sets;
 import java.util.Set;
 
 public final class RouterConstants {
+
     private RouterConstants() {
         // utility class
     }

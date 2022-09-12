@@ -25,11 +25,11 @@ import com.google.rpc.Status;
 import com.graphhopper.*;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
-import com.graphhopper.routing.*;
+import com.graphhopper.routing.GHMRequest;
+import com.graphhopper.routing.GHMResponse;
+import com.graphhopper.routing.MatrixAPI;
 import com.graphhopper.storage.GraphHopperStorage;
-import com.graphhopper.util.PMap;
 import com.graphhopper.util.exceptions.PointNotFoundException;
-import com.graphhopper.util.shapes.GHPoint;
 import com.replica.router.util.MetricUtils;
 import com.replica.router.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
@@ -39,13 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.*;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
-
-import static com.graphhopper.util.Parameters.Routing.INSTRUCTIONS;
-import static java.util.stream.Collectors.*;
 
 public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
@@ -81,23 +75,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     @Override
     public void routeStreetMode(StreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
         long startTime = System.currentTimeMillis();
-
-        GHRequest ghRequest = new GHRequest(
-                request.getPointsList().stream().map(p -> new GHPoint(p.getLat(), p.getLon())).collect(Collectors.toList())
-        );
-        ghRequest.setProfile(request.getProfile());
-        ghRequest.setLocale(Locale.US);
-        ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
-
-        PMap hints = new PMap();
-        hints.putObject(INSTRUCTIONS, false);
-        if (request.getAlternateRouteMaxPaths() > 1) {
-            ghRequest.setAlgorithm("alternative_route");
-            hints.putObject("alternative_route.max_paths", request.getAlternateRouteMaxPaths());
-            hints.putObject("alternative_route.max_weight_factor", request.getAlternateRouteMaxWeightFactor());
-            hints.putObject("alternative_route.max_share_factor", request.getAlternateRouteMaxShareFactor());
-        }
-        ghRequest.getHints().putAll(hints);
+        GHRequest ghRequest = RouterConverters.toGHRequest(request);
 
         try {
             GHResponse ghResponse = graphHopper.route(ghRequest);
@@ -119,23 +97,9 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 responseObserver.onError(StatusProto.toStatusRuntimeException(status));
             } else {
                 StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
-                for (ResponsePath responsePath : ghResponse.getAll()) {
-                    List<String> pathStableEdgeIds = responsePath.getPathDetails().get("stable_edge_ids").stream()
-                            .map(pathDetail -> (String) pathDetail.getValue())
-                            .collect(Collectors.toList());
-
-                    List<Long> edgeTimes = responsePath.getPathDetails().get("time").stream()
-                            .map(pathDetail -> (Long) pathDetail.getValue())
-                            .collect(Collectors.toList());
-
-                    replyBuilder.addPaths(StreetPath.newBuilder()
-                            .setDurationMillis(responsePath.getTime())
-                            .setDistanceMeters(responsePath.getDistance())
-                            .addAllStableEdgeIds(pathStableEdgeIds)
-                            .addAllEdgeDurationsMillis(edgeTimes)
-                            .setPoints(responsePath.getPoints().toLineString(false).toString())
-                    );
-                }
+                ghResponse.getAll().stream()
+                        .map(RouterConverters::toStreetPath)
+                        .forEach(replyBuilder::addPaths);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
@@ -168,80 +132,17 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     @Override
     public void routeMatrix(MatrixRouteRequest request, StreamObserver<MatrixRouteReply> responseObserver) {
         long startTime = System.currentTimeMillis();
-
-        List<GHPoint> fromPoints = request.getFromPointsList().stream()
-                .map(p -> new GHPoint(p.getLat(), p.getLon())).collect(toList());
-        List<GHPoint> toPoints = request.getToPointsList().stream()
-                .map(p -> new GHPoint(p.getLat(), p.getLon())).collect(toList());
-
-        GHMRequest ghMatrixRequest = new GHMRequest();
-        ghMatrixRequest.setFromPoints(fromPoints);
-        ghMatrixRequest.setToPoints(toPoints);
-        ghMatrixRequest.setOutArrays(new HashSet<>(request.getOutArraysList()));
-        ghMatrixRequest.setProfile(request.getMode());
-        ghMatrixRequest.setFailFast(request.getFailFast());
+        GHMRequest ghMatrixRequest = RouterConverters.toGHMRequest(request);
 
         try {
             GHMResponse ghMatrixResponse = matrixAPI.calc(ghMatrixRequest);
-
-            if (ghMatrixRequest.getFailFast() && ghMatrixResponse.hasInvalidPoints()) {
-                MatrixErrors matrixErrors = new MatrixErrors();
-                matrixErrors.addInvalidFromPoints(ghMatrixResponse.getInvalidFromPoints());
-                matrixErrors.addInvalidToPoints(ghMatrixResponse.getInvalidToPoints());
-                throw new MatrixCalculationException(matrixErrors);
-            }
-            int from_len = ghMatrixRequest.getFromPoints().size();
-            int to_len = ghMatrixRequest.getToPoints().size();
-            List<List<Long>> timeList = new ArrayList(from_len);
-            List<Long> timeRow;
-            List<List<Long>> distanceList = new ArrayList(from_len);
-            List<Long> distanceRow;
-            Iterator<MatrixElement> iter = ghMatrixResponse.getMatrixElementIterator();
-            MatrixErrors matrixErrors = new MatrixErrors();
-            StringBuilder debugBuilder = new StringBuilder();
-            debugBuilder.append(ghMatrixResponse.getDebugInfo());
-
-            for(int fromIndex = 0; fromIndex < from_len; ++fromIndex) {
-                timeRow = new ArrayList(to_len);
-                timeList.add(timeRow);
-                distanceRow = new ArrayList(to_len);
-                distanceList.add(distanceRow);
-
-                for(int toIndex = 0; toIndex < to_len; ++toIndex) {
-                    if (!iter.hasNext()) {
-                        throw new IllegalStateException("Internal error, matrix dimensions should be " + from_len + "x" + to_len + ", but failed to retrieve element (" + fromIndex + ", " + toIndex + ")");
-                    }
-
-                    MatrixElement element = iter.next();
-                    if (!element.isConnected()) {
-                        matrixErrors.addDisconnectedPair(element.getFromIndex(), element.getToIndex());
-                    }
-
-                    if (ghMatrixRequest.getFailFast() && matrixErrors.hasDisconnectedPairs()) {
-                        throw new MatrixCalculationException(matrixErrors);
-                    }
-
-                    long time = element.getTime();
-                    timeRow.add(time == Long.MAX_VALUE ? -1 : Math.round((double)time / 1000.0D));
-
-                    double distance = element.getDistance();
-                    distanceRow.add(distance == Double.MAX_VALUE ? -1 : Math.round(distance));
-
-                    debugBuilder.append(element.getDebugInfo());
-                }
-            }
-
-            List<MatrixRow> timeRows = timeList.stream()
-                    .map(row -> MatrixRow.newBuilder().addAllValues(row).build()).collect(toList());
-            List<MatrixRow> distanceRows = distanceList.stream()
-                    .map(row -> MatrixRow.newBuilder().addAllValues(row).build()).collect(toList());
+            MatrixRouteReply result = RouterConverters.toMatrixRouteReply(ghMatrixResponse, ghMatrixRequest);
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getMode() + "_matrix", "api:grpc", "routes_found:true"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
             MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
-            MatrixRouteReply result = MatrixRouteReply.newBuilder().addAllTimes(timeRows).addAllDistances(distanceRows).build();
             responseObserver.onNext(result);
             responseObserver.onCompleted();
         } catch (Exception e) {
@@ -273,21 +174,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
         Point fromPoint = request.getPoints(0);
         Point toPoint = request.getPoints(1);
-
-        Request ghPtRequest = new Request(fromPoint.getLat(), fromPoint.getLon(), toPoint.getLat(), toPoint.getLon());
-        ghPtRequest.setEarliestDepartureTime(Instant.ofEpochSecond(
-                request.getEarliestDepartureTime().getSeconds(), request.getEarliestDepartureTime().getNanos()
-        ));
-        ghPtRequest.setLimitSolutions(request.getLimitSolutions());
-        ghPtRequest.setLocale(Locale.US);
-        ghPtRequest.setArriveBy(false);
-        ghPtRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
-        ghPtRequest.setProfileQuery(true);
-        ghPtRequest.setMaxProfileDuration(Duration.ofMinutes(request.getMaxProfileDuration()));
-        ghPtRequest.setBetaWalkTime(request.getBetaWalkTime());
-        ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
-        ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
-        ghPtRequest.setBetaTransfers(request.getBetaTransfers());
+        Request ghPtRequest = RouterConverters.toGHPtRequest(request);
 
         try {
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
@@ -378,18 +265,9 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 responseObserver.onError(StatusProto.toStatusRuntimeException(status));
             } else {
                 PtRouteReply.Builder replyBuilder = PtRouteReply.newBuilder();
-                for (ResponsePath responsePath : pathsWithStableIds) {
-                    List<PtLeg> legs = responsePath.getLegs().stream()
-                            .map(RouterConverters::toPtLeg)
-                            .collect(toList());
-
-                    replyBuilder.addPaths(PtPath.newBuilder()
-                            .setDurationMillis(responsePath.getTime())
-                            .setDistanceMeters(responsePath.getDistance())
-                            .setTransfers(responsePath.getNumChanges())
-                            .addAllLegs(legs)
-                    );
-                }
+                pathsWithStableIds.stream()
+                        .map(RouterConverters::toPtPath)
+                        .forEach(replyBuilder::addPaths);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:pt", "api:grpc", "routes_found:true"};

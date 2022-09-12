@@ -3,8 +3,14 @@ package com.replica.router.util;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.protobuf.Timestamp;
+import com.graphhopper.GHRequest;
+import com.graphhopper.ResponsePath;
 import com.graphhopper.Trip;
+import com.graphhopper.gtfs.Request;
+import com.graphhopper.routing.*;
 import com.graphhopper.util.DistanceCalcEarth;
+import com.graphhopper.util.PMap;
+import com.graphhopper.util.shapes.GHPoint;
 import com.replica.router.CustomPtLeg;
 import com.replica.router.CustomWalkLeg;
 import com.replica.router.RouterImpl;
@@ -12,11 +18,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.*;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import static com.graphhopper.util.Parameters.Routing.INSTRUCTIONS;
 import static java.util.stream.Collectors.toList;
 
 public final class RouterConverters {
@@ -26,6 +33,7 @@ public final class RouterConverters {
     private RouterConverters() {
         // utility class
     }
+
     public static CustomPtLeg toCustomPtLeg(Trip.PtLeg leg, Map<String, String> gtfsFeedIdMapping, Map<String, String> gtfsLinkMappings, Map<String, List<String>> gtfsRouteInfo) {
         // Ordered list of GTFS route info, containing agency_name, route_short_name, route_long_name, route_type
         List<String> routeInfo = gtfsRouteInfo.getOrDefault(gtfsRouteInfoKey(leg), Lists.newArrayList("", "", "", ""));
@@ -127,6 +135,147 @@ public final class RouterConverters {
                     .setTransitMetadata(ptMetadata)
                     .build();
         }
+    }
+
+    public static GHRequest toGHRequest(StreetRouteRequest request) {
+        GHRequest ghRequest = new GHRequest(
+                request.getPointsList().stream().map(p -> new GHPoint(p.getLat(), p.getLon())).collect(Collectors.toList())
+        );
+        ghRequest.setProfile(request.getProfile());
+        ghRequest.setLocale(Locale.US);
+        ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
+
+        PMap hints = new PMap();
+        hints.putObject(INSTRUCTIONS, false);
+        if (request.getAlternateRouteMaxPaths() > 1) {
+            ghRequest.setAlgorithm("alternative_route");
+            hints.putObject("alternative_route.max_paths", request.getAlternateRouteMaxPaths());
+            hints.putObject("alternative_route.max_weight_factor", request.getAlternateRouteMaxWeightFactor());
+            hints.putObject("alternative_route.max_share_factor", request.getAlternateRouteMaxShareFactor());
+        }
+        ghRequest.getHints().putAll(hints);
+        return ghRequest;
+    }
+
+    public static GHMRequest toGHMRequest(MatrixRouteRequest request) {
+        List<GHPoint> fromPoints = request.getFromPointsList().stream()
+                .map(p -> new GHPoint(p.getLat(), p.getLon())).collect(toList());
+        List<GHPoint> toPoints = request.getToPointsList().stream()
+                .map(p -> new GHPoint(p.getLat(), p.getLon())).collect(toList());
+
+        GHMRequest ghMatrixRequest = new GHMRequest();
+        ghMatrixRequest.setFromPoints(fromPoints);
+        ghMatrixRequest.setToPoints(toPoints);
+        ghMatrixRequest.setOutArrays(new HashSet<>(request.getOutArraysList()));
+        ghMatrixRequest.setProfile(request.getMode());
+        ghMatrixRequest.setFailFast(request.getFailFast());
+        return ghMatrixRequest;
+    }
+
+    public static Request toGHPtRequest(PtRouteRequest request) {
+        Point fromPoint = request.getPoints(0);
+        Point toPoint = request.getPoints(1);
+
+        Request ghPtRequest = new Request(fromPoint.getLat(), fromPoint.getLon(), toPoint.getLat(), toPoint.getLon());
+        ghPtRequest.setEarliestDepartureTime(Instant.ofEpochSecond(
+                request.getEarliestDepartureTime().getSeconds(), request.getEarliestDepartureTime().getNanos()
+        ));
+        ghPtRequest.setLimitSolutions(request.getLimitSolutions());
+        ghPtRequest.setLocale(Locale.US);
+        ghPtRequest.setArriveBy(false);
+        ghPtRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
+        ghPtRequest.setProfileQuery(true);
+        ghPtRequest.setMaxProfileDuration(Duration.ofMinutes(request.getMaxProfileDuration()));
+        ghPtRequest.setBetaWalkTime(request.getBetaWalkTime());
+        ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
+        ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
+        ghPtRequest.setBetaTransfers(request.getBetaTransfers());
+        return ghPtRequest;
+    }
+
+    public static StreetPath toStreetPath(ResponsePath responsePath) {
+        List<String> pathStableEdgeIds = responsePath.getPathDetails().get("stable_edge_ids").stream()
+                .map(pathDetail -> (String) pathDetail.getValue())
+                .collect(Collectors.toList());
+
+        List<Long> edgeTimes = responsePath.getPathDetails().get("time").stream()
+                .map(pathDetail -> (Long) pathDetail.getValue())
+                .collect(Collectors.toList());
+
+        return StreetPath.newBuilder()
+                .setDurationMillis(responsePath.getTime())
+                .setDistanceMeters(responsePath.getDistance())
+                .addAllStableEdgeIds(pathStableEdgeIds)
+                .addAllEdgeDurationsMillis(edgeTimes)
+                .setPoints(responsePath.getPoints().toLineString(false).toString())
+                .build();
+    }
+
+    public static MatrixRouteReply toMatrixRouteReply(GHMResponse ghMatrixResponse, GHMRequest ghMatrixRequest) {
+        if (ghMatrixRequest.getFailFast() && ghMatrixResponse.hasInvalidPoints()) {
+            MatrixErrors matrixErrors = new MatrixErrors();
+            matrixErrors.addInvalidFromPoints(ghMatrixResponse.getInvalidFromPoints());
+            matrixErrors.addInvalidToPoints(ghMatrixResponse.getInvalidToPoints());
+            throw new MatrixCalculationException(matrixErrors);
+        }
+
+        int from_len = ghMatrixRequest.getFromPoints().size();
+        int to_len = ghMatrixRequest.getToPoints().size();
+        List<List<Long>> timeList = new ArrayList(from_len);
+        List<Long> timeRow;
+        List<List<Long>> distanceList = new ArrayList(from_len);
+        List<Long> distanceRow;
+        Iterator<MatrixElement> iter = ghMatrixResponse.getMatrixElementIterator();
+        MatrixErrors matrixErrors = new MatrixErrors();
+        StringBuilder debugBuilder = new StringBuilder();
+        debugBuilder.append(ghMatrixResponse.getDebugInfo());
+
+        for(int fromIndex = 0; fromIndex < from_len; ++fromIndex) {
+            timeRow = new ArrayList(to_len);
+            timeList.add(timeRow);
+            distanceRow = new ArrayList(to_len);
+            distanceList.add(distanceRow);
+
+            for(int toIndex = 0; toIndex < to_len; ++toIndex) {
+                if (!iter.hasNext()) {
+                    throw new IllegalStateException("Internal error, matrix dimensions should be " + from_len + "x" + to_len + ", but failed to retrieve element (" + fromIndex + ", " + toIndex + ")");
+                }
+
+                MatrixElement element = iter.next();
+                if (!element.isConnected()) {
+                    matrixErrors.addDisconnectedPair(element.getFromIndex(), element.getToIndex());
+                }
+
+                if (ghMatrixRequest.getFailFast() && matrixErrors.hasDisconnectedPairs()) {
+                    throw new MatrixCalculationException(matrixErrors);
+                }
+
+                long time = element.getTime();
+                timeRow.add(time == Long.MAX_VALUE ? -1 : Math.round((double)time / 1000.0D));
+
+                double distance = element.getDistance();
+                distanceRow.add(distance == Double.MAX_VALUE ? -1 : Math.round(distance));
+
+                debugBuilder.append(element.getDebugInfo());
+            }
+        }
+
+        List<MatrixRow> timeRows = timeList.stream()
+                .map(row -> MatrixRow.newBuilder().addAllValues(row).build()).collect(toList());
+        List<MatrixRow> distanceRows = distanceList.stream()
+                .map(row -> MatrixRow.newBuilder().addAllValues(row).build()).collect(toList());
+        return MatrixRouteReply.newBuilder().addAllTimes(timeRows).addAllDistances(distanceRows).build();
+    }
+
+    public static PtPath toPtPath(ResponsePath responsePath) {
+        return PtPath.newBuilder()
+                .setDurationMillis(responsePath.getTime())
+                .setDistanceMeters(responsePath.getDistance())
+                .setTransfers(responsePath.getNumChanges())
+                .addAllLegs(responsePath.getLegs().stream()
+                        .map(RouterConverters::toPtLeg)
+                        .collect(toList()))
+                .build();
     }
 
     public static CustomWalkLeg toCustomWalkLeg(Trip.WalkLeg leg, String travelSegmentType) {

@@ -11,6 +11,7 @@ public final class MetricUtils {
     private MetricUtils () {
         // utility class
     }
+
     public static void sendDatadogStats(StatsDClient statsDClient, String[] tags, double durationSeconds) {
         if (statsDClient != null) {
             statsDClient.incrementCounter("routers.num_requests", tags);
