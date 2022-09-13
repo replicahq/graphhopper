@@ -15,7 +15,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.replica.router;
+package com.replica;
 
 import com.google.common.collect.Lists;
 import com.google.protobuf.Timestamp;
@@ -26,8 +26,6 @@ import com.graphhopper.gtfs.PtRouterImpl;
 import com.graphhopper.gtfs.RealtimeFeed;
 import com.graphhopper.routing.GHMatrixAPI;
 import com.graphhopper.routing.MatrixAPI;
-import com.replica.ReplicaGraphHopperTest;
-import com.replica.ReplicaGraphHopperTestExtention;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;

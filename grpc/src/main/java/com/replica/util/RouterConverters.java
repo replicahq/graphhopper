@@ -1,4 +1,4 @@
-package com.replica.router.util;
+package com.replica.util;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -11,9 +11,9 @@ import com.graphhopper.routing.*;
 import com.graphhopper.util.DistanceCalcEarth;
 import com.graphhopper.util.PMap;
 import com.graphhopper.util.shapes.GHPoint;
-import com.replica.router.CustomPtLeg;
-import com.replica.router.CustomWalkLeg;
-import com.replica.router.RouterImpl;
+import com.replica.CustomPtLeg;
+import com.replica.CustomWalkLeg;
+import com.replica.RouterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.*;

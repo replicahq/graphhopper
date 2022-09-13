@@ -1,4 +1,4 @@
-package com.replica.router;
+package com.replica;
 
 import com.graphhopper.Trip;
 

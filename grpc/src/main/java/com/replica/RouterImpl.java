@@ -16,7 +16,7 @@
  *  limitations under the License.
  */
 
-package com.replica.router;
+package com.replica;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -32,8 +32,8 @@ import com.graphhopper.routing.MatrixAPI;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.exceptions.PointNotFoundException;
 import com.graphhopper.util.shapes.GHPoint;
-import com.replica.router.util.MetricUtils;
-import com.replica.router.util.RouterConverters;
+import com.replica.util.MetricUtils;
+import com.replica.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
 import io.grpc.protobuf.StatusProto;
 import io.grpc.stub.StreamObserver;
