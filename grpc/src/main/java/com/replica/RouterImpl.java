@@ -29,8 +29,8 @@ import com.graphhopper.gtfs.Request;
 import com.graphhopper.routing.GHMRequest;
 import com.graphhopper.routing.GHMResponse;
 import com.graphhopper.routing.MatrixAPI;
-import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.exceptions.PointNotFoundException;
+import com.graphhopper.util.shapes.BBox;
 import com.graphhopper.util.shapes.GHPoint;
 import com.replica.util.MetricUtils;
 import com.replica.util.RouterConverters;
@@ -244,8 +244,10 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
     @Override
     public void info(InfoRequest request, StreamObserver<InfoReply> responseObserver) {
-        GraphHopperStorage storage = graphHopper.getGraphHopperStorage();
-        responseObserver.onNext(InfoReply.newBuilder().addAllBbox(Arrays.asList(storage.getBounds().minLon, storage.getBounds().minLat, storage.getBounds().maxLon, storage.getBounds().maxLat)).build());
+        BBox bounds = graphHopper.getGraphHopperStorage().getBounds();
+        responseObserver.onNext(InfoReply.newBuilder()
+                .addAllBbox(Arrays.asList(bounds.minLon, bounds.minLat, bounds.maxLon, bounds.maxLat))
+                .build());
         responseObserver.onCompleted();
     }
 
@@ -360,7 +362,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
             } else if (leg instanceof Trip.PtLeg) {
                 Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
-                path.getLegs().add(RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo));
+                path.getLegs().add(
+                        RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo));
 
                 // If this PT leg is followed by another PT leg, add a TRANSFER walk leg between them
                 if (i < legs.size() - 1 && legs.get(i + 1) instanceof Trip.PtLeg) {

@@ -18,7 +18,6 @@ import com.graphhopper.util.Parameters;
 import com.graphhopper.util.shapes.GHPoint;
 import com.replica.CustomPtLeg;
 import com.replica.CustomWalkLeg;
-import com.replica.RouterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.*;
@@ -33,7 +32,7 @@ import static java.util.stream.Collectors.toList;
 
 public final class RouterConverters {
 
-    private static final Logger logger = LoggerFactory.getLogger(RouterImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(RouterConverters.class);
     private static final ObjectMapper yamlOM = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
     private static final ObjectMapper jsonOM = Jackson.newObjectMapper();
 
@@ -46,7 +45,8 @@ public final class RouterConverters {
                                             Map<String, String> gtfsLinkMappings,
                                             Map<String, List<String>> gtfsRouteInfo) {
         // Ordered list of GTFS route info, containing agency_name, route_short_name, route_long_name, route_type
-        List<String> routeInfo = gtfsRouteInfo.getOrDefault(gtfsRouteInfoKey(leg), Lists.newArrayList("", "", "", ""));
+        List<String> routeInfo =
+                gtfsRouteInfo.getOrDefault(gtfsRouteInfoKey(leg), Lists.newArrayList("", "", "", ""));
         String routeType = routeInfo.get(3);
 
         List<Trip.Stop> stops = leg.stops;
@@ -130,7 +130,10 @@ public final class RouterConverters {
                                     : Timestamp.newBuilder().setSeconds(stop.arrivalTime.getTime() / 1000).build())
                             .setDepartureTime(stop.departureTime == null ? Timestamp.newBuilder().build()
                                     : Timestamp.newBuilder().setSeconds(stop.departureTime.getTime() / 1000).build())
-                            .setPoint(Point.newBuilder().setLat(stop.geometry.getY()).setLon(stop.geometry.getX()).build())
+                            .setPoint(Point.newBuilder()
+                                    .setLat(stop.geometry.getY())
+                                    .setLon(stop.geometry.getX())
+                                    .build())
                             .build()).collect(toList())
                     ).build();
             return PtLeg.newBuilder()
@@ -151,8 +154,7 @@ public final class RouterConverters {
         GHRequest ghRequest = new GHRequest(
                 request.getPointsList().stream()
                         .map(p -> new GHPoint(p.getLat(), p.getLon()))
-                        .collect(Collectors.toList())
-        );
+                        .collect(Collectors.toList()));
         ghRequest.setProfile(request.getProfile());
         ghRequest.setLocale(Locale.US);
         ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
@@ -171,8 +173,9 @@ public final class RouterConverters {
 
     public static GHRequest toGHRequest(CustomRouteRequest request) {
         GHRequest ghRequest = new GHRequest(
-                request.getPointsList().stream().map(p -> new GHPoint(p.getLat(), p.getLon())).collect(Collectors.toList())
-        );
+                request.getPointsList().stream()
+                        .map(p -> new GHPoint(p.getLat(), p.getLon()))
+                        .collect(Collectors.toList()));
         ghRequest.setProfile(request.getProfile());
         ghRequest.setLocale(Locale.US);
         ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
@@ -180,11 +183,13 @@ public final class RouterConverters {
         PMap hints = new PMap();
         CustomModel customModel;
         try {
-            customModel = (request.getCustomModel().startsWith("{") ? jsonOM : yamlOM).readValue(request.getCustomModel(), CustomModel.class);
+            customModel = (request.getCustomModel().startsWith("{") ? jsonOM : yamlOM)
+                    .readValue(request.getCustomModel(), CustomModel.class);
         } catch (Exception e) {
             logger.error(e.getMessage());
             logger.error(e.getStackTrace().toString());
-            throw new RuntimeException("Couldn't read custom model from GH request! Full request: " + request.toString());
+            throw new RuntimeException(
+                    "Couldn't read custom model from GH request! Full request: " + request.toString());
         }
         hints.putObject(Parameters.CH.DISABLE, true);
         hints.putObject(CustomModel.KEY, customModel);
@@ -281,7 +286,9 @@ public final class RouterConverters {
 
             for(int toIndex = 0; toIndex < to_len; ++toIndex) {
                 if (!iter.hasNext()) {
-                    throw new IllegalStateException("Internal error, matrix dimensions should be " + from_len + "x" + to_len + ", but failed to retrieve element (" + fromIndex + ", " + toIndex + ")");
+                    throw new IllegalStateException("Internal error, matrix dimensions should be " +
+                            from_len + "x" + to_len + ", but failed to retrieve element (" + fromIndex + ", " + toIndex
+                            + ")");
                 }
 
                 MatrixElement element = iter.next();
