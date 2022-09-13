@@ -42,8 +42,7 @@ import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.*;
 
 import java.util.*;
-
-import static java.util.stream.Collectors.toList;
+import java.util.stream.Collectors;
 
 public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
@@ -86,7 +85,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         List<String> profilesToQuery = graphHopper.getProfiles().stream()
                 .map(Profile::getName)
                 .filter(profile -> profile.startsWith(request.getProfile()))
-                .collect(toList());
+                .collect(Collectors.toList());
 
         // Construct query object with settings shared across all profilesToQuery
         GHRequest ghRequest = RouterConverters.toGHRequest(request);
@@ -130,8 +129,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         // return the standard NOT_FOUND grpc error code
         if (!anyPathsFound) {
             String message = "Path could not be found between "
-                    + origin.lat + "," + origin.lon + " to "
-                    + dest.lat + "," + dest.lon;
+                    + origin.lat + "," + origin.lon + " to " + dest.lat + "," + dest.lon;
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
@@ -151,6 +149,63 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
             responseObserver.onNext(replyBuilder.build());
             responseObserver.onCompleted();
+        }
+    }
+
+    @Override
+    public void routeCustom(CustomRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
+        long startTime = System.currentTimeMillis();
+        GHRequest ghRequest = RouterConverters.toGHRequest(request);
+        GHPoint origin = ghRequest.getPoints().get(0);
+        GHPoint dest = ghRequest.getPoints().get(1);
+
+        try {
+            GHResponse ghResponse = graphHopper.route(ghRequest);
+            if (ghResponse.hasErrors()) {
+                logger.error(ghResponse.toString());
+                String message = "Path could not be found between "
+                        + origin.lat + "," + origin.lon + " to " + dest.lat + "," + dest.lon;
+                // logger.warn(message);
+
+                double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
+                tags = MetricUtils.applyCustomTags(tags, customTags);
+                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+
+                Status status = Status.newBuilder()
+                        .setCode(Code.NOT_FOUND.getNumber())
+                        .setMessage(message)
+                        .build();
+                responseObserver.onError(StatusProto.toStatusRuntimeException(status));
+            } else {
+                StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
+                ghResponse.getAll().stream()
+                        .map(RouterConverters::toStreetPath)
+                        .forEach(replyBuilder::addPaths);
+
+                double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
+                tags = MetricUtils.applyCustomTags(tags, customTags);
+                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+
+                responseObserver.onNext(replyBuilder.build());
+                responseObserver.onCompleted();
+            }
+        } catch (Exception e) {
+            String message = "GH internal error! Path could not be found between "
+                    + origin.lat + "," + origin.lon + " to " + dest.lat + "," + dest.lon;
+            logger.error(message, e);
+
+            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+            String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
+            tags = MetricUtils.applyCustomTags(tags, customTags);
+            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+
+            Status status = Status.newBuilder()
+                    .setCode(Code.INTERNAL.getNumber())
+                    .setMessage(message)
+                    .build();
+            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         }
     }
 
