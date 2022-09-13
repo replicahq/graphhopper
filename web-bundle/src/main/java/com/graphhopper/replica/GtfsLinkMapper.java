@@ -110,7 +110,7 @@ public class GtfsLinkMapper {
                         stop.stop_lat, stop.stop_lon,
                         nextStop.stop_lat, nextStop.stop_lon
                 );
-                odRequest.setProfile("car");
+                odRequest.setProfile("car_local");
                 odRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
                 GHResponse response = graphHopper.route(odRequest);
 

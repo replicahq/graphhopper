@@ -19,10 +19,14 @@ graphhopper:
 
   # Profiles specifying vehicle and weightings for each mode type.
   profiles:
-    - name: car
+    - name: car_local
       vehicle: car
       weighting: custom
-      custom_model_file: car_custom_model.yaml
+      custom_model_file: local_car_custom_model.yaml
+    - name: car_freeway
+      vehicle: car
+      weighting: custom
+      custom_model_file: freeway_car_custom_model.yaml
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -34,7 +38,8 @@ graphhopper:
       weighting: fastest
 
   profiles_ch:
-    - profile: car
+    - profile: car_local
+    - profile: car_freeway
     - profile: bike
     - profile: foot
     - profile: truck
