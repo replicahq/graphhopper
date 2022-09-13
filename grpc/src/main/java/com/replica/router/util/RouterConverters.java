@@ -142,7 +142,9 @@ public final class RouterConverters {
 
     public static GHRequest toGHRequest(StreetRouteRequest request) {
         GHRequest ghRequest = new GHRequest(
-                request.getPointsList().stream().map(p -> new GHPoint(p.getLat(), p.getLon())).collect(Collectors.toList())
+                request.getPointsList().stream()
+                        .map(p -> new GHPoint(p.getLat(), p.getLon()))
+                        .collect(Collectors.toList())
         );
         ghRequest.setProfile(request.getProfile());
         ghRequest.setLocale(Locale.US);

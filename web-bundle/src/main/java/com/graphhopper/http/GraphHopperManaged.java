@@ -115,6 +115,7 @@ public class GraphHopperManaged implements Managed {
                 try {
                     CustomModel customModel = (customModelLocation.endsWith(".json") ? jsonOM : yamlOM).readValue(new File(customModelLocation), CustomModel.class);
                     newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
+                    logger.info("Successfully loaded custom profile for vehicle " + profile.getName());
                 } catch (Exception ex) {
                     throw new RuntimeException("Cannot load custom_model from " + customModelLocation + " for profile " + profile.getName(), ex);
                 }
