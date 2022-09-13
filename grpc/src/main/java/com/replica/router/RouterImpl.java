@@ -185,66 +185,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                     continue;
                 }
 
-                // Replace the path's legs with newly-constructed legs containing stable edge IDs
-                ArrayList<Trip.Leg> legs = new ArrayList<>(path.getLegs());
-                path.getLegs().clear();
-
-                for (int i = 0; i < legs.size(); i++) {
-                    Trip.Leg leg = legs.get(i);
-                    if (leg instanceof Trip.WalkLeg) {
-                        Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
-                        String travelSegmentType;
-                        // We only expect graphhopper to return ACCESS + EGRESS walk legs
-                        if (i == 0) {
-                            travelSegmentType = "ACCESS";
-                        } else {
-                            travelSegmentType = "EGRESS";
-                        }
-                        path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
-                    } else if (leg instanceof Trip.PtLeg) {
-                        Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
-                        path.getLegs().add(RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo));
-
-                        // If this PT leg is followed by another PT leg, add a TRANSFER walk leg between them
-                        if (i < legs.size() - 1 && legs.get(i + 1) instanceof Trip.PtLeg) {
-                            Trip.PtLeg nextLeg = (Trip.PtLeg) legs.get(i + 1);
-                            Trip.Stop lastStopOfThisLeg = thisLeg.stops.get(thisLeg.stops.size() - 1);
-                            Trip.Stop firstStopOfNextLeg = nextLeg.stops.get(0);
-                            if (!lastStopOfThisLeg.stop_id.equals(firstStopOfNextLeg.stop_id)) {
-                                GHRequest r = new GHRequest(
-                                        lastStopOfThisLeg.geometry.getY(), lastStopOfThisLeg.geometry.getX(),
-                                        firstStopOfNextLeg.geometry.getY(), firstStopOfNextLeg.geometry.getX());
-                                r.setProfile("foot");
-                                r.setPathDetails(Arrays.asList("stable_edge_ids"));
-                                GHResponse transfer = graphHopper.route(r);
-                                if (!transfer.hasErrors()) {
-                                    ResponsePath transferPath = transfer.getBest();
-                                    Trip.WalkLeg transferLeg = new Trip.WalkLeg(
-                                            lastStopOfThisLeg.stop_name,
-                                            thisLeg.getArrivalTime(),
-                                            transferPath.getPoints().getCachedLineString(false),
-                                            transferPath.getDistance(),
-                                            transferPath.getInstructions(),
-                                            transferPath.getPathDetails(),
-                                            Date.from(thisLeg.getArrivalTime().toInstant().plusMillis(transferPath.getTime()))
-                                    );
-                                    path.getLegs().add(RouterConverters.toCustomWalkLeg(transferLeg, "TRANSFER"));
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
-                // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
-                CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
-                CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
-                accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
-
-                // Calculate correct distance incorporating foot + pt legs
-                path.setDistance(path.getLegs().stream().mapToDouble(l -> l.distance).sum());
-
-                path.getPathDetails().clear();
+                augmentLegsForPt(path);
                 pathsWithStableIds.add(path);
             }
 
@@ -308,5 +249,86 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                     .build();
             responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         }
+    }
+
+    /**
+     * Performs public-transit-specific modifications to the legs of the ResponsePath. Specifically:
+     *
+     * - adds transfer walk legs between PT legs where necessary (and updates the path distance accordingly)
+     * - adds stable edge ids to the walk and PT legs
+     * - stores ACCESS/EGRESS metadata on walk legs
+     *
+     * @param path the ResponsePath to augment. modified in place
+     */
+    private void augmentLegsForPt(ResponsePath path) {
+        // Replace the path's legs with newly-constructed legs containing stable edge IDs
+        ArrayList<Trip.Leg> legs = new ArrayList<>(path.getLegs());
+        path.getLegs().clear();
+
+        for (int i = 0; i < legs.size(); i++) {
+            Trip.Leg leg = legs.get(i);
+            if (leg instanceof Trip.WalkLeg) {
+                Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
+                String travelSegmentType;
+                // We only expect graphhopper to return ACCESS + EGRESS walk legs
+                if (i == 0) {
+                    travelSegmentType = "ACCESS";
+                } else {
+                    travelSegmentType = "EGRESS";
+                }
+                path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
+            } else if (leg instanceof Trip.PtLeg) {
+                Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
+                path.getLegs().add(RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo));
+
+                // If this PT leg is followed by another PT leg, add a TRANSFER walk leg between them
+                if (i < legs.size() - 1 && legs.get(i + 1) instanceof Trip.PtLeg) {
+                    maybeGetTransferWalkLeg(thisLeg, (Trip.PtLeg) legs.get(i + 1)).ifPresent(path.getLegs()::add);
+                }
+            }
+        }
+
+        // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
+        // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
+        CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
+        CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
+        accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
+
+        // Calculate correct distance incorporating foot + pt legs
+        path.setDistance(path.getLegs().stream().mapToDouble(l -> l.distance).sum());
+
+        path.getPathDetails().clear();
+    }
+
+    /**
+     * @return a transfer walk leg between two consecutive legs of a PT trip, if necessary. returns an empty optional if
+     * the first leg ends where the second begins, or if a walking route could not be found.
+     */
+    private Optional<CustomWalkLeg> maybeGetTransferWalkLeg(Trip.PtLeg firstLeg, Trip.PtLeg secondLeg) {
+        Trip.Stop lastStopOfThisLeg = firstLeg.stops.get(firstLeg.stops.size() - 1);
+        Trip.Stop firstStopOfNextLeg = secondLeg.stops.get(0);
+        if (!lastStopOfThisLeg.stop_id.equals(firstStopOfNextLeg.stop_id)) {
+            GHRequest r = new GHRequest(
+                    lastStopOfThisLeg.geometry.getY(), lastStopOfThisLeg.geometry.getX(),
+                    firstStopOfNextLeg.geometry.getY(), firstStopOfNextLeg.geometry.getX());
+            r.setProfile("foot");
+            r.setPathDetails(Arrays.asList("stable_edge_ids"));
+            GHResponse transfer = graphHopper.route(r);
+            if (!transfer.hasErrors()) {
+                ResponsePath transferPath = transfer.getBest();
+                Trip.WalkLeg transferLeg = new Trip.WalkLeg(
+                        lastStopOfThisLeg.stop_name,
+                        firstLeg.getArrivalTime(),
+                        transferPath.getPoints().getCachedLineString(false),
+                        transferPath.getDistance(),
+                        transferPath.getInstructions(),
+                        transferPath.getPathDetails(),
+                        Date.from(firstLeg.getArrivalTime().toInstant().plusMillis(transferPath.getTime()))
+                );
+                return Optional.of(RouterConverters.toCustomWalkLeg(transferLeg, "TRANSFER"));
+            }
+        }
+
+        return Optional.empty();
     }
 }

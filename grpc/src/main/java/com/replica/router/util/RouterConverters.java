@@ -34,7 +34,10 @@ public final class RouterConverters {
         // utility class
     }
 
-    public static CustomPtLeg toCustomPtLeg(Trip.PtLeg leg, Map<String, String> gtfsFeedIdMapping, Map<String, String> gtfsLinkMappings, Map<String, List<String>> gtfsRouteInfo) {
+    public static CustomPtLeg toCustomPtLeg(Trip.PtLeg leg,
+                                            Map<String, String> gtfsFeedIdMapping,
+                                            Map<String, String> gtfsLinkMappings,
+                                            Map<String, List<String>> gtfsRouteInfo) {
         // Ordered list of GTFS route info, containing agency_name, route_short_name, route_long_name, route_type
         List<String> routeInfo = gtfsRouteInfo.getOrDefault(gtfsRouteInfoKey(leg), Lists.newArrayList("", "", "", ""));
         String routeType = routeInfo.get(3);
