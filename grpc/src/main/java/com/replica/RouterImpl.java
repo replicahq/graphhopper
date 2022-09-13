@@ -101,30 +101,29 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 .filter(profile -> profile.startsWith(request.getProfile()))
                 .collect(toList());
 
+        // Construct query object with settings shared across all profilesToQuery
         List<GHPoint> pointsList = request.getPointsList().stream()
                 .map(p -> new GHPoint(p.getLat(), p.getLon()))
                 .collect(Collectors.toList());
 
+        GHRequest ghRequest = new GHRequest(pointsList);
+        ghRequest.setLocale(Locale.US);
+        ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
+
+        PMap hints = new PMap();
+        hints.putObject(INSTRUCTIONS, false);
+        if (request.getAlternateRouteMaxPaths() > 1) {
+            ghRequest.setAlgorithm("alternative_route");
+            hints.putObject("alternative_route.max_paths", request.getAlternateRouteMaxPaths());
+            hints.putObject("alternative_route.max_weight_factor", request.getAlternateRouteMaxWeightFactor());
+            hints.putObject("alternative_route.max_share_factor", request.getAlternateRouteMaxShareFactor());
+        }
+        ghRequest.getHints().putAll(hints);
+
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
         boolean anyPathsFound = false;
-
         for (String profile : profilesToQuery) {
-            GHRequest ghRequest = new GHRequest(pointsList);
-
             ghRequest.setProfile(profile);
-            ghRequest.setLocale(Locale.US);
-            ghRequest.setPathDetails(Lists.newArrayList("stable_edge_ids", "time"));
-
-            PMap hints = new PMap();
-            hints.putObject(INSTRUCTIONS, false);
-            if (request.getAlternateRouteMaxPaths() > 1) {
-                ghRequest.setAlgorithm("alternative_route");
-                hints.putObject("alternative_route.max_paths", request.getAlternateRouteMaxPaths());
-                hints.putObject("alternative_route.max_weight_factor", request.getAlternateRouteMaxWeightFactor());
-                hints.putObject("alternative_route.max_share_factor", request.getAlternateRouteMaxShareFactor());
-            }
-            ghRequest.getHints().putAll(hints);
-
             try {
                 GHResponse ghResponse = graphHopper.route(ghRequest);
                 // ghResponse.hasErrors() means that the router returned no results
