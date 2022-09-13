@@ -2,28 +2,30 @@
 # 1 profile loaded with default speeds is defined for each vehicle type
 
 graphhopper:
-  datareader.file: ./test-data/micro_nor_cal.osm.pbf
-  graph.location: transit_data/export_test/graphhopper
+  datareader.file:
+  graph.location: transit_data/graphhopper
   routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
   graph.flag_encoders: car,bike,foot,truck
-  prepare.ch.threads: 16
 
   # Profiles specifying vehicle and weightings for each mode type.
-  # For export, save time by not building contraction hierarchies
   profiles:
     - name: car
       vehicle: car
-      weighting: fastest
+      weighting: custom
+      custom_model_file: empty
     - name: bike
       vehicle: bike
-      weighting: fastest
+      weighting: custom
+      custom_model_file: empty
     - name: foot
       vehicle: foot
-      weighting: fastest
+      weighting: custom
+      custom_model_file: empty
     - name: truck
       vehicle: truck
-      weighting: fastest
+      weighting: custom
+      custom_model_file: empty
 
 server:
   min_threads: 4

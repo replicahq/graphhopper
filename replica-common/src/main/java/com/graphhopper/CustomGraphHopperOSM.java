@@ -116,7 +116,7 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
             ReaderElement next;
             while((next = input.getNext()) != null) {
                 if (next.isType(ReaderElement.WAY)) {
-                    if (++readCount % 10000 == 0) {
+                    if (++readCount % 100_000 == 0) {
                         LOG.info("Parsing tag info from OSM ways. " + readCount + " read so far.");
                     }
                     final ReaderWay ghReaderWay = (ReaderWay) next;
