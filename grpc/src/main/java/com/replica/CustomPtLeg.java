@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * New version of PtLeg class that stores stable edge IDs in class var;
- * this var will automatically get added to JSON response
+ * this var will automatically get added to proto response
  */
 public class CustomPtLeg extends Trip.PtLeg {
     public final List<String> stableEdgeIds;
