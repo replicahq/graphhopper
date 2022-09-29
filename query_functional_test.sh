@@ -25,24 +25,22 @@ DOCKER_IMAGE_TAG="us.gcr.io/model-159019/gh:$TAG"
 # configs to make mvn test happy
 docker run \
     -v "$TMPDIR:/graphhopper/transit_data/" \
-    -v "local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
-    -v "freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" \
+    -v "local_car_custom_model.yaml:/local_car_custom_model.yaml" \
+    -v "freeway_car_custom_model.yaml:/freeway_car_custom_model.yaml" \
     --rm \
      "$DOCKER_IMAGE_TAG" \
-     /bin/bash -c "cp -r ./web/test-data . && mv local_car_custom_model.yaml ../local_car_custom_model.yaml && \
-     mv freeway_car_custom_model.yaml ../freeway_car_custom_model.yaml && \
+     /bin/bash -c "cp -r ./web/test-data . && \
      java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
      -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import test_gh_config.yaml"
 
 # Run link-mapping step
 docker run \
     -v "$TMPDIR:/graphhopper/transit_data/" \
-    -v "local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
-    -v "freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" \
+    -v "local_car_custom_model.yaml:/local_car_custom_model.yaml" \
+    -v "freeway_car_custom_model.yaml:/freeway_car_custom_model.yaml" \
     --rm \
     "$DOCKER_IMAGE_TAG" \
-    /bin/bash -c "mv local_car_custom_model.yaml ../local_car_custom_model.yaml && mv freeway_car_custom_model.yaml ../freeway_car_custom_model.yaml && \
-    java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
+    /bin/bash -c "java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links test_gh_config.yaml"
 
 # Run server in background
