@@ -25,30 +25,30 @@ DOCKER_IMAGE_TAG="us.gcr.io/model-159019/gh:$TAG"
 # configs to make mvn test happy
 docker run \
     -v "$TMPDIR:/graphhopper/transit_data/" \
-    -v "local_car_custom_model.yaml:local_car_custom_model.yaml" \
-    -v "freeway_car_custom_model.yaml:freeway_car_custom_model.yaml" \
+    -v "$(pwd)/local_car_custom_model.yaml:/local_car_custom_model.yaml" \
+    -v "$(pwd)/freeway_car_custom_model.yaml:/freeway_car_custom_model.yaml" \
     --rm \
      "$DOCKER_IMAGE_TAG" \
-     /bin/bash -c "cp -r ./web/test-data . && ls . && ls .. && \
+     /bin/bash -c "cp -r ./web/test-data . && \
      java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
      -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import test_gh_config.yaml"
 
 # Run link-mapping step
 docker run \
     -v "$TMPDIR:/graphhopper/transit_data/" \
-    -v "local_car_custom_model.yaml:local_car_custom_model.yaml" \
-    -v "freeway_car_custom_model.yaml:freeway_car_custom_model.yaml" \
+    -v "$(pwd)/local_car_custom_model.yaml:/local_car_custom_model.yaml" \
+    -v "$(pwd)/freeway_car_custom_model.yaml:/freeway_car_custom_model.yaml" \
     --rm \
     "$DOCKER_IMAGE_TAG" \
-    /bin/bash -c "ls . && ls .. && java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
+    /bin/bash -c "java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links test_gh_config.yaml"
 
 # Run server in background
 docker run --rm --log-driver=none --name functional_test_server -p 50051:50051 -p 8998:8998 \
     -v "$TMPDIR:/graphhopper/transit_data/" "$DOCKER_IMAGE_TAG" \
-    -v "default_gh_config.yaml:/graphhopper/default_gh_config.yaml" \
-    -v "local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
-    -v "freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" &
+    -v "$(pwd)/default_gh_config.yaml:/graphhopper/default_gh_config.yaml" \
+    -v "$(pwd)/local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
+    -v "$(pwd)/freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" &
 
 echo "Waiting for graphhopper server to start up"
 sleep 30
