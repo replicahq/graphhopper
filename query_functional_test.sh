@@ -24,7 +24,9 @@ DOCKER_IMAGE_TAG="us.gcr.io/model-159019/gh:$TAG"
 # Similarly, move the car custom model yamls to ../, as that's how we've specified its location in the
 # configs to make mvn test happy
 docker run \
-    -v "$TMPDIR:/graphhopper/transit_data/"\
+    -v "$TMPDIR:/graphhopper/transit_data/" \
+    -v "local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
+    -v "freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" \
     --rm \
      "$DOCKER_IMAGE_TAG" \
      /bin/bash -c "cp -r ./web/test-data . && mv local_car_custom_model.yaml ../local_car_custom_model.yaml && \
@@ -34,7 +36,9 @@ docker run \
 
 # Run link-mapping step
 docker run \
-    -v "$TMPDIR:/graphhopper/transit_data/"\
+    -v "$TMPDIR:/graphhopper/transit_data/" \
+    -v "local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
+    -v "freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" \
     --rm \
     "$DOCKER_IMAGE_TAG" \
     /bin/bash -c "mv local_car_custom_model.yaml ../local_car_custom_model.yaml && mv freeway_car_custom_model.yaml ../freeway_car_custom_model.yaml && \
