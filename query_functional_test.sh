@@ -45,10 +45,11 @@ docker run \
 
 # Run server in background
 docker run --rm --log-driver=none --name functional_test_server -p 50051:50051 -p 8998:8998 \
-    -v "$TMPDIR:/graphhopper/transit_data/" "$DOCKER_IMAGE_TAG" \
+    -v "$TMPDIR:/graphhopper/transit_data/" \
     -v "$(pwd)/default_gh_config.yaml:/graphhopper/default_gh_config.yaml" \
     -v "$(pwd)/local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
-    -v "$(pwd)/freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" &
+    -v "$(pwd)/freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" \
+    "$DOCKER_IMAGE_TAG" &
 
 echo "Waiting for graphhopper server to start up"
 sleep 30
