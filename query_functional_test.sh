@@ -40,7 +40,7 @@ docker run \
     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links ./transit_data/configs/test_gh_config.yaml"
 
 # Run server in background (override standard CMD in Dockerfile.server with test_gh_config.yaml)
-docker run --rm --log-driver=none --name functional_test_server -p 50051:50051 -p 8998:8998 \
+docker run --rm --log-driver=none --name functional_test_server -d -p 50051:50051 -p 8998:8998 \
     -v "$TMPDIR:/graphhopper/transit_data/graphhopper" \
     -v "$TMPDIR:/graphhopper/transit_data/gtfs_link_mappings" \
     "$DOCKER_IMAGE_TAG" \
