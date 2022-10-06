@@ -13,7 +13,7 @@ COPY --from=base /graphhopper/transit_data/configs/test_gh_config.yaml ./transit
 COPY --from=base /graphhopper/web/test-data ./web/test-data
 # pom.xml is used to get the jar file version. see https://github.com/graphhopper/graphhopper/pull/1990#discussion_r409438806
 COPY ./pom.xml ./config-proxy.yaml ./
-COPY ./custom_weight_gh_config.yaml ./transit_data/configs/
+COPY ./transit_data/configs/custom_weight_gh_config.yaml ./transit_data/configs/
 
 VOLUME [ "/data" ]
 
