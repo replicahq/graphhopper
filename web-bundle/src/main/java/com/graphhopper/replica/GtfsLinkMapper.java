@@ -38,7 +38,7 @@ public class GtfsLinkMapper {
 
         // Initialize mapdb database to store link mappings and route info
         logger.info("Initializing new mapdb file to store link mappings");
-        DB db = DBMaker.newFileDB(new File("transit_data/gtfs_link_mappings.db")).make();
+        DB db = DBMaker.newFileDB(new File("transit_data/gtfs_link_mappings/gtfs_link_mappings.db")).make();
         // These should be safe for parallel writes; from HTreeMap doc[1]:
         //     > It is thread safe, and supports parallel writes by using multiple segments, each with separate ReadWriteLock.
         //

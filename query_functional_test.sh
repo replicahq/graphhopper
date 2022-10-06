@@ -21,10 +21,8 @@ DOCKER_IMAGE_TAG="us.gcr.io/model-159019/gh:$TAG"
 
 # Import data into graphhopper's internal format. It's necessary to move test data from /web before
 # running import, because import paths are relative to base /graphhopper folder, unlike in `mvn test`.
-# Similarly, move the car custom model yamls to ../, as that's how we've specified its location in the
-# configs to make mvn test happy
 docker run \
-    -v "$TMPDIR:/graphhopper/transit_data/" \
+    -v "$TMPDIR:/graphhopper/transit_data/graphhopper" \
     --rm \
      "$DOCKER_IMAGE_TAG" \
      /bin/bash -c "cp -r ./web/test-data . && \
@@ -33,7 +31,8 @@ docker run \
 
 # Run link-mapping step
 docker run \
-    -v "$TMPDIR:/graphhopper/transit_data/" \
+    -v "$TMPDIR:/graphhopper/transit_data/graphhopper" \
+    -v "$TMPDIR:/graphhopper/transit_data/gtfs_link_mappings" \
     --rm \
     "$DOCKER_IMAGE_TAG" \
     /bin/bash -c "java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
@@ -41,7 +40,8 @@ docker run \
 
 # Run server in background (override standard CMD in Dockerfile.server with test_gh_config.yaml)
 docker run --rm --log-driver=none --name functional_test_server -p 50051:50051 -p 8998:8998 \
-    -v "$TMPDIR:/graphhopper/transit_data/" \
+    -v "$TMPDIR:/graphhopper/transit_data/graphhopper" \
+    -v "$TMPDIR:/graphhopper/transit_data/gtfs_link_mappings" \
     "$DOCKER_IMAGE_TAG" \
     /bin/bash -c "java -server -Xms6g -Xmx13g \
       -Dcom.sun.management.jmxremote \

@@ -43,7 +43,7 @@ public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
 
     @Test
     public void testSingleFeed() {
-        File linkMappingsDbFile = new File("transit_data/gtfs_link_mappings.db");
+        File linkMappingsDbFile = new File("transit_data/gtfs_link_mappings/gtfs_link_mappings.db");
         assert linkMappingsDbFile.exists();
         DB db = DBMaker.newFileDB(linkMappingsDbFile).readOnly().make();
         Map<String, String> gtfsLinkMappings = db.getHashMap("gtfsLinkMappings");
