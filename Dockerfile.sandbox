@@ -9,10 +9,11 @@ WORKDIR /graphhopper
 COPY --from=base /graphhopper/grpc/target/*.jar ./grpc/target/
 COPY --from=base /graphhopper/web/target/*.jar ./web/target/
 COPY --from=base /graphhopper/grpc/src/main/resources ./grpc/src/main/resources
-COPY --from=base /graphhopper/test_gh_config.yaml ./
+COPY --from=base /graphhopper/transit_data/configs/test_gh_config.yaml ./transit_data/configs/
 COPY --from=base /graphhopper/web/test-data ./web/test-data
 # pom.xml is used to get the jar file version. see https://github.com/graphhopper/graphhopper/pull/1990#discussion_r409438806
-COPY ./pom.xml ./custom_weight_gh_config.yaml ./config-proxy.yaml ./
+COPY ./pom.xml ./config-proxy.yaml ./
+COPY ./custom_weight_gh_config.yaml ./transit_data/configs/
 
 VOLUME [ "/data" ]
 
@@ -30,4 +31,4 @@ CMD java -server -Xms${HEAP_XMS_GB:-6}g -Xmx${HEAP_XMX_GB:-13}g \
   -Djava.rmi.server.hostname=127.0.0.1 \
   -XX:+UseG1GC -XX:MetaspaceSize=100M \
   -classpath grpc/target/graphhopper-grpc-1.0-SNAPSHOT.jar \
-  com.replica.RouterServer custom_weight_gh_config.yaml
+  com.replica.RouterServer ./transit_data/configs/custom_weight_gh_config.yaml

@@ -25,31 +25,35 @@ DOCKER_IMAGE_TAG="us.gcr.io/model-159019/gh:$TAG"
 # configs to make mvn test happy
 docker run \
     -v "$TMPDIR:/graphhopper/transit_data/" \
-    -v "$(pwd)/local_car_custom_model.yaml:/local_car_custom_model.yaml" \
-    -v "$(pwd)/freeway_car_custom_model.yaml:/freeway_car_custom_model.yaml" \
     --rm \
      "$DOCKER_IMAGE_TAG" \
      /bin/bash -c "cp -r ./web/test-data . && \
      java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import test_gh_config.yaml"
+     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import ./transit_data/configs/test_gh_config.yaml"
 
 # Run link-mapping step
 docker run \
     -v "$TMPDIR:/graphhopper/transit_data/" \
-    -v "$(pwd)/local_car_custom_model.yaml:/local_car_custom_model.yaml" \
-    -v "$(pwd)/freeway_car_custom_model.yaml:/freeway_car_custom_model.yaml" \
     --rm \
     "$DOCKER_IMAGE_TAG" \
     /bin/bash -c "java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links test_gh_config.yaml"
+    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links ./transit_data/configs/test_gh_config.yaml"
 
-# Run server in background
+# Run server in background (override standard CMD in Dockerfile.server with test_gh_config.yaml)
 docker run --rm --log-driver=none --name functional_test_server -p 50051:50051 -p 8998:8998 \
     -v "$TMPDIR:/graphhopper/transit_data/" \
-    -v "$(pwd)/default_gh_config.yaml:/graphhopper/default_gh_config.yaml" \
-    -v "$(pwd)/local_car_custom_model.yaml:/graphhopper/local_car_custom_model.yaml" \
-    -v "$(pwd)/freeway_car_custom_model.yaml:/graphhopper/freeway_car_custom_model.yaml" \
-    "$DOCKER_IMAGE_TAG" &
+    "$DOCKER_IMAGE_TAG" \
+    /bin/bash -c "java -server -Xms6g -Xmx13g \
+      -Dcom.sun.management.jmxremote \
+      -Dcom.sun.management.jmxremote.authenticate=false \
+      -Dcom.sun.management.jmxremote.ssl=false \
+      -Dcom.sun.management.jmxremote.local.only=false \
+      -Dcom.sun.management.jmxremote.port=9010 \
+      -Dcom.sun.management.jmxremote.rmi.port=9010 \
+      -Djava.rmi.server.hostname=127.0.0.1 \
+      -XX:+UseG1GC -XX:MetaspaceSize=100M \
+      -classpath grpc/target/graphhopper-grpc-1.0-SNAPSHOT.jar \
+      com.replica.RouterServer ./transit_data/configs/test_gh_config.yaml"
 
 echo "Waiting for graphhopper server to start up"
 sleep 30

@@ -12,7 +12,8 @@ COPY --from=base /graphhopper/grpc/src/main/resources ./grpc/src/main/resources
 COPY --from=base /graphhopper/test_gh_config.yaml ./
 COPY --from=base /graphhopper/web/test-data ./web/test-data
 # pom.xml is used to get the jar file version. see https://github.com/graphhopper/graphhopper/pull/1990#discussion_r409438806
-COPY ./pom.xml ./nationwide_gh_config.yaml ./gtfs_validation_gh_config.yaml ./config-proxy.yaml ./run_gtfs_validation.sh ./
+COPY ./pom.xml ./config-proxy.yaml ./run_gtfs_validation.sh ./
+COPY ./nationwide_gh_config.yaml ./gtfs_validation_gh_config.yaml ./transit_data/configs/
 
 VOLUME [ "/data" ]
 
@@ -20,9 +21,7 @@ EXPOSE 50051
 EXPOSE 8998
 EXPOSE 9010
 
-CMD mv ./transit_data/default_gh_config.yaml ./default_gh_config.yaml && \
-    mv ./transit_data/custom_profiles . && \
-    java -server -Xms${HEAP_XMS_GB:-6}g -Xmx${HEAP_XMX_GB:-13}g \
+CMD java -server -Xms${HEAP_XMS_GB:-6}g -Xmx${HEAP_XMX_GB:-13}g \
       -Dcom.sun.management.jmxremote \
       -Dcom.sun.management.jmxremote.authenticate=false \
       -Dcom.sun.management.jmxremote.ssl=false \
@@ -32,4 +31,4 @@ CMD mv ./transit_data/default_gh_config.yaml ./default_gh_config.yaml && \
       -Djava.rmi.server.hostname=127.0.0.1 \
       -XX:+UseG1GC -XX:MetaspaceSize=100M \
       -classpath grpc/target/graphhopper-grpc-1.0-SNAPSHOT.jar \
-      com.replica.RouterServer default_gh_config.yaml
+      com.replica.RouterServer ./transit_data/configs/default_gh_config.yaml
