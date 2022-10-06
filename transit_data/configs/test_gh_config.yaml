@@ -22,11 +22,11 @@ graphhopper:
     - name: car_local
       vehicle: car
       weighting: custom
-      custom_model_file: ../web/test_data/local_car_custom_model.yaml # ../ needed because mvn test runs from subdirs, not base graphhopper dir
+      custom_model_file: ./test-data/local_car_custom_model.yaml # mvn tests run from the /web folder
     - name: car_freeway
       vehicle: car
       weighting: custom
-      custom_model_file: ../web/test_data/freeway_car_custom_model.yaml # ../ needed because mvn test runs from subdirs, not base graphhopper dir
+      custom_model_file: ./test-data/freeway_car_custom_model.yaml # mvn tests run from the /web folder
     - name: bike
       vehicle: bike
       weighting: fastest
