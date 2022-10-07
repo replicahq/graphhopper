@@ -283,6 +283,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     public void testAutoQuery() {
         final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(AUTO_REQUEST);
         checkStreetBasedResponse(response, false);
+//        assertEquals(response.getPaths(0).getDurationMillis(), 1419736);
     }
 
     @Test
@@ -305,6 +306,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         assertTrue(path.getStableEdgeIdsCount() > 0);
         assertEquals(path.getStableEdgeIdsCount(), path.getEdgeDurationsMillisCount());
         int totalDurationMillis = path.getEdgeDurationsMillisList().stream().mapToInt(Long::intValue).sum();
+        System.out.println("path duration millis: " + path.getDurationMillis());
         assertEquals(path.getDurationMillis(), totalDurationMillis);
     }
 
@@ -341,5 +343,19 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         StatusRuntimeException exception =
                 assertThrows(StatusRuntimeException.class, () -> {routerStub.routePt(badPtRequest);});
         assertSame(exception.getStatus().getCode(), Status.NOT_FOUND.getCode());
+    }
+
+    @Test
+    public void testAutoQueryCustomSpeeds() {
+        // time with vanilla OSM speeds 1419736
+        final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(createStreetRequest("car_with_custom_speeds", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION));
+        checkStreetBasedResponse(response, false);
+
+        final RouterOuterClass.StreetRouteReply vanillaResponse = routerStub.routeStreetMode(AUTO_REQUEST);
+
+
+        assertTrue(response.getPaths(0).getDurationMillis() < vanillaResponse.getPaths(0).getDurationMillis());
+        System.out.println("custom speeds duration millis: " + response.getPaths(0).getDurationMillis());
+        System.out.println("vanilla speeds duration millis: " + vanillaResponse.getPaths(0).getDurationMillis());
     }
 }

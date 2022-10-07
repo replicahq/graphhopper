@@ -2,8 +2,8 @@
 # 1 profile loaded with default speeds is defined for each vehicle type
 
 graphhopper:
-  datareader.file: {{ TEST_OSM }}
-  gtfs.file: {{ TEST_GTFS }}
+  datareader.file: ./test-data/micro_nor_cal.osm.pbf
+  gtfs.file: ./test-data/gtfs/f-9qc-fairfield~ca~us.zip,./test-data/gtfs/rosevill.zip,./test-data/gtfs/srtd.zip,./test-data/gtfs/vacaville.zip
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000
@@ -20,6 +20,10 @@ graphhopper:
     - name: car
       vehicle: car
       weighting: fastest
+    - name: car_with_custom_speeds
+      # TODO break out the filename into a separate field, like custom_models do? may not be possible
+      vehicle: car_custom_speeds_my_filename_csv
+      weighting: fastest
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -34,6 +38,7 @@ graphhopper:
     - profile: car
     - profile: bike
     - profile: foot
+    - profile: car_with_custom_speeds
     # - profile: truck
 
 server:
