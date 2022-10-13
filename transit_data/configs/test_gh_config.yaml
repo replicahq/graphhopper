@@ -2,8 +2,8 @@
 # 1 profile loaded with default speeds is defined for each vehicle type
 
 graphhopper:
-  datareader.file:
-  gtfs.file:
+  datareader.file: {{ TEST_OSM }}
+  gtfs.file: {{ TEST_GTFS }}
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
   routing.ch.disabling_allowed: true
@@ -22,11 +22,11 @@ graphhopper:
     - name: car_local
       vehicle: car
       weighting: custom
-      custom_model_file: local_car_custom_model.yaml
+      custom_model_file: ./test-data/local_car_custom_model.yaml # mvn tests run from the /web folder
     - name: car_freeway
       vehicle: car
       weighting: custom
-      custom_model_file: freeway_car_custom_model.yaml
+      custom_model_file: ./test-data/freeway_car_custom_model.yaml # mvn tests run from the /web folder
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -48,12 +48,12 @@ server:
   min_threads: 4
   max_threads: 8
   application_connectors:
-  - type: http
-    port: 8998
-    # for security reasons bind (localhost does not work with k8s svcs)
-    bind_host: 0.0.0.0
-    acceptor_threads: 1
-    selector_threads: 2
-    accept_queue_size: 8
+    - type: http
+      port: 8998
+      # for security reasons bind (localhost does not work with k8s svcs)
+      bind_host: 0.0.0.0
+      acceptor_threads: 1
+      selector_threads: 2
+      accept_queue_size: 8
   request_log:
-      appenders: []
+    appenders: []
