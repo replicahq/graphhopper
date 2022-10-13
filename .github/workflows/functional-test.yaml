@@ -257,3 +257,7 @@ jobs:
         docker pull us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev
         docker tag us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}
         docker push us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}
+
+        docker pull us.gcr.io/model-159019/gh:${{ github.sha }}-server-sandbox
+        docker tag us.gcr.io/model-159019/gh:${{ github.sha }}-server-sandbox us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}-sandbox
+        docker push us.gcr.io/model-159019/gh:${{ steps.compute_new_tag.outputs.tag }}-sandbox
