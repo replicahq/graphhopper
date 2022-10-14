@@ -105,7 +105,11 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 String message = "Path could not be found between "
                         + ghRequest.getPoints().get(0).lat + "," + ghRequest.getPoints().get(0).lon + " to "
                         + ghRequest.getPoints().get(1).lat + "," + ghRequest.getPoints().get(1).lon;
-                // logger.warn(message);
+
+                // TODO: Distinguish between "general error" and "path not found". (like 5xx vs 4xx)
+                for (Throwable error : ghResponse.getErrors()) {
+                    logger.warn(message, error);
+                }
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};

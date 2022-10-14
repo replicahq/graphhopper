@@ -42,6 +42,7 @@ public class VehicleTagParserFactoryWithTrucks extends DefaultVehicleTagParserFa
         } else if (name.equals("van")) {
             return TruckTagParser.createVan(lookup, configuration);
         } else if (name.startsWith("car_custom_speeds")) {
+            configuration.putObject("name", name);
             return new CarTagParser(lookup, configuration) {
 
                 private Map<Long, Double> OSM_WAY_ID_TO_MAX_SPEED = Map.of(1L, 1.0);

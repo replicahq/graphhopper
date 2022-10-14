@@ -19,11 +19,8 @@
 package com.graphhopper.http;
 
 import com.graphhopper.*;
-import com.graphhopper.routing.ev.EncodedValueLookup;
-import com.graphhopper.routing.util.*;
 import com.graphhopper.stableid.EncodedValueFactoryWithStableId;
 import com.graphhopper.stableid.PathDetailsBuilderFactoryWithStableId;
-import com.graphhopper.util.PMap;
 import io.dropwizard.lifecycle.Managed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,16 +48,7 @@ public class GraphHopperManaged implements Managed {
         graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
 
         // TODO we'll need this to support car_local and car_highway profiles, not just custom speeds, right?
-        graphHopper.setFlagEncoderFactory(new DefaultFlagEncoderFactory() {
-            @Override
-            public FlagEncoder createFlagEncoder(String name, PMap configuration) {
-                if (name.startsWith("car_custom_speeds")) {
-                    // custom speeds will be applied by the tag parser factory
-                    return VehicleEncodedValues.car((new PMap(configuration)).putObject("name", name));
-                }
-                return super.createFlagEncoder(name, configuration);
-            }
-        });
+        graphHopper.setFlagEncoderFactory(new EEFlagEncoderFactory());
 
     }
 
