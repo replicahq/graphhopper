@@ -16,6 +16,8 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
         // (such as graph.flag_encoders: car|turn_costs=true)
         // Unless you have a high need for changing any of these values per-instance,
         // I recommend simply using this class as configuration instead.
+
+        // Ignore isHGV and isMotorVehicle, those will be gone next version.
         if (name.equals("car")) {
             return createVehicleFlagEncoder(name, 7, 2, CarAndTruckTagParser.EE_CAR_MAX_SPEED, false);
         } else if (name.equals("small_truck")) {
