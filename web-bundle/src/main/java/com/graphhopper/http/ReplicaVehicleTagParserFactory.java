@@ -27,7 +27,7 @@ import com.graphhopper.util.PMap;
 
 import java.util.Map;
 
-public class VehicleTagParserFactoryWithTrucks extends DefaultVehicleTagParserFactory {
+public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFactory {
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
         configuration.putObject("block_fords", false);
