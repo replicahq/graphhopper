@@ -25,22 +25,20 @@ import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class VehicleTagParserFactoryWithTrucks extends DefaultVehicleTagParserFactory {
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
         configuration.putObject("block_fords", false);
         if (name.equals("car")) {
-            return TruckTagParser.createCar(lookup, configuration);
+            return CarAndTruckTagParser.createCar(lookup, configuration);
         } else if (name.equals("small_truck")) {
-            return TruckTagParser.createSmallTruck(lookup, configuration);
+            return CarAndTruckTagParser.createSmallTruck(lookup, configuration);
         } else if (name.equals("truck")) {
-            return TruckTagParser.createTruck(lookup, configuration);
+            return CarAndTruckTagParser.createTruck(lookup, configuration);
         } else if (name.equals("van")) {
-            return TruckTagParser.createVan(lookup, configuration);
+            return CarAndTruckTagParser.createVan(lookup, configuration);
         } else if (name.startsWith("car_custom_speeds")) {
             configuration.putObject("name", name);
             return new CarTagParser(lookup, configuration) {

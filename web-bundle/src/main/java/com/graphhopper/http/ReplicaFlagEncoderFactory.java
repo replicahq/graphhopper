@@ -5,25 +5,28 @@ import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.VehicleEncodedValues;
 import com.graphhopper.util.PMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.graphhopper.routing.util.EncodingManager.getKey;
 
-public class EEFlagEncoderFactory extends DefaultFlagEncoderFactory {
+public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
+
+    Logger logger = LoggerFactory.getLogger(ReplicaFlagEncoderFactory.class);
 
     @Override
     public FlagEncoder createFlagEncoder(final String name, PMap configuration) {
-        if (name.equals(CAR)) {
-            return createEEEncoder(name, configuration, 7, 2, TruckTagParser.EE_CAR_MAX_SPEED, false);
+        if (name.equals("car")) {
+            return createEEEncoder(name, configuration, 7, 2, CarAndTruckTagParser.EE_CAR_MAX_SPEED, false);
         } else if (name.equals("small_truck")) {
-            return createEEEncoder(name, configuration, 7, 2, TruckTagParser.EE_SMALL_TRUCK_MAX_SPEED, false);
+            return createEEEncoder(name, configuration, 7, 2, CarAndTruckTagParser.EE_SMALL_TRUCK_MAX_SPEED, false);
         } else if (name.equals("truck")) {
-            return createEEEncoder(name, configuration, 6, 2, TruckTagParser.EE_TRUCK_MAX_SPEED, true);
+            return createEEEncoder(name, configuration, 6, 2, CarAndTruckTagParser.EE_TRUCK_MAX_SPEED, true);
         } else if (name.equals("van")) {
-            return createEEEncoder(name, configuration, 7, 2, TruckTagParser.EE_CAR_MAX_SPEED, false);
+            return createEEEncoder(name, configuration, 7, 2, CarAndTruckTagParser.EE_CAR_MAX_SPEED, false);
         } else if (name.startsWith("car_custom_speeds")) {
-            return createEEEncoder(name, configuration, 7, 2, TruckTagParser.EE_CAR_MAX_SPEED, false);
+            return createEEEncoder(name, configuration, 7, 2, CarAndTruckTagParser.EE_CAR_MAX_SPEED, false);
         }
-
         return super.createFlagEncoder(name, configuration);
     }
 

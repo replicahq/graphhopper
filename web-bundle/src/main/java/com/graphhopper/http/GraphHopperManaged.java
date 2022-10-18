@@ -48,7 +48,7 @@ public class GraphHopperManaged implements Managed {
         graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
 
         // TODO we'll need this to support car_local and car_highway profiles, not just custom speeds, right?
-        graphHopper.setFlagEncoderFactory(new EEFlagEncoderFactory());
+        graphHopper.setFlagEncoderFactory(new ReplicaFlagEncoderFactory());
 
     }
 
