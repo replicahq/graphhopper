@@ -27,7 +27,7 @@ import java.util.zip.ZipFile;
 public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
     private static final Logger logger = LoggerFactory.getLogger(GtfsLinkMapperTest.class);
     private static final String TEST_FEED_NAME = "link_mapping_test_feed";
-    private static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../transit_data/configs/test_gh_config_one_feed.yaml";
+    private static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../configs/test_gh_config_one_feed.yaml";
     private static final String GRAPH_FILES_DIR = "transit_data/link_mapper/";
 
     @BeforeAll
