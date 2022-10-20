@@ -20,10 +20,10 @@ graphhopper:
     - name: car
       vehicle: car
       weighting: fastest
-    - name: car_with_custom_speeds
-      # TODO break out the filename into a separate field, like custom_models do? may not be possible
-      vehicle: car_custom_speeds_my_filename_csv
+    - name: car_with_my_custom_speeds
+      vehicle: car_my_custom_speeds
       weighting: fastest
+      custom_speed_file: my_custom_speeds.csv
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -38,7 +38,7 @@ graphhopper:
     - profile: car
     - profile: bike
     - profile: foot
-    - profile: car_with_custom_speeds
+    - profile: car_with_my_custom_speeds
     # - profile: truck
 
 server:

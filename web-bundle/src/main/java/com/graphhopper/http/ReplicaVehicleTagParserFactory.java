@@ -18,6 +18,8 @@
 
 package com.graphhopper.http;
 
+import com.graphhopper.config.Profile;
+import com.graphhopper.customspeeds.CustomSpeeds;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.CarTagParser;
@@ -25,15 +27,25 @@ import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFactory {
+    private final Map<String, String> vehicleNameToCustomSpeedFileName;
+
+    public ReplicaVehicleTagParserFactory(Map<String, String> vehicleNameToCustomSpeedFileName) {
+        this.vehicleNameToCustomSpeedFileName = vehicleNameToCustomSpeedFileName;
+    }
+
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
         configuration.putObject("block_fords", false);
-        if (name.equals("truck")) {
-            return CarAndTruckTagParser.createTruck(lookup, configuration);
-        } else if (name.startsWith("car_custom_speeds")) {
+
+        if (vehicleNameToCustomSpeedFileName.containsKey(name)) {
+            // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
+            // internals to tolerate it
             configuration.putObject("name", name);
             return new CarTagParser(lookup, configuration) {
 
@@ -64,6 +76,10 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
                      */
                 }
             };
+        }
+
+        if (name.equals("truck")) {
+            return CarAndTruckTagParser.createTruck(lookup, configuration);
         } else if (name.startsWith("car")) {
             return CarAndTruckTagParser.createCar(lookup, configuration);
         }

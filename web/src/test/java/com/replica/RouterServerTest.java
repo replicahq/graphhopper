@@ -348,7 +348,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     @Test
     public void testAutoQueryCustomSpeeds() {
         // time with vanilla OSM speeds 1419736
-        final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(createStreetRequest("car_with_custom_speeds", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION));
+        final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(createStreetRequest("car_with_my_custom_speeds", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION));
         checkStreetBasedResponse(response, false);
 
         final RouterOuterClass.StreetRouteReply vanillaResponse = routerStub.routeStreetMode(AUTO_REQUEST);

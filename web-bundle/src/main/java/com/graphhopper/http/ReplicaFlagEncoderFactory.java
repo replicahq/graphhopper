@@ -6,6 +6,8 @@ import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.VehicleEncodedValues;
 import com.graphhopper.util.PMap;
 
+import java.util.Set;
+
 import static com.graphhopper.routing.util.EncodingManager.getKey;
 
 public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
@@ -13,6 +15,11 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
     private static final int TRUCK_SPEED_BITS = 6;
     private static final int TRUCK_SPEED_FACTOR = 2;
     private static final boolean ENABLE_TRUCK_TURN_RESTRICTIONS = false;
+    private final Set<String> vehiclesWithCustomSpeeds;
+
+    public ReplicaFlagEncoderFactory(Set<String> vehiclesWithCustomSpeeds) {
+        this.vehiclesWithCustomSpeeds = vehiclesWithCustomSpeeds;
+    }
 
     @Override
     public FlagEncoder createFlagEncoder(final String name, PMap configuration) {
@@ -21,11 +28,13 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
         // Unless you have a high need for changing any of these values per-instance,
         // I recommend simply using this class as configuration instead.
 
-        if (name.equals(TRUCK_VEHICLE_NAME)) {
+        if (vehiclesWithCustomSpeeds.contains(name)) {
+            // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
+            // internals to tolerate it. then we can delegate to the default car flag encoder
+            PMap customSpeedsConfig = new PMap(configuration).putObject("name", name);
+            return VehicleEncodedValues.car(customSpeedsConfig);
+        } else if (name.equals(TRUCK_VEHICLE_NAME)) {
             return createTruckFlagEncoder();
-        } else if (name.startsWith("car_custom_speeds")) {
-            PMap carCustomConfiguration = new PMap(configuration).putObject("name", name);
-            return VehicleEncodedValues.car(carCustomConfiguration);
         }
 
         return super.createFlagEncoder(name, configuration);
