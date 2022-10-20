@@ -9,6 +9,10 @@ import com.graphhopper.util.PMap;
 import static com.graphhopper.routing.util.EncodingManager.getKey;
 
 public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
+    private static final String TRUCK_VEHICLE_NAME = "truck";
+    private static final int TRUCK_SPEED_BITS = 6;
+    private static final int TRUCK_SPEED_FACTOR = 2;
+    private static final boolean ENABLE_TRUCK_TURN_RESTRICTIONS = false;
 
     @Override
     public FlagEncoder createFlagEncoder(final String name, PMap configuration) {
@@ -17,29 +21,29 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
         // Unless you have a high need for changing any of these values per-instance,
         // I recommend simply using this class as configuration instead.
 
-        // Ignore isHGV and isMotorVehicle, those will be gone next version.
-        if (name.equals("car")) {
-            return createVehicleFlagEncoder(name, 7, 2, CarAndTruckTagParser.EE_CAR_MAX_SPEED, false);
-        } else if (name.equals("small_truck")) {
-            return createVehicleFlagEncoder(name, 7, 2, CarAndTruckTagParser.EE_SMALL_TRUCK_MAX_SPEED, false);
-        } else if (name.equals("truck")) {
-            return createVehicleFlagEncoder(name, 6, 2, CarAndTruckTagParser.EE_TRUCK_MAX_SPEED, true);
-        } else if (name.equals("van")) {
-            return createVehicleFlagEncoder(name, 7, 2, CarAndTruckTagParser.EE_CAR_MAX_SPEED, false);
+        if (name.equals(TRUCK_VEHICLE_NAME)) {
+            return createTruckFlagEncoder();
         } else if (name.startsWith("car_custom_speeds")) {
-            return createVehicleFlagEncoder(name, 7, 2, CarAndTruckTagParser.EE_CAR_MAX_SPEED, false);
+            PMap carCustomConfiguration = new PMap(configuration).putObject("name", name);
+            return VehicleEncodedValues.car(carCustomConfiguration);
         }
+
         return super.createFlagEncoder(name, configuration);
     }
 
-    private static FlagEncoder createVehicleFlagEncoder(String name, int speedBits, double speedFactor, double maxSpeed, boolean isHGV) {
-        boolean turnRestrictions = false; // switch here to enable turn restrictions
+    // adapted from prod GraphHopper code (not available in OSS GraphHopper)
+    private static FlagEncoder createTruckFlagEncoder() {
+        int maxTurnCosts = ENABLE_TRUCK_TURN_RESTRICTIONS ? 1 : 0; // so far, if we use turn costs, it's a binary -- restricted or unrestricted (1 is scaled to infinity further down the code)
+        BooleanEncodedValue accessEnc = new SimpleBooleanEncodedValue(getKey(TRUCK_VEHICLE_NAME, "access"), true);
+        DecimalEncodedValue speedEnc = new DecimalEncodedValueImpl(getKey(TRUCK_VEHICLE_NAME, "average_speed"), TRUCK_SPEED_BITS, TRUCK_SPEED_FACTOR, false);
+        DecimalEncodedValue turnCostEnc = maxTurnCosts > 0 ? TurnCost.create(TRUCK_VEHICLE_NAME, maxTurnCosts) : null;
+        double maxSpeed = speedEnc.getNextStorableValue(CarAndTruckTagParser.EE_TRUCK_MAX_SPEED);
 
-        int maxTurnCosts = turnRestrictions ? 1 : 0; // so far, if we use turn costs, it's a binary -- restricted or unrestricted (1 is scaled to infinity further down the code)
-        BooleanEncodedValue accessEnc = new SimpleBooleanEncodedValue(getKey(name, "access"), true);
-        DecimalEncodedValue speedEnc = new DecimalEncodedValueImpl(getKey(name, "average_speed"), speedBits, speedFactor, false);
-        DecimalEncodedValue turnCostEnc = maxTurnCosts > 0 ? TurnCost.create(name, maxTurnCosts) : null;
-        return new VehicleEncodedValues(name, accessEnc, speedEnc, null, null, turnCostEnc, speedEnc.getNextStorableValue(maxSpeed), true, isHGV);
+        // Ignore isHGV and isMotorVehicle, those will be gone next version.
+        boolean isHGV = true;
+        boolean isMotorVehicle = true;
+
+        return new VehicleEncodedValues(TRUCK_VEHICLE_NAME, accessEnc, speedEnc, null, null, turnCostEnc, maxSpeed, isMotorVehicle, isHGV);
     }
 
 }

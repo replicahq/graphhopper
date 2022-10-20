@@ -31,14 +31,8 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
         configuration.putObject("block_fords", false);
-        if (name.equals("car")) {
-            return CarAndTruckTagParser.createCar(lookup, configuration);
-        } else if (name.equals("small_truck")) {
-            return CarAndTruckTagParser.createSmallTruck(lookup, configuration);
-        } else if (name.equals("truck")) {
+        if (name.equals("truck")) {
             return CarAndTruckTagParser.createTruck(lookup, configuration);
-        } else if (name.equals("van")) {
-            return CarAndTruckTagParser.createVan(lookup, configuration);
         } else if (name.startsWith("car_custom_speeds")) {
             configuration.putObject("name", name);
             return new CarTagParser(lookup, configuration) {
@@ -70,7 +64,10 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
                      */
                 }
             };
+        } else if (name.startsWith("car")) {
+            return CarAndTruckTagParser.createCar(lookup, configuration);
         }
+
         return super.createParser(lookup, name, configuration);
     }
 }
