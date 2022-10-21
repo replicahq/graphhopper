@@ -27,7 +27,7 @@ docker run \
      "$DOCKER_IMAGE_TAG" \
      /bin/bash -c "cp -r ./web/test-data . && \
      java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import ./transit_data/configs/test_gh_config.yaml"
+     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import ./configs/test_gh_config.yaml"
 
 # Run link-mapping step
 docker run \
@@ -37,7 +37,7 @@ docker run \
     "$DOCKER_IMAGE_TAG" \
     /bin/bash -c "cp -r ./web/test-data . && \
     java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links ./transit_data/configs/test_gh_config.yaml"
+    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links ./configs/test_gh_config.yaml"
 
 # Run server in background (override standard CMD in Dockerfile.server with test_gh_config.yaml)
 docker run --rm --log-driver=none --name functional_test_server -d -p 50051:50051 -p 8998:8998 \
@@ -55,7 +55,7 @@ docker run --rm --log-driver=none --name functional_test_server -d -p 50051:5005
       -Djava.rmi.server.hostname=127.0.0.1 \
       -XX:+UseG1GC -XX:MetaspaceSize=100M \
       -classpath grpc/target/graphhopper-grpc-1.0-SNAPSHOT.jar \
-      com.replica.RouterServer ./transit_data/configs/test_gh_config.yaml"
+      com.replica.RouterServer ./configs/test_gh_config.yaml"
 
 echo "Waiting for graphhopper server to start up"
 sleep 30

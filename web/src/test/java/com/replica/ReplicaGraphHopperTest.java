@@ -38,8 +38,8 @@ public class ReplicaGraphHopperTest {
     protected static final String TRANSIT_DATA_DIR = "transit_data/";
     protected static final String TEST_REGION_NAME = "mini_nor_cal";
     protected static final String TEST_RELEASE_NAME = "graphhopper_test";
-    protected static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../transit_data/configs/test_gh_config.yaml";
-    protected static final String TEST_EXPORT_GRAPHHOPPER_CONFIG_PATH = "../transit_data/configs/test_export_gh_config.yaml";
+    protected static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../configs/test_gh_config.yaml";
+    protected static final String TEST_EXPORT_GRAPHHOPPER_CONFIG_PATH = "../configs/test_export_gh_config.yaml";
     protected static final List<String> TEST_GTFS_FILE_NAMES = parseTestGtfsFileNames();
 
     protected static Bootstrap<GraphHopperServerConfiguration> bootstrap;
