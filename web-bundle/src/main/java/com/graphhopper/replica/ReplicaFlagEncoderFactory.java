@@ -3,6 +3,7 @@ package com.graphhopper.replica;
 import com.graphhopper.http.TruckFlagEncoder;
 import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
 import com.graphhopper.routing.util.FlagEncoder;
+import com.graphhopper.routing.util.VehicleEncodedValues;
 import com.graphhopper.util.PMap;
 
 public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
@@ -12,6 +13,12 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
     // instead use this class to apply the necessary customizations to the default flag encoder
     @Override
     public FlagEncoder createFlagEncoder(final String name, PMap configuration) {
+        if (name.startsWith("car")) {
+            // car custom profiles may use nonstandard vehicle names which must be added to the config for the GH
+            // internals to tolerate it. then we can delegate to the default car flag encoder
+            PMap configWithName = new PMap(configuration).putObject("name", name);
+            return VehicleEncodedValues.car(configWithName);
+        }
         if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
             return TruckFlagEncoder.createTruckFlagEncoder();
         }

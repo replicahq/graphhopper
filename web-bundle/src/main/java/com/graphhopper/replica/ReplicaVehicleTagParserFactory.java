@@ -21,6 +21,7 @@ package com.graphhopper.replica;
 import com.graphhopper.http.TruckFlagEncoder;
 import com.graphhopper.http.TruckTagParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
+import com.graphhopper.routing.util.CarTagParser;
 import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
@@ -28,6 +29,12 @@ import com.graphhopper.util.PMap;
 public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFactory {
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
+        if (name.startsWith("car")) {
+            // car custom profiles may use nonstandard vehicle names which must be added to the config for the GH
+            // internals to tolerate it. then we can delegate to the default car tag parser
+            PMap configWithName = new PMap(configuration).putObject("name", name);
+            return new CarTagParser(lookup, configWithName);
+        }
         if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
             configuration.putObject("block_fords", false);
             return TruckTagParser.createTruck(lookup, configuration);
