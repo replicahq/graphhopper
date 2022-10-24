@@ -18,8 +18,6 @@
 
 package com.graphhopper.http;
 
-import com.graphhopper.config.Profile;
-import com.graphhopper.customspeeds.CustomSpeeds;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.CarTagParser;
@@ -27,10 +25,8 @@ import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFactory {
     private final Map<String, String> vehicleNameToCustomSpeedFileName;
@@ -49,31 +45,25 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
             configuration.putObject("name", name);
             return new CarTagParser(lookup, configuration) {
 
-                private Map<Long, Double> OSM_WAY_ID_TO_MAX_SPEED = Map.of(1L, 1.0);
+                // Thurton Drive in Roseville, CA
+                // TODO read from csv
+                private Map<Long, Double> OSM_WAY_ID_TO_MAX_SPEED = Map.of(10485465L, 1000.0);
 
                 @Override
                 protected double applyMaxSpeed(ReaderWay way, double speed) {
-                    return 100;
-
-                    /*
                     Double knownMaxSpeed = OSM_WAY_ID_TO_MAX_SPEED.get(way.getId());
                     // n.b. this does the 90% of OSM max speed logic
                     return Objects.requireNonNullElseGet(knownMaxSpeed, () -> super.applyMaxSpeed(way, speed));
-                    */
                 }
 
                 protected double applyBadSurfaceSpeed(ReaderWay way, double speed) {
-                    return speed;
-
-                    /*
-                    // if we know the ground truth max speed, no need to apply parent's bad surface logic
+                    // if we've been explicitly been given a speed to use for the way, we should not apply any
+                    // additional logic for bad road surfaces
                     if (OSM_WAY_ID_TO_MAX_SPEED.containsKey(way.getId())) {
                         return speed;
                     }
 
                     return super.applyBadSurfaceSpeed(way, speed);
-
-                     */
                 }
             };
         }

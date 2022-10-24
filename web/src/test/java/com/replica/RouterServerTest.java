@@ -17,6 +17,7 @@
  */
 package com.replica;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.protobuf.Timestamp;
 import com.graphhopper.GraphHopper;
@@ -71,6 +72,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             createStreetRequest("car", true,REQUEST_ORIGIN_1, REQUEST_DESTINATION);
     private static final RouterOuterClass.StreetRouteRequest WALK_REQUEST =
             createStreetRequest("foot", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+
+    private static final String FAST_THURTON_DRIVE_PROFILE_NAME = "custom_car_fast_thurton_drive";
 
     private static router.RouterGrpc.RouterBlockingStub routerStub = null;
 
@@ -306,7 +309,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         assertTrue(path.getStableEdgeIdsCount() > 0);
         assertEquals(path.getStableEdgeIdsCount(), path.getEdgeDurationsMillisCount());
         int totalDurationMillis = path.getEdgeDurationsMillisList().stream().mapToInt(Long::intValue).sum();
-        System.out.println("path duration millis: " + path.getDurationMillis());
         assertEquals(path.getDurationMillis(), totalDurationMillis);
     }
 
@@ -347,15 +349,21 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
     @Test
     public void testAutoQueryCustomSpeeds() {
-        // time with vanilla OSM speeds 1419736
-        final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(createStreetRequest("car_with_my_custom_speeds", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION));
-        checkStreetBasedResponse(response, false);
+        // two nearby points in Roseville along Thurton Drive (OSM way ID 10485465)
+        double[] origin = {38.75610459830836, -121.31971682573254};
+        double[] dest = {38.75276653167277, -121.32034746128646};
 
-        final RouterOuterClass.StreetRouteReply vanillaResponse = routerStub.routeStreetMode(AUTO_REQUEST);
+        final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(createStreetRequest(FAST_THURTON_DRIVE_PROFILE_NAME, false, origin, dest));
+        checkStreetBasedResponse(customSpeedsResponse, false);
 
+        final RouterOuterClass.StreetRouteReply defaultSpeedsResponse = routerStub.routeStreetMode(createStreetRequest("car", false, origin, dest));
+        checkStreetBasedResponse(defaultSpeedsResponse, false);
 
-        assertTrue(response.getPaths(0).getDurationMillis() < vanillaResponse.getPaths(0).getDurationMillis());
-        System.out.println("custom speeds duration millis: " + response.getPaths(0).getDurationMillis());
-        System.out.println("vanilla speeds duration millis: " + vanillaResponse.getPaths(0).getDurationMillis());
+        RouterOuterClass.StreetPath customSpeedsPath = Iterables.getOnlyElement(customSpeedsResponse.getPathsList());
+        RouterOuterClass.StreetPath defaultSpeedsPath = Iterables.getOnlyElement(defaultSpeedsResponse.getPathsList());
+
+        // the custom speeds profile sets the Thurton Drive speed very high, so the travel time using this profile
+        // should be less than the default
+        assertTrue(customSpeedsPath.getDurationMillis() < defaultSpeedsPath.getDurationMillis());
     }
 }
