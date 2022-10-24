@@ -20,9 +20,9 @@ graphhopper:
     - name: foot
       vehicle: foot
       weighting: fastest
-    # - name: truck
-    #  vehicle: truck
-    #  weighting: fastest
+    - name: truck
+      vehicle: truck
+      weighting: fastest
 
 server:
   min_threads: 4

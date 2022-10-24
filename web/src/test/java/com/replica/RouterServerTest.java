@@ -92,7 +92,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         Map<String, List<String>> gtfsRouteInfo = null;
         Map<String, String> gtfsFeedIdMapping = null;
 
-        File linkMappingsDbFile = new File("transit_data/gtfs_link_mappings.db");
+        File linkMappingsDbFile = new File("transit_data/gtfs_link_mappings/gtfs_link_mappings.db");
         if (linkMappingsDbFile.exists()) {
             DB db = DBMaker.newFileDB(linkMappingsDbFile).readOnly().make();
             gtfsLinkMappings = db.getHashMap("gtfsLinkMappings");
@@ -282,7 +282,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     @Test
     public void testAutoQuery() {
         final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(AUTO_REQUEST);
-        checkStreetBasedResponse(response, false);
+        // even without alternatives, we expect 2 auto paths, because we route with 2 auto profiles + combine results
+        checkStreetBasedResponse(response, false, 2);
     }
 
     @Test
@@ -298,7 +299,13 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     }
 
     private static void checkStreetBasedResponse(RouterOuterClass.StreetRouteReply response, boolean alternatives) {
-        assertTrue(alternatives ? response.getPathsList().size() > 1 : response.getPathsList().size() == 1);
+        checkStreetBasedResponse(response, alternatives, 1);
+    }
+
+    private static void checkStreetBasedResponse(RouterOuterClass.StreetRouteReply response,
+                                                 boolean alternatives,
+                                                 int expectedPathCount) {
+        assertTrue(alternatives ? response.getPathsList().size() > 1 : response.getPathsList().size() == expectedPathCount);
         RouterOuterClass.StreetPath path = response.getPaths(0);
         assertTrue(path.getDurationMillis() > 0);
         assertTrue(path.getDistanceMeters() > 0);

@@ -84,7 +84,7 @@ $(document).ready(function (e) {
         mapLayer.adjustMapSize();
     });
     $("#flex-example").click(function() {
-         $("#flex-input-text").val("speed_factor:\n  road_class:\n    motorway: 0.8\npriority:\n  road_environment:\n    tunnel: 0.0\n  road_class:\n    residential: 0.7\n  max_weight:\n    \">3\": 0.0");
+         $("#flex-input-text").val("speed_factor:\n  road_class:\n    motorway: 0.8\npriority:\n  road_class:\n    residential: 0.7\n");
          return false;
     });
 
@@ -105,15 +105,11 @@ $(document).ready(function (e) {
            return;
        }
 
-       var points = [];
-       for(var idx = 0; idx < ghRequest.route.size(); idx++) {
-           var point = ghRequest.route.getIndex(idx);
-           if (point.isResolved()) {
-               points.push([point.lng, point.lat]);
-           } else {
-               routeResultsDiv.html("Unresolved points");
-               return;
-           }
+       var fromPoint = ghRequest.from;
+       var toPoint = ghRequest.to;
+       if (!fromPoint.isResolved() || !toPoint.isResolved()) {
+            routeResultsDiv.html("Unresolved points!");
+            return;
        }
 
        var jsonModel;
@@ -124,12 +120,148 @@ $(document).ready(function (e) {
          return;
        }
 
-       jsonModel.points = points;
-       jsonModel.points_encoded = false;
-       jsonModel.elevation = ghRequest.api_params.elevation;
-       jsonModel.profile = ghRequest.api_params.profile;
-       var request = JSON.stringify(jsonModel);
+       var customRouteRequest = new Router.CustomRouteRequest();
+       customRouteRequest.setProfile(ghRequest.api_params.profile);
 
+       var from = new Router.Point();
+       from.setLat(fromPoint.lat);
+       from.setLon(fromPoint.lng);
+       var to = new Router.Point();
+       to.setLat(toPoint.lat);
+       to.setLon(toPoint.lng);
+       customRouteRequest.addPoints(from);
+       customRouteRequest.addPoints(to);
+
+       customRouteRequest.setCustomModel(JSON.stringify(jsonModel));
+
+       customRouteRequest.setAlternateRouteMaxPaths($('#alt_route_max_paths').val());
+       customRouteRequest.setAlternateRouteMaxWeightFactor($('#alt_route_max_weight_factor').val());
+       customRouteRequest.setAlternateRouteMaxShareFactor($('#alt_route_max_share_factor').val());
+       console.log(customRouteRequest.toObject());
+
+        var router = new Router.RouterClient('/api');
+        router.routeCustom(customRouteRequest, null, function(err, response) {
+            if (err) {
+                console.log("Error handling request!")
+                console.log(err)
+                console.log(customRouteRequest);
+            } else {
+                console.log(response.toObject());
+
+                routeResultsDiv.html("");
+
+                function createClickHandler(geoJsons, currentLayerIndex, tabHeader, oneTab, hasElevation, details) {
+                    return function () {
+
+                       var currentGeoJson = geoJsons[currentLayerIndex];
+                       mapLayer.eachLayer(function (layer) {
+                           // skip markers etc
+                           if (!layer.setStyle)
+                               return;
+
+                           var doHighlight = layer.feature === currentGeoJson;
+                           layer.setStyle(doHighlight ? highlightRouteStyle : alternativeRouteStye);
+                           if (doHighlight) {
+                               if (!L.Browser.ie && !L.Browser.opera)
+                                   layer.bringToFront();
+                           }
+                       });
+
+                       if (hasElevation) {
+                           mapLayer.clearElevation();
+                           mapLayer.addElevation(currentGeoJson, details);
+                       }
+
+                       headerTabs.find("li").removeClass("current");
+                       routeResultsDiv.find("div").removeClass("current");
+
+                       tabHeader.addClass("current");
+                       oneTab.addClass("current");
+                    };
+                }
+                var headerTabs = $("<ul id='route_result_tabs'/>");
+                if (response.getPathsList().length > 1) {
+                   routeResultsDiv.append(headerTabs);
+                   routeResultsDiv.append("<div class='clear'/>");
+                }
+
+                // the routing layer uses the geojson properties.style for the style, see map.js
+                var defaultRouteStyle = {color: "#00cc33", "weight": 5, "opacity": 0.6};
+                var highlightRouteStyle = {color: "#00cc33", "weight": 6, "opacity": 0.8};
+                var alternativeRouteStye = {color: "darkgray", "weight": 6, "opacity": 0.8};
+                var geoJsons = [];
+                var firstHeader;
+
+                // Create buttons to toggle between SI and imperial units.
+                var createUnitsChooserButtonClickHandler = function (useMiles) {
+                   return function () {
+                       mapLayer.updateScale(useMiles);
+                       ghRequest.useMiles = useMiles;
+                       resolveAll();
+                       if (ghRequest.route.isResolved())
+                         routeLatLng(ghRequest);
+                   };
+                };
+
+                for (var pathIndex = 0; pathIndex < response.getPathsList().length; pathIndex++) {
+                    var tabHeader = $("<li>").append((pathIndex + 1) + "<img class='alt_route_img' src='img/alt_route.png'/>");
+                    if (pathIndex === 0)
+                       firstHeader = tabHeader;
+
+                    headerTabs.append(tabHeader);
+                    var path = response.getPathsList()[pathIndex];
+                    var style = (pathIndex === 0) ? defaultRouteStyle : alternativeRouteStye;
+
+                    console.log(wkt.parse(path.getPoints()))
+                    var geojsonFeature = {
+                       "type": "Feature",
+                       "geometry": wkt.parse(path.getPoints()),
+                       "properties": {
+                           "style": style,
+                           name: "route",
+                       }
+                    };
+
+                    geoJsons.push(geojsonFeature);
+                    mapLayer.addDataToRoutingLayer(geojsonFeature);
+                    var oneTab = $("<div class='route_result_tab'>");
+                    routeResultsDiv.append(oneTab);
+                    tabHeader.click(createClickHandler(geoJsons, pathIndex, tabHeader, oneTab, ghRequest.hasElevation(), path.details));
+
+                    var routeInfo = $("<div class='route_description'>");
+
+                    var kmButton = $("<button class='plain_text_button " + (ghRequest.useMiles ? "gray" : "") + "'>");
+                    kmButton.text(translate.tr2("km_abbr"));
+                    kmButton.click(createUnitsChooserButtonClickHandler(false));
+
+                    var miButton = $("<button class='plain_text_button " + (ghRequest.useMiles ? "" : "gray") + "'>");
+                    miButton.text(translate.tr2("mi_abbr"));
+                    miButton.click(createUnitsChooserButtonClickHandler(true));
+
+                    var buttons = $("<span style='float: right;'>");
+                    buttons.append(kmButton);
+                    buttons.append('|');
+                    buttons.append(miButton);
+
+                    routeInfo.append(buttons);
+
+                    routeInfo.append($("<div style='clear:both'/>"));
+                    oneTab.append(routeInfo);
+               }
+               // already select best path
+               firstHeader.click();
+
+               mapLayer.adjustMapSize();
+
+               $('.defaulting').each(function (index, element) {
+                   $(element).css("color", "black");
+               });
+            }
+        })
+    }
+
+
+/*
        $.ajax({
            url: "/route-custom",
            type: "POST",
@@ -144,6 +276,7 @@ $(document).ready(function (e) {
            }
         });
     };
+*/
 
     $("#flex-input-text").keydown(function (e) {
         // CTRL+Enter
@@ -837,16 +970,15 @@ function routeLatLng(request, doQuery) {
     var from = new Router.Point();
     from.setLat(request.from.lat);
     from.setLon(request.from.lng);
-    console.log(from);
     var to = new Router.Point();
     to.setLat(request.to.lat);
     to.setLon(request.to.lng);
-    console.log(to);
     streetRouteRequest.addPoints(from);
     streetRouteRequest.addPoints(to);
-    streetRouteRequest.setAlternateRouteMaxPaths(5);
-    streetRouteRequest.setAlternateRouteMaxWeightFactor(2.0);
-    streetRouteRequest.setAlternateRouteMaxShareFactor(0.4);
+    streetRouteRequest.setAlternateRouteMaxPaths($('#alt_route_max_paths').val());
+    streetRouteRequest.setAlternateRouteMaxWeightFactor($('#alt_route_max_weight_factor').val());
+    streetRouteRequest.setAlternateRouteMaxShareFactor($('#alt_route_max_share_factor').val());
+    console.log(streetRouteRequest.toObject());
 
     var router = new Router.RouterClient('/api');
     router.routeStreetMode(streetRouteRequest, null, function(err, response) {
