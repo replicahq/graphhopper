@@ -20,7 +20,7 @@ package com.graphhopper.replica;
 
 import com.google.common.collect.ImmutableMap;
 import com.graphhopper.customspeeds.CustomSpeedsUtils;
-import com.graphhopper.http.CarAndTruckTagParser;
+import com.graphhopper.http.TruckTagParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
@@ -39,8 +39,6 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
 
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
-        configuration.putObject("block_fords", false);
-
         if (vehicleNameToCustomSpeedFile.containsKey(name)) {
             // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it
@@ -60,9 +58,8 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
                         "format!", e);
             }
         } else if (name.equals("truck")) {
-            return CarAndTruckTagParser.createTruck(lookup, configuration);
-        } else if (name.startsWith("car")) {
-            return CarAndTruckTagParser.createCar(lookup, configuration);
+            configuration.putObject("block_fords", false);
+            return TruckTagParser.createTruck(lookup, configuration);
         }
 
         return super.createParser(lookup, name, configuration);

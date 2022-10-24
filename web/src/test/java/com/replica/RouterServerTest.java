@@ -286,7 +286,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     public void testAutoQuery() {
         final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(AUTO_REQUEST);
         checkStreetBasedResponse(response, false);
-//        assertEquals(response.getPaths(0).getDurationMillis(), 1419736);
     }
 
     @Test

@@ -2,8 +2,8 @@
 # 1 profile loaded with default speeds is defined for each vehicle type
 
 graphhopper:
-  datareader.file: ./test-data/micro_nor_cal.osm.pbf
-  gtfs.file: ./test-data/gtfs/f-9qc-fairfield~ca~us.zip,./test-data/gtfs/rosevill.zip,./test-data/gtfs/srtd.zip,./test-data/gtfs/vacaville.zip
+  datareader.file: {{ TEST_OSM }}
+  gtfs.file: {{ TEST_GTFS }}
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000

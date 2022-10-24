@@ -36,74 +36,33 @@ import static com.graphhopper.util.Helper.toLowerCase;
  *
  * @author Peter Karich
  */
-public class CarAndTruckTagParser extends CarTagParser {
+public class TruckTagParser extends CarTagParser {
     public static final double EE_CAR_MAX_SPEED = 140;
-    public static final double EE_SMALL_TRUCK_MAX_SPEED = 105;
     public static final double EE_TRUCK_MAX_SPEED = 95;
-
-    public static final double SMALL_TRUCK_WEIGHT = 2.08 + 1.4;
-
-    public static CarAndTruckTagParser createCar(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "car");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_CAR_MAX_SPEED);
-        return new CarAndTruckTagParser(lookup, properties).setHeight(1.99).setCarriesGoods(false).initProperties();
-    }
-
-    /**
-     * Describes a van like the Mercedes vito or Ford transit. Here we use the
-     * values for the Vito compact. Total weight is under 3.5t
-     */
-    public static CarAndTruckTagParser createVan(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "van");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_CAR_MAX_SPEED);
-        return new CarAndTruckTagParser(lookup, properties).
-                setHeight(2.5).setWidth(2, 0.34).setLength(4.75).
-                setWeight(1.66 + 1.11).
-                initProperties();
-    }
-
-    /**
-     * Describes a so called vehicle like the Mercedes Sprinter or Iveco Daily
-     * used by DHL. Total weight is under 3.5t
-     */
-    public static CarAndTruckTagParser createSmallTruck(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "small_truck");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_SMALL_TRUCK_MAX_SPEED);
-        return new CarAndTruckTagParser(lookup, properties).
-                setHeight(2.7).setWidth(2, 0.34).setLength(5.5).
-                setWeight(SMALL_TRUCK_WEIGHT).
-                initProperties();
-    }
 
     /**
      * Describes a big HGV truck with 3 axes. E.g. the 6 wheeler here:
      * http://www.grabtrucks.com/willitfit/ where we only increased the length
      */
-    public static CarAndTruckTagParser createTruck(EncodedValueLookup lookup, PMap properties) {
+    public static TruckTagParser createTruck(EncodedValueLookup lookup, PMap properties) {
         if (!properties.has("name"))
             properties = new PMap(properties).putObject("name", "truck");
         if (!properties.has("max_speed"))
             properties = new PMap(properties).putObject("max_speed", EE_TRUCK_MAX_SPEED);
-        return new CarAndTruckTagParser(lookup, properties).
+        return new TruckTagParser(lookup, properties).
                 setHeight(3.7).setWidth(2.6, 0.34).setLength(12).
                 setWeight(13.0 + 13.0).setAxes(3).setIsHGV(true).
                 initProperties();
     }
 
-    public static CarAndTruckTagParser createCustomEE(EncodedValueLookup lookup, PMap properties) {
+    public static TruckTagParser createCustomEE(EncodedValueLookup lookup, PMap properties) {
         if (!properties.has("name"))
             throw new IllegalArgumentException("custom_ee requires a name");
         if (!properties.has("max_speed"))
             throw new IllegalArgumentException("custom_ee requires max_speed");
         if (properties.getBool("soft_oneway", false))
             throw new IllegalArgumentException("soft_oneway is no longer supported. Use roads FlagEncoder with car_access instead");
-        return new CarAndTruckTagParser(lookup, properties).
+        return new TruckTagParser(lookup, properties).
                 setHeight(properties.getDouble("height", 2.7)).
                 setWidth(properties.getDouble("width", 2), properties.getDouble("mirror_width", 0.4)).
                 setLength(properties.getDouble("length", 5.5)).
@@ -136,7 +95,7 @@ public class CarAndTruckTagParser extends CarTagParser {
         return map;
     }
 
-    private static final Logger logger = LoggerFactory.getLogger(CarAndTruckTagParser.class);
+    private static final Logger logger = LoggerFactory.getLogger(TruckTagParser.class);
     // default settings "isCarLike == true"
     private boolean isHGV = false;
     private boolean carriesGoods = true;
@@ -152,7 +111,7 @@ public class CarAndTruckTagParser extends CarTagParser {
     private double excludeMaxSpeed;
     private int axes = 2;
 
-    public CarAndTruckTagParser(EncodedValueLookup lookup, PMap properties) {
+    public TruckTagParser(EncodedValueLookup lookup, PMap properties) {
         this(
                 lookup.getBooleanEncodedValue(getKey(properties.getString("name", "car"), "access")),
                 lookup.getDecimalEncodedValue(getKey(properties.getString("name", "car"), "average_speed")),
@@ -162,8 +121,8 @@ public class CarAndTruckTagParser extends CarTagParser {
         );
     }
 
-    public CarAndTruckTagParser(BooleanEncodedValue accessEnc, DecimalEncodedValue speedEnc, DecimalEncodedValue turnCostEnc,
-                                BooleanEncodedValue roundaboutEnc, PMap properties) {
+    public TruckTagParser(BooleanEncodedValue accessEnc, DecimalEncodedValue speedEnc, DecimalEncodedValue turnCostEnc,
+                          BooleanEncodedValue roundaboutEnc, PMap properties) {
         super(accessEnc, speedEnc, turnCostEnc, roundaboutEnc, properties, TransportationMode.CAR,
                 speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_CAR_MAX_SPEED)));
         if (!properties.getBool("block_private", true)) {
@@ -181,23 +140,23 @@ public class CarAndTruckTagParser extends CarTagParser {
         }
     }
 
-    public CarAndTruckTagParser setHeight(double height) {
+    public TruckTagParser setHeight(double height) {
         this.height = height;
         return this;
     }
 
-    public CarAndTruckTagParser setLength(double length) {
+    public TruckTagParser setLength(double length) {
         this.length = length;
         return this;
     }
 
-    public CarAndTruckTagParser setWidth(double width, double mirrorWidth) {
+    public TruckTagParser setWidth(double width, double mirrorWidth) {
         this.width = width;
         this.mirrorWidth = mirrorWidth;
         return this;
     }
 
-    public CarAndTruckTagParser setAxes(int axes) {
+    public TruckTagParser setAxes(int axes) {
         this.axes = axes;
         return this;
     }
@@ -205,7 +164,7 @@ public class CarAndTruckTagParser extends CarTagParser {
     /**
      * Sets the weight of the vehicle including people, equipment and payload in tons
      */
-    public CarAndTruckTagParser setWeight(double weight) {
+    public TruckTagParser setWeight(double weight) {
         this.weight = weight;
         return this;
     }
@@ -213,7 +172,7 @@ public class CarAndTruckTagParser extends CarTagParser {
     /**
      * Sets if this vehicle should be a heavy goods vehicle
      */
-    public CarAndTruckTagParser setIsHGV(boolean isHGV) {
+    public TruckTagParser setIsHGV(boolean isHGV) {
         this.isHGV = isHGV;
         return this;
     }
@@ -222,33 +181,33 @@ public class CarAndTruckTagParser extends CarTagParser {
         return isHGV;
     }
 
-    public CarAndTruckTagParser setCarriesGoods(boolean carriesGoods) {
+    public TruckTagParser setCarriesGoods(boolean carriesGoods) {
         this.carriesGoods = carriesGoods;
         return this;
     }
 
-    public CarAndTruckTagParser setCarriesHazard(boolean carriesHazard) {
+    public TruckTagParser setCarriesHazard(boolean carriesHazard) {
         this.carriesHazard = carriesHazard;
         return this;
     }
 
-    public CarAndTruckTagParser setIsAgricultural(boolean isAgricultural) {
+    public TruckTagParser setIsAgricultural(boolean isAgricultural) {
         this.isAgricultural = isAgricultural;
         return this;
     }
 
-    public CarAndTruckTagParser setIsTaxi(boolean isTaxi) {
+    public TruckTagParser setIsTaxi(boolean isTaxi) {
         this.isTaxi = isTaxi;
         this.isPSV = isTaxi;
         return this;
     }
 
-    public CarAndTruckTagParser setExcludeMaxSpeed(double maxSpeed) {
+    public TruckTagParser setExcludeMaxSpeed(double maxSpeed) {
         excludeMaxSpeed = maxSpeed;
         return this;
     }
 
-    public CarAndTruckTagParser initProperties() {
+    public TruckTagParser initProperties() {
         // TODO merge with init somehow?
         return initProperties(null);
     }
@@ -257,7 +216,7 @@ public class CarAndTruckTagParser extends CarTagParser {
      * This method initialized the speed and the specified speedMap or car
      * speeds will be used for default speeds. Maps highway tags to speeds.
      */
-    public CarAndTruckTagParser initProperties(Map<String, Integer> speedMap) {
+    public TruckTagParser initProperties(Map<String, Integer> speedMap) {
         final List<String> tmpRestrictions = new ArrayList<>();
         if (isCarLike()) {
             trackTypeSpeedMap.clear();
