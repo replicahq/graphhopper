@@ -1,5 +1,6 @@
-package com.graphhopper.http;
+package com.graphhopper.replica;
 
+import com.graphhopper.http.CarAndTruckTagParser;
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.util.DefaultFlagEncoderFactory;
 import com.graphhopper.routing.util.FlagEncoder;
@@ -15,10 +16,10 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
     private static final int TRUCK_SPEED_BITS = 6;
     private static final int TRUCK_SPEED_FACTOR = 2;
     private static final boolean ENABLE_TRUCK_TURN_RESTRICTIONS = false;
-    private final Set<String> vehiclesWithCustomSpeeds;
+    private final Set<String> vehicleNamesWithCustomSpeeds;
 
-    public ReplicaFlagEncoderFactory(Set<String> vehiclesWithCustomSpeeds) {
-        this.vehiclesWithCustomSpeeds = vehiclesWithCustomSpeeds;
+    public ReplicaFlagEncoderFactory(Set<String> vehicleNamesWithCustomSpeeds) {
+        this.vehicleNamesWithCustomSpeeds = vehicleNamesWithCustomSpeeds;
     }
 
     @Override
@@ -28,7 +29,7 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
         // Unless you have a high need for changing any of these values per-instance,
         // I recommend simply using this class as configuration instead.
 
-        if (vehiclesWithCustomSpeeds.contains(name)) {
+        if (vehicleNamesWithCustomSpeeds.contains(name)) {
             // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it. then we can delegate to the default car flag encoder
             PMap customSpeedsConfig = new PMap(configuration).putObject("name", name);

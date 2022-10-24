@@ -29,8 +29,9 @@ graphhopper:
     - name: custom_car_fast_thurton_drive
       vehicle: custom_car_fast_thurton_drive
       weighting: fastest
-      # sets a very high speed for Thurton Dr in Roseville (OSM way id 10485465)
-      custom_speed_file: custom_fast_thurton_drive_speed.csv
+      # sets a very high speed for Thurton Drive in Roseville (OSM way id 10485465)
+      custom_speed_file: test-data/custom_fast_thurton_drive_speed.csv # mvn tests run from the /web folder
+
     # - name: truck
     #  vehicle: truck
     #  weighting: fastest

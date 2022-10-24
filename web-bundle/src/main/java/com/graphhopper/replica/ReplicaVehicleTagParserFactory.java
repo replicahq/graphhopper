@@ -16,59 +16,50 @@
  *  limitations under the License.
  */
 
-package com.graphhopper.http;
+package com.graphhopper.replica;
 
-import com.graphhopper.reader.ReaderWay;
+import com.google.common.collect.ImmutableMap;
+import com.graphhopper.customspeeds.CustomSpeedsUtils;
+import com.graphhopper.http.CarAndTruckTagParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
-import com.graphhopper.routing.util.CarTagParser;
 import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
-import java.util.Objects;
 
 public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFactory {
-    private final Map<String, String> vehicleNameToCustomSpeedFileName;
+    private final Map<String, File> vehicleNameToCustomSpeedFile;
 
-    public ReplicaVehicleTagParserFactory(Map<String, String> vehicleNameToCustomSpeedFileName) {
-        this.vehicleNameToCustomSpeedFileName = vehicleNameToCustomSpeedFileName;
+    public ReplicaVehicleTagParserFactory(Map<String, File> vehicleNameToCustomSpeedFile) {
+        this.vehicleNameToCustomSpeedFile = vehicleNameToCustomSpeedFile;
     }
 
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
         configuration.putObject("block_fords", false);
 
-        if (vehicleNameToCustomSpeedFileName.containsKey(name)) {
+        if (vehicleNameToCustomSpeedFile.containsKey(name)) {
             // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it
             configuration.putObject("name", name);
-            return new CarTagParser(lookup, configuration) {
+            File customSpeedFile = vehicleNameToCustomSpeedFile.get(name);
 
-                // Thurton Drive in Roseville, CA
-                // TODO read from csv
-                private Map<Long, Double> OSM_WAY_ID_TO_MAX_SPEED = Map.of(10485465L, 1000.0);
-
-                @Override
-                protected double applyMaxSpeed(ReaderWay way, double speed) {
-                    Double knownMaxSpeed = OSM_WAY_ID_TO_MAX_SPEED.get(way.getId());
-                    // n.b. this does the 90% of OSM max speed logic
-                    return Objects.requireNonNullElseGet(knownMaxSpeed, () -> super.applyMaxSpeed(way, speed));
-                }
-
-                protected double applyBadSurfaceSpeed(ReaderWay way, double speed) {
-                    // if we've been explicitly been given a speed to use for the way, we should not apply any
-                    // additional logic for bad road surfaces
-                    if (OSM_WAY_ID_TO_MAX_SPEED.containsKey(way.getId())) {
-                        return speed;
-                    }
-
-                    return super.applyBadSurfaceSpeed(way, speed);
-                }
-            };
-        }
-
-        if (name.equals("truck")) {
+            try {
+                // we read the custom speeds mapping into memory so it can be efficiently applied during OSM import. all
+                // custom speed mappings will be simultaneously held in memory, but each custom speed file should be
+                // <= 250 MB (nationwide speed mapping file is 235MB)
+                ImmutableMap<Long, Double> osmWayIdToMaxSpeed =
+                        CustomSpeedsUtils.parseOsmWayIdToMaxSpeed(customSpeedFile);
+                return new ReplicaCustomSpeedsCarTagParser(lookup, configuration, osmWayIdToMaxSpeed);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to parse custom speed file at path "
+                        + customSpeedFile.getAbsolutePath() + ". Please ensure file exists and is in the correct " +
+                        "format!", e);
+            }
+        } else if (name.equals("truck")) {
             return CarAndTruckTagParser.createTruck(lookup, configuration);
         } else if (name.startsWith("car")) {
             return CarAndTruckTagParser.createCar(lookup, configuration);
