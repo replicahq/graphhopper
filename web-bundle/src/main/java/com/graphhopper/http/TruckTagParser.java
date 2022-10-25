@@ -37,49 +37,7 @@ import static com.graphhopper.util.Helper.toLowerCase;
  * @author Peter Karich
  */
 public class TruckTagParser extends CarTagParser {
-    public static final double EE_CAR_MAX_SPEED = 140;
-    public static final double EE_SMALL_TRUCK_MAX_SPEED = 105;
     public static final double EE_TRUCK_MAX_SPEED = 95;
-
-    public static final double SMALL_TRUCK_WEIGHT = 2.08 + 1.4;
-
-    public static TruckTagParser createCar(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "car");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_CAR_MAX_SPEED);
-        return new TruckTagParser(lookup, properties).setHeight(1.99).setCarriesGoods(false).initProperties();
-    }
-
-    /**
-     * Describes a van like the Mercedes vito or Ford transit. Here we use the
-     * values for the Vito compact. Total weight is under 3.5t
-     */
-    public static TruckTagParser createVan(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "van");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_CAR_MAX_SPEED);
-        return new TruckTagParser(lookup, properties).
-                setHeight(2.5).setWidth(2, 0.34).setLength(4.75).
-                setWeight(1.66 + 1.11).
-                initProperties();
-    }
-
-    /**
-     * Describes a so called vehicle like the Mercedes Sprinter or Iveco Daily
-     * used by DHL. Total weight is under 3.5t
-     */
-    public static TruckTagParser createSmallTruck(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "small_truck");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_SMALL_TRUCK_MAX_SPEED);
-        return new TruckTagParser(lookup, properties).
-                setHeight(2.7).setWidth(2, 0.34).setLength(5.5).
-                setWeight(SMALL_TRUCK_WEIGHT).
-                initProperties();
-    }
 
     /**
      * Describes a big HGV truck with 3 axes. E.g. the 6 wheeler here:
@@ -165,7 +123,7 @@ public class TruckTagParser extends CarTagParser {
     public TruckTagParser(BooleanEncodedValue accessEnc, DecimalEncodedValue speedEnc, DecimalEncodedValue turnCostEnc,
                           BooleanEncodedValue roundaboutEnc, PMap properties) {
         super(accessEnc, speedEnc, turnCostEnc, roundaboutEnc, properties, TransportationMode.CAR,
-                speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_CAR_MAX_SPEED)));
+                speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_TRUCK_MAX_SPEED)));
         if (!properties.getBool("block_private", true)) {
             restrictedValues.remove("private");
             intendedValues.add("private");
