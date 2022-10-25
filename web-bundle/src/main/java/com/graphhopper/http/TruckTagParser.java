@@ -37,7 +37,6 @@ import static com.graphhopper.util.Helper.toLowerCase;
  * @author Peter Karich
  */
 public class TruckTagParser extends CarTagParser {
-    public static final double EE_CAR_MAX_SPEED = 140;
     public static final double EE_TRUCK_MAX_SPEED = 95;
 
     /**
@@ -124,7 +123,7 @@ public class TruckTagParser extends CarTagParser {
     public TruckTagParser(BooleanEncodedValue accessEnc, DecimalEncodedValue speedEnc, DecimalEncodedValue turnCostEnc,
                           BooleanEncodedValue roundaboutEnc, PMap properties) {
         super(accessEnc, speedEnc, turnCostEnc, roundaboutEnc, properties, TransportationMode.CAR,
-                speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_CAR_MAX_SPEED)));
+                speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_TRUCK_MAX_SPEED)));
         if (!properties.getBool("block_private", true)) {
             restrictedValues.remove("private");
             intendedValues.add("private");
