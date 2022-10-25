@@ -61,6 +61,14 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         this.osmIdToLaneTags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
         this.osmIdToHighwayTag = Maps.newHashMap();
+
+        // Error if gtfs_link_mapper profile wasn't properly included in GH config (link mapper step will fail in this case)
+        if (ghConfig.getProfiles().stream().noneMatch(p -> p.getName().equals(GTFS_LINK_MAPPER_PROFILE))) {
+            throw new RuntimeException("Graphhopper config must include gtfs_link_mapper listed as a profile!");
+        }
+        if (ghConfig.getCHProfiles().stream().noneMatch(p -> p.getProfile().equals("gtfs_link_mapper"))) {
+            throw new RuntimeException("Graphhopper config must include gtfs_link_mapper listed as a CH profile!");
+        }
     }
 
     @Override
