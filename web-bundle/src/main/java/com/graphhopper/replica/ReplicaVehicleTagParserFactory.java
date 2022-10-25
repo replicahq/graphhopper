@@ -19,7 +19,6 @@
 package com.graphhopper.replica;
 
 import com.google.common.collect.ImmutableMap;
-import com.graphhopper.customspeeds.CustomSpeedsUtils;
 import com.graphhopper.http.TruckFlagEncoder;
 import com.graphhopper.http.TruckTagParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
@@ -28,37 +27,24 @@ import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Map;
-
 public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFactory {
-    private final Map<String, File> vehicleNameToCustomSpeedFile;
+    private final ImmutableMap<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds;
 
-    public ReplicaVehicleTagParserFactory(Map<String, File> vehicleNameToCustomSpeedFile) {
-        this.vehicleNameToCustomSpeedFile = vehicleNameToCustomSpeedFile;
+    /**
+     * @param vehicleNameToCustomSpeeds map of vehicle name to mapping from OSM way id to the custom speed to use for
+     *                                  that way, in kph. vehicles without custom speeds may be omitted from the map.
+     */
+    public ReplicaVehicleTagParserFactory(ImmutableMap<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds) {
+        this.vehicleNameToCustomSpeeds = vehicleNameToCustomSpeeds;
     }
 
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
-        if (vehicleNameToCustomSpeedFile.containsKey(name)) {
+        if (vehicleNameToCustomSpeeds.containsKey(name)) {
             // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it
-            configuration.putObject("name", name);
-            File customSpeedFile = vehicleNameToCustomSpeedFile.get(name);
-
-            try {
-                // we read the custom speeds mapping into memory so it can be efficiently applied during OSM import. all
-                // custom speed mappings will be simultaneously held in memory, but each custom speed file should be
-                // <= 250 MB (nationwide speed mapping file is 235MB)
-                ImmutableMap<Long, Double> osmWayIdToMaxSpeed =
-                        CustomSpeedsUtils.parseOsmWayIdToMaxSpeed(customSpeedFile);
-                return new ReplicaCustomSpeedsCarTagParser(lookup, configuration, osmWayIdToMaxSpeed);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to parse custom speed file at path "
-                        + customSpeedFile.getAbsolutePath() + ". Please ensure file exists and is in the correct " +
-                        "format!", e);
-            }
+            PMap configWithName = new PMap(configuration).putObject("name", name);
+            return new ReplicaCustomSpeedsCarTagParser(lookup, configWithName, vehicleNameToCustomSpeeds.get(name));
         } else if (name.startsWith("car")) {
             // car custom profiles may use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it. then we can delegate to the default car tag parser
