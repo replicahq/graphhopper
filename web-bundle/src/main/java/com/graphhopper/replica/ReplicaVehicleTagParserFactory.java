@@ -20,6 +20,7 @@ package com.graphhopper.replica;
 
 import com.google.common.collect.ImmutableMap;
 import com.graphhopper.customspeeds.CustomSpeedsUtils;
+import com.graphhopper.http.TruckFlagEncoder;
 import com.graphhopper.http.TruckTagParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
@@ -57,7 +58,7 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
                         + customSpeedFile.getAbsolutePath() + ". Please ensure file exists and is in the correct " +
                         "format!", e);
             }
-        } else if (name.equals("truck")) {
+        } else if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
             configuration.putObject("block_fords", false);
             return TruckTagParser.createTruck(lookup, configuration);
         }
