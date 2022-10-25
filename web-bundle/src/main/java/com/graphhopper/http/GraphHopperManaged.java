@@ -124,10 +124,12 @@ public class GraphHopperManaged implements Managed {
         configuration.setProfiles(newProfiles);
 
         // Error if gtfs_link_mapper profile wasn't included in GH config (link mapper step will fail in this case)
-        if (newProfiles.stream()
-                .filter(p -> p.getName().equals("gtfs_link_mapper"))
-                .collect(Collectors.toSet()).size() == 0) {
-            throw new RuntimeException("Graphhopper config must include gtfs_link_mapper profile!");
+        if (configuration.has("gtfs.file")) {
+            if (newProfiles.stream()
+                    .filter(p -> p.getName().equals("gtfs_link_mapper"))
+                    .collect(Collectors.toSet()).size() == 0) {
+                throw new RuntimeException("Graphhopper config must include gtfs_link_mapper profile!");
+            }
         }
 
         graphHopper.setFlagEncoderFactory(new FlagEncoderFactory() {
