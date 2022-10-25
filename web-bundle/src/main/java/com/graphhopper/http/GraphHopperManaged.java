@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.graphhopper.*;
 import com.graphhopper.config.Profile;
+import com.graphhopper.customspeeds.CustomSpeedsUtils;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.replica.ReplicaFlagEncoderFactory;
 import com.graphhopper.replica.ReplicaVehicleTagParserFactory;
@@ -38,6 +39,7 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class GraphHopperManaged implements Managed {
 
@@ -57,10 +59,13 @@ public class GraphHopperManaged implements Managed {
         List<Profile> newProfiles = resolveCustomModelFiles(customModelFolder, configuration.getProfiles());
         configuration.setProfiles(newProfiles);
 
+        Map<String, File> vehicleNameToCustomSpeedFile = CustomSpeedsUtils.getVehicleNameToCustomSpeedFile(
+                configuration.getProfiles());
+
         graphHopper.setEncodedValueFactory(new EncodedValueFactoryWithStableId());
         graphHopper.setTagParserFactory(new TagParserFactoryWithOsmId());
-        graphHopper.setVehicleTagParserFactory(new ReplicaVehicleTagParserFactory());
-        graphHopper.setFlagEncoderFactory(new ReplicaFlagEncoderFactory());
+        graphHopper.setVehicleTagParserFactory(new ReplicaVehicleTagParserFactory(vehicleNameToCustomSpeedFile));
+        graphHopper.setFlagEncoderFactory(new ReplicaFlagEncoderFactory(vehicleNameToCustomSpeedFile.keySet()));
         graphHopper.init(configuration);
         graphHopper.setEncodedValuesString("osmid,stable_id_byte_0,stable_id_byte_1,stable_id_byte_2,stable_id_byte_3,stable_id_byte_4,stable_id_byte_5,stable_id_byte_6,stable_id_byte_7,reverse_stable_id_byte_0,reverse_stable_id_byte_1,reverse_stable_id_byte_2,reverse_stable_id_byte_3,reverse_stable_id_byte_4,reverse_stable_id_byte_5,reverse_stable_id_byte_6,reverse_stable_id_byte_7");
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
