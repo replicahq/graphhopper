@@ -116,7 +116,7 @@ public class GtfsLinkMapper {
                         stop.stop_lat, stop.stop_lon,
                         nextStop.stop_lat, nextStop.stop_lon
                 );
-                odRequest.setProfile("car_local");
+                odRequest.setProfile("gtfs_link_mapper");
                 odRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
                 GHResponse response = graphHopper.route(odRequest);
 
