@@ -5,7 +5,7 @@ graphhopper:
   datareader.file: ./test-data/micro_nor_cal.osm.pbf
   graph.location: transit_data/export_test/graphhopper
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,bike,foot #,truck
+  graph.flag_encoders: car,bike,foot,truck
   prepare.ch.threads: 16
 
   # Profiles specifying vehicle and weightings for each mode type.
@@ -20,9 +20,9 @@ graphhopper:
     - name: foot
       vehicle: foot
       weighting: fastest
-    # - name: truck
-    #  vehicle: truck
-    #  weighting: fastest
+    - name: truck
+      vehicle: truck
+      weighting: fastest
 
 server:
   min_threads: 4

@@ -5,7 +5,7 @@ COPY ./full_usa.osm.pbf ./
 
 RUN java -Xmx58g -Ddw.graphhopper.datareader.file=full_usa.osm.pbf \
   -Ddw.graphhopper.validation=false -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar \
-  com.graphhopper.http.GraphHopperApplication validate-gtfs gtfs_validation_gh_config.yaml \
+  com.graphhopper.http.GraphHopperApplication validate-gtfs ./configs/gtfs_validation_gh_config.yaml \
   && rm ./full_usa.osm.pbf
 
 # Assumes that folder containing gtfs files is mounted as volume at /gtfs/

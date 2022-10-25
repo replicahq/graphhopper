@@ -26,6 +26,7 @@ public class GtfsLinkMapper {
     private final GraphHopper graphHopper;
     private final String CSV_COLUMN_HEADERS = "route_id,feed_id,stop_id,next_stop_id," +
             "stop_lat,stop_lon,stop_lat_next,stop_lon_next,street_edges,transit_edge";
+    private final String GTFS_LINK_MAPPING_DIR = "transit_data/gtfs_link_mappings";
 
     public GtfsLinkMapper(GraphHopper graphHopper) {
         this.graphHopper = graphHopper;
@@ -38,7 +39,12 @@ public class GtfsLinkMapper {
 
         // Initialize mapdb database to store link mappings and route info
         logger.info("Initializing new mapdb file to store link mappings");
-        DB db = DBMaker.newFileDB(new File("transit_data/gtfs_link_mappings.db")).make();
+        File linkMappingdirectory = new File(GTFS_LINK_MAPPING_DIR);
+        if (!linkMappingdirectory.exists()){
+            linkMappingdirectory.mkdir();
+        }
+        DB db = DBMaker.newFileDB(new File(GTFS_LINK_MAPPING_DIR, "gtfs_link_mappings.db")).make();
+
         // These should be safe for parallel writes; from HTreeMap doc[1]:
         //     > It is thread safe, and supports parallel writes by using multiple segments, each with separate ReadWriteLock.
         //
@@ -110,7 +116,7 @@ public class GtfsLinkMapper {
                         stop.stop_lat, stop.stop_lon,
                         nextStop.stop_lat, nextStop.stop_lon
                 );
-                odRequest.setProfile("car");
+                odRequest.setProfile("car_local");
                 odRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
                 GHResponse response = graphHopper.route(odRequest);
 
