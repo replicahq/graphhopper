@@ -316,11 +316,13 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             if (leg instanceof Trip.WalkLeg) {
                 Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
                 String travelSegmentType;
-                // We only expect graphhopper to return ACCESS + EGRESS walk legs
+                // Assign proper ACCESS/EGRESS/TRANSFER segment type based on position of walk leg in list
                 if (i == 0) {
                     travelSegmentType = "ACCESS";
-                } else {
+                } else if (i == legs.size() - 1) {
                     travelSegmentType = "EGRESS";
+                } else {
+                    travelSegmentType = "TRANSFER";
                 }
                 path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
             } else if (leg instanceof Trip.PtLeg) {
