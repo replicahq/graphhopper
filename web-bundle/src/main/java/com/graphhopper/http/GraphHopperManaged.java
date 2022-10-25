@@ -60,6 +60,8 @@ public class GraphHopperManaged implements Managed {
         List<Profile> newProfiles = resolveCustomModelFiles(customModelFolder, configuration.getProfiles());
         configuration.setProfiles(newProfiles);
 
+        // we read all custom speeds mappings into memory so they can be efficiently applied during OSM import. each
+        // custom speed file should be <= 250 MB (nationwide speed mapping file is 235MB)
         ImmutableMap<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds =
                 CustomSpeedsUtils.getVehicleNameToCustomSpeeds(configuration.getProfiles());
 
