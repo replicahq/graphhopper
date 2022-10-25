@@ -3,8 +3,8 @@ package com.graphhopper.replica;
 import com.conveyal.gtfs.GTFSFeed;
 import com.conveyal.gtfs.model.Route;
 import com.conveyal.gtfs.model.Stop;
-import com.conveyal.gtfs.model.StopTime;
 import com.google.common.collect.*;
+import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
@@ -116,7 +116,7 @@ public class GtfsLinkMapper {
                         stop.stop_lat, stop.stop_lon,
                         nextStop.stop_lat, nextStop.stop_lon
                 );
-                odRequest.setProfile("gtfs_link_mapper");
+                odRequest.setProfile(CustomGraphHopperGtfs.GTFS_LINK_MAPPER_PROFILE);
                 odRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
                 GHResponse response = graphHopper.route(odRequest);
 

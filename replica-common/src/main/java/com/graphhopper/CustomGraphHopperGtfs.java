@@ -38,6 +38,9 @@ import java.util.Set;
 public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     private static final Logger LOG = LoggerFactory.getLogger(CustomGraphHopperGtfs.class);
 
+    // Name of profile (+ CH profile) necessary for GTFS link mapper to run properly
+    public static final String GTFS_LINK_MAPPER_PROFILE = "gtfs_link_mapper";
+
     // Tags considered by R5 when calculating the value of the `lanes` column
     private static final Set<String> LANE_TAGS = Sets.newHashSet("lanes", "lanes:forward", "lanes:backward");
     private String osmPath;
@@ -66,7 +69,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         if (ghConfig.getProfiles().stream().noneMatch(p -> p.getName().equals(GTFS_LINK_MAPPER_PROFILE))) {
             throw new RuntimeException("Graphhopper config must include gtfs_link_mapper listed as a profile!");
         }
-        if (ghConfig.getCHProfiles().stream().noneMatch(p -> p.getProfile().equals("gtfs_link_mapper"))) {
+        if (ghConfig.getCHProfiles().stream().noneMatch(p -> p.getProfile().equals(GTFS_LINK_MAPPER_PROFILE))) {
             throw new RuntimeException("Graphhopper config must include gtfs_link_mapper listed as a CH profile!");
         }
     }
