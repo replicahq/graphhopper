@@ -22,7 +22,7 @@ graphhopper:
     - name: gtfs_link_mapper
       vehicle: car
       weighting: custom
-      custom_model_file: ./test-data/local_car_custom_model.yaml # mvn tests run from the /web folder
+      custom_model_file: local_car_custom_model.yaml
     - name: car_local
       vehicle: car
       weighting: custom
