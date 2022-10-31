@@ -22,7 +22,7 @@ graphhopper:
     - name: gtfs_link_mapper
       vehicle: car
       weighting: custom
-      custom_model_file: local_car_custom_model.yaml
+      custom_model_file: local_car_custom_model.json
     - name: car_local
       vehicle: car
       weighting: custom
