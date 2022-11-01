@@ -45,11 +45,6 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
             // internals to tolerate it
             PMap configWithName = new PMap(configuration).putObject("name", name);
             return new ReplicaCustomSpeedsCarTagParser(lookup, configWithName, vehicleNameToCustomSpeeds.get(name));
-        } else if (name.startsWith("car")) {
-            // car custom profiles may use nonstandard vehicle names which must be added to the config for the GH
-            // internals to tolerate it. then we can delegate to the default car tag parser
-            PMap configWithName = new PMap(configuration).putObject("name", name);
-            return new CarTagParser(lookup, configWithName);
         } else if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
             configuration.putObject("block_fords", false);
             return TruckTagParser.createTruck(lookup, configuration);

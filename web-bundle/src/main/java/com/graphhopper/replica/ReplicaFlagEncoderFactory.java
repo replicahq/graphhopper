@@ -20,9 +20,9 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
     // instead use this class to apply the necessary customizations to the default flag encoder
     @Override
     public FlagEncoder createFlagEncoder(final String name, PMap configuration) {
-        if (name.startsWith("car") || vehicleNamesWithCustomSpeeds.contains(name)) {
-            // custom car or speed profiles may use nonstandard vehicle names which must be added to the config for the
-            // GH internals to tolerate it. then we can delegate to the default car flag encoder
+        if (vehicleNamesWithCustomSpeeds.contains(name)) {
+            // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
+            // internals to tolerate it. then we can delegate to the default car flag encoder
             PMap configWithName = new PMap(configuration).putObject("name", name);
             return VehicleEncodedValues.car(configWithName);
         } else if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
