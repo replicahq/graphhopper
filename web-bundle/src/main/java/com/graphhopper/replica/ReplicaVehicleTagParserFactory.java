@@ -40,6 +40,8 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
 
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
+        // TODO if we ever want to support custom speeds for vehicles other than car, we'll need to generalize
+        // ReplicaCustomSpeedsCarTagParser
         if (vehicleNameToCustomSpeeds.containsKey(name)) {
             // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it
