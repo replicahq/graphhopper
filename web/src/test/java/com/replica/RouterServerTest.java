@@ -17,6 +17,7 @@
  */
 package com.replica;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.protobuf.Timestamp;
 import com.graphhopper.GraphHopper;
@@ -44,6 +45,8 @@ import java.io.File;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,9 +73,11 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST =
             createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST_WITH_ALTERNATIVES =
-            createStreetRequest("car", true,REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+            createStreetRequest("car", true, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
     private static final RouterOuterClass.StreetRouteRequest WALK_REQUEST =
             createStreetRequest("foot", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+
+    private static final ImmutableSet<String> CAR_PROFILES = ImmutableSet.of("car_local", "car_freeway");
 
     private static router.RouterGrpc.RouterBlockingStub routerStub = null;
 
@@ -132,8 +137,9 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                         .build())
                 .setProfile(mode)
                 .setAlternateRouteMaxPaths(alternatives ? 5 : 0)
-                .setAlternateRouteMaxWeightFactor(2.0)
-                .setAlternateRouteMaxShareFactor(0.4)
+                // below factors allow for long or very similar alternate routes for the sake of testing
+                .setAlternateRouteMaxWeightFactor(3.0)
+                .setAlternateRouteMaxShareFactor(0.9)
                 .build();
     }
 
@@ -286,37 +292,56 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     @Test
     public void testAutoQuery() {
         final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(AUTO_REQUEST);
+
         // even without alternatives, we expect 2 auto paths, because we route with 2 auto profiles + combine results
-        checkStreetBasedResponse(response, false, 2);
+        Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount == 1L;
+        checkStreetBasedResponse(response, CAR_PROFILES, perProfilePathCountPredicate);
     }
 
     @Test
     public void testWalkQuery() {
         final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(WALK_REQUEST);
-        checkStreetBasedResponse(response, false);
+
+        Set<String> expectedWalkProfiles = ImmutableSet.of("foot");
+        Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount == 1L;
+        checkStreetBasedResponse(response, expectedWalkProfiles, perProfilePathCountPredicate);
     }
 
     @Test
     public void testAutoQueryWithAlternatives() {
         final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(AUTO_REQUEST_WITH_ALTERNATIVES);
-        checkStreetBasedResponse(response, true);
-    }
 
-    private static void checkStreetBasedResponse(RouterOuterClass.StreetRouteReply response, boolean alternatives) {
-        checkStreetBasedResponse(response, alternatives, 1);
+        // we route with 2 auto profiles and combine results, and each profile should have produced at least one
+        // alternate
+        Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount > 1L;
+        checkStreetBasedResponse(response, CAR_PROFILES, perProfilePathCountPredicate);
     }
 
     private static void checkStreetBasedResponse(RouterOuterClass.StreetRouteReply response,
-                                                 boolean alternatives,
-                                                 int expectedPathCount) {
-        assertTrue(alternatives ? response.getPathsList().size() > 1 : response.getPathsList().size() == expectedPathCount);
-        RouterOuterClass.StreetPath path = response.getPaths(0);
-        assertTrue(path.getDurationMillis() > 0);
-        assertTrue(path.getDistanceMeters() > 0);
-        assertTrue(path.getStableEdgeIdsCount() > 0);
-        assertEquals(path.getStableEdgeIdsCount(), path.getEdgeDurationsMillisCount());
-        int totalDurationMillis = path.getEdgeDurationsMillisList().stream().mapToInt(Long::intValue).sum();
-        assertEquals(path.getDurationMillis(), totalDurationMillis);
+                                                 Set<String> expectedProfiles,
+                                                 Predicate<Long> perProfilePathCountPredicate) {
+        checkStreetBasedResponseProfiles(response, expectedProfiles, perProfilePathCountPredicate);
+        for (RouterOuterClass.StreetPath path : response.getPathsList()) {
+            assertTrue(path.getDurationMillis() > 0);
+            assertTrue(path.getDistanceMeters() > 0);
+            assertTrue(path.getStableEdgeIdsCount() > 0);
+            assertEquals(path.getStableEdgeIdsCount(), path.getEdgeDurationsMillisCount());
+            int totalDurationMillis = path.getEdgeDurationsMillisList().stream().mapToInt(Long::intValue).sum();
+            assertEquals(path.getDurationMillis(), totalDurationMillis);
+        }
+    }
+
+    private static void checkStreetBasedResponseProfiles(RouterOuterClass.StreetRouteReply response,
+                                                         Set<String> expectedProfiles,
+                                                         Predicate<Long> perProfilePathCountPredicate) {
+        Map<String, Long> profileToPathCount = response.getPathsList().stream()
+                .collect(Collectors.groupingBy(RouterOuterClass.StreetPath::getProfile, Collectors.counting()));
+
+        assertEquals(expectedProfiles, profileToPathCount.keySet());
+        for (String profile : profileToPathCount.keySet()) {
+            assertTrue(perProfilePathCountPredicate.test(profileToPathCount.get(profile)),
+                    "Street path with profile " + profile + " failed path count predicate");
+        }
     }
 
     @Test
