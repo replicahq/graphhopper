@@ -18,6 +18,7 @@
 
 package com.graphhopper.replica;
 
+import com.google.common.collect.ImmutableMap;
 import com.graphhopper.http.TruckFlagEncoder;
 import com.graphhopper.http.TruckTagParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
@@ -27,15 +28,26 @@ import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
 
 public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFactory {
+    private final ImmutableMap<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds;
+
+    /**
+     * @param vehicleNameToCustomSpeeds map of vehicle name to mapping from OSM way id to the custom speed to use for
+     *                                  that way, in kph. vehicles without custom speeds may be omitted from the map.
+     */
+    public ReplicaVehicleTagParserFactory(ImmutableMap<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds) {
+        this.vehicleNameToCustomSpeeds = vehicleNameToCustomSpeeds;
+    }
+
     @Override
     public VehicleTagParser createParser(EncodedValueLookup lookup, String name, PMap configuration) {
-        if (name.startsWith("car")) {
-            // car custom profiles may use nonstandard vehicle names which must be added to the config for the GH
-            // internals to tolerate it. then we can delegate to the default car tag parser
+        // TODO if we ever want to support custom speeds for vehicles other than car, we'll need to generalize
+        // ReplicaCustomSpeedsCarTagParser
+        if (vehicleNameToCustomSpeeds.containsKey(name)) {
+            // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
+            // internals to tolerate it
             PMap configWithName = new PMap(configuration).putObject("name", name);
-            return new CarTagParser(lookup, configWithName);
-        }
-        if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
+            return new ReplicaCustomSpeedsCarTagParser(lookup, configWithName, vehicleNameToCustomSpeeds.get(name));
+        } else if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
             configuration.putObject("block_fords", false);
             return TruckTagParser.createTruck(lookup, configuration);
         }

@@ -20,8 +20,10 @@ package com.graphhopper.http;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.common.collect.ImmutableMap;
 import com.graphhopper.*;
 import com.graphhopper.config.Profile;
+import com.graphhopper.customspeeds.CustomSpeedsUtils;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.replica.ReplicaFlagEncoderFactory;
 import com.graphhopper.replica.ReplicaVehicleTagParserFactory;
@@ -57,10 +59,15 @@ public class GraphHopperManaged implements Managed {
         List<Profile> newProfiles = resolveCustomModelFiles(customModelFolder, configuration.getProfiles());
         configuration.setProfiles(newProfiles);
 
+        // we read all custom speeds mappings into memory so they can be efficiently applied during OSM import. each
+        // custom speed file should be <= 250 MB (nationwide speed mapping file is 235MB)
+        ImmutableMap<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds =
+                CustomSpeedsUtils.getVehicleNameToCustomSpeeds(configuration.getProfiles());
+
         graphHopper.setEncodedValueFactory(new EncodedValueFactoryWithStableId());
         graphHopper.setTagParserFactory(new TagParserFactoryWithOsmId());
-        graphHopper.setVehicleTagParserFactory(new ReplicaVehicleTagParserFactory());
-        graphHopper.setFlagEncoderFactory(new ReplicaFlagEncoderFactory());
+        graphHopper.setVehicleTagParserFactory(new ReplicaVehicleTagParserFactory(vehicleNameToCustomSpeeds));
+        graphHopper.setFlagEncoderFactory(new ReplicaFlagEncoderFactory(vehicleNameToCustomSpeeds.keySet()));
         graphHopper.init(configuration);
         graphHopper.setEncodedValuesString("osmid,stable_id_byte_0,stable_id_byte_1,stable_id_byte_2,stable_id_byte_3,stable_id_byte_4,stable_id_byte_5,stable_id_byte_6,stable_id_byte_7,reverse_stable_id_byte_0,reverse_stable_id_byte_1,reverse_stable_id_byte_2,reverse_stable_id_byte_3,reverse_stable_id_byte_4,reverse_stable_id_byte_5,reverse_stable_id_byte_6,reverse_stable_id_byte_7");
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
