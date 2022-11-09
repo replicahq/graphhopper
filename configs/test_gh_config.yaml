@@ -34,6 +34,11 @@ graphhopper:
       vehicle: car
       weighting: custom
       custom_model_file: freeway_car_custom_model.json
+    - name: car_custom_fast_thurton_drive
+      vehicle: car_custom_fast_thurton_drive
+      weighting: fastest
+      # sets a very high speed for Thurton Drive in Roseville (OSM way id 10485465)
+      custom_speed_file: test-data/custom_speeds/custom_fast_thurton_drive_speed.csv # mvn tests run from the /web folder
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -43,21 +48,16 @@ graphhopper:
     - name: truck
       vehicle: truck
       weighting: fastest
-    - name: custom_car_fast_thurton_drive
-      vehicle: custom_car_fast_thurton_drive
-      weighting: fastest
-      # sets a very high speed for Thurton Drive in Roseville (OSM way id 10485465)
-      custom_speed_file: test-data/custom_speeds/custom_fast_thurton_drive_speed.csv # mvn tests run from the /web folder
 
   profiles_ch:
     - profile: gtfs_link_mapper
     - profile: car_default
     - profile: car_local
     - profile: car_freeway
+    - profile: car_custom_fast_thurton_drive
     - profile: bike
     - profile: foot
     - profile: truck
-    - profile: custom_car_fast_thurton_drive
 
 server:
   min_threads: 4

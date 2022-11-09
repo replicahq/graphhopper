@@ -222,7 +222,7 @@ public final class RouterConverters {
         return ghPtRequest;
     }
 
-    public static StreetPath toStreetPath(ResponsePath responsePath) {
+    public static StreetPath toStreetPath(ResponsePath responsePath, String profile) {
         List<String> pathStableEdgeIds = responsePath.getPathDetails().get("stable_edge_ids").stream()
                 .map(pathDetail -> (String) pathDetail.getValue())
                 .collect(Collectors.toList());
@@ -237,6 +237,7 @@ public final class RouterConverters {
                 .addAllStableEdgeIds(pathStableEdgeIds)
                 .addAllEdgeDurationsMillis(edgeTimes)
                 .setPoints(responsePath.getPoints().toLineString(false).toString())
+                .setProfile(profile)
                 .build();
     }
 
