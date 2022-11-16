@@ -35,7 +35,6 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
           version: "410.0.0" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
-          export_default_credentials: true
 
       # Configure Docker to use the gcloud command-line tool as a credential
       # helper for authentication
