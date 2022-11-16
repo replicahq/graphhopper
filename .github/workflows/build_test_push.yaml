@@ -23,11 +23,11 @@ jobs:
 
       - name: Login to GCP
         # Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v0.2.0
+        uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
-          version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+          version: "410.0.0" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
           export_default_credentials: true
 
       # Configure Docker to use the gcloud command-line tool as a credential
