@@ -36,7 +36,8 @@ export default class App extends React.Component {
             betaWalkTime: 1.5,
             limitStreetTimeSeconds: 1440,
             usePareto: false,
-            betaTransfers: 1440000.0,
+            betaTransfers: 720000.0,
+            maxVisitedNodes: 1000000,
             routes: {
                 query: null,
                 isFetching: false
@@ -93,6 +94,7 @@ export default class App extends React.Component {
                     ptRouteRequest.setLimitStreetTimeSeconds(this.state.limitStreetTimeSeconds)
                     ptRouteRequest.setUsePareto(this.state.usePareto);
                     ptRouteRequest.setBetaTransfers(this.state.betaTransfers);
+                    ptRouteRequest.setMaxVisitedNodes(this.state.maxVisitedNodes);
                     var component = this;
                     var router = new Router.RouterClient('/api');
                     router.routePt(ptRouteRequest, null, function(err, response) {

@@ -238,6 +238,7 @@ public final class RouterConverters {
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
+        ghPtRequest.setMaxVisitedNodes(request.getMaxVisitedNodes());
         return ghPtRequest;
     }
 
