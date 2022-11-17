@@ -12,7 +12,7 @@ jobs:
       # Common steps that we repeat between workflows.
       # I couldn't find an equivalent of CircleCI's templates; can we consolidate by turning this into an action?
       - name: Code Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Sub modules checkout
         env:
