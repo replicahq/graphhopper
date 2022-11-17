@@ -160,6 +160,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .setLimitStreetTimeSeconds(1440)
                 .setUsePareto(false)
                 .setBetaTransfers(1440000)
+                .setMaxVisitedNodes(1000000)
                 .build();
     }
 
