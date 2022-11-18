@@ -153,14 +153,20 @@ jobs:
         run: |
           mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo "$SSH_KEY_FOR_SUBMODULE" > $HOME/.ssh/id_rsa && chmod 600 $HOME/.ssh/id_rsa &&  git submodule sync && git submodule --quiet update --init && echo `git rev-parse --short=8 HEAD ` > TAG.txt
 
+      - name: Auth GCP
+        id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+          create_credentials_file: true
+
       - name: Login to GCP
         # Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v0.2.0
+        uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
-          version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
-          export_default_credentials: true
+          version: "410.0.0"
 
       # Configure Docker to use the gcloud command-line tool as a credential
       # helper for authentication
@@ -241,13 +247,22 @@ jobs:
         git config user.email "robots@replicahq.com"
         git tag "${{ steps.compute_new_tag.outputs.tag }}"
         git push origin "${{ steps.compute_new_tag.outputs.tag }}"
+
+    - name: Auth GCP
+      id: 'auth'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+        create_credentials_file: true
+
     - name: Login to GCP
       # Setup gcloud CLI
-      uses: google-github-actions/setup-gcloud@v0.2.0
+      uses: google-github-actions/setup-gcloud@v1
       with:
         project_id: ${{ env.PROJECT_ID }}
         service_account_key: ${{ secrets.GOOGLE_CREDENTIALS }}
-        version: "297.0.1" # Fix https://github.com/google-github-actions/setup-gcloud/issues/128
+        version: "410.0.0"
+
     # Configure Docker to use the gcloud command-line tool as a credential
     # helper for authentication
     - run: |-
