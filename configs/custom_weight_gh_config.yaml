@@ -26,6 +26,10 @@ graphhopper:
       vehicle: truck
       weighting: custom
       custom_model_file: empty
+    - name: small_truck
+      vehicle: small_truck
+      weighting: custom
+      custom_model_file: empty
 
 server:
   min_threads: 4

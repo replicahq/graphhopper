@@ -24,6 +24,9 @@ graphhopper:
     - name: truck
       vehicle: truck
       weighting: fastest
+    - name: small_truck
+      vehicle: small_truck
+      weighting: fastest
 
 server:
   min_threads: 4

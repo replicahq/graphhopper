@@ -40,6 +40,9 @@ graphhopper:
     - name: truck
       vehicle: truck
       weighting: fastest
+    - name: small_truck
+      vehicle: small_truck
+      weighting: fastest
 
   profiles_ch:
     - profile: gtfs_link_mapper
@@ -48,6 +51,7 @@ graphhopper:
     - profile: bike
     - profile: foot
     - profile: truck
+    - profile: small_truck
 
 server:
   min_threads: 4
