@@ -131,6 +131,8 @@ public class GraphHopperManaged implements Managed {
                     return new CustomCarFlagEncoder(configuration, name);
                 } else if (name.equals("truck")) {
                     return TruckFlagEncoder.createTruck(configuration, "truck");
+                } else if (name.equals("small_truck")) {
+                    return TruckFlagEncoder.createSmallTruck(configuration, "small_truck");
                 } else {
                     return delegate.createFlagEncoder(name, configuration);
                 }
