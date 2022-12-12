@@ -75,6 +75,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             createStreetRequest("car", true, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
     private static final RouterOuterClass.StreetRouteRequest WALK_REQUEST =
             createStreetRequest("foot", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+    private static final RouterOuterClass.StreetRouteRequest TRUCK_REQUEST =
+            createStreetRequest("truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+    private static final RouterOuterClass.StreetRouteRequest SMALL_TRUCK_REQUEST =
+            createStreetRequest("small_truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
 
     private static final String FAST_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
     private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
@@ -297,6 +301,30 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         // even without alternatives, we expect 4 auto paths, because we route with 4 auto profiles + combine results
         Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount == 1L;
         checkStreetBasedResponse(response, CAR_PROFILES, perProfilePathCountPredicate);
+    }
+
+    @Test
+    public void testTruckQueries() {
+        Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount == 1L;
+
+        final RouterOuterClass.StreetRouteReply truckResponse = routerStub.routeStreetMode(TRUCK_REQUEST);
+        Set<String> expectedTruckProfiles = ImmutableSet.of("truck");
+        checkStreetBasedResponse(truckResponse, expectedTruckProfiles, perProfilePathCountPredicate);
+
+        final RouterOuterClass.StreetRouteReply smallTruckResponse = routerStub.routeStreetMode(SMALL_TRUCK_REQUEST);
+        expectedTruckProfiles = ImmutableSet.of("small_truck");
+        checkStreetBasedResponse(smallTruckResponse, expectedTruckProfiles, perProfilePathCountPredicate);
+
+        // Check truck and small_truck return slightly different results
+        long totalTruckEdgeDuration = truckResponse
+                .getPathsList().stream()
+                .mapToLong(RouterOuterClass.StreetPath::getDurationMillis)
+                .sum();
+        long totalSmallTruckEdgeDuration = smallTruckResponse
+                .getPathsList().stream()
+                .mapToLong(RouterOuterClass.StreetPath::getDurationMillis)
+                .sum();
+        assertNotEquals(totalTruckEdgeDuration, totalSmallTruckEdgeDuration);
     }
 
     @Test
