@@ -33,6 +33,8 @@ public final class RouterConverters {
     private static final Logger logger = LoggerFactory.getLogger(RouterConverters.class);
     private static final ObjectMapper jsonOM = Jackson.newObjectMapper();
 
+    private static final int DEFAULT_MAX_VISITED_NODES = 1_000_000;
+
     private RouterConverters() {
         // utility class
     }
@@ -219,6 +221,7 @@ public final class RouterConverters {
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
+        ghPtRequest.setMaxVisitedNodes(request.getMaxVisitedNodes() == 0 ? DEFAULT_MAX_VISITED_NODES : request.getMaxVisitedNodes());
         return ghPtRequest;
     }
 

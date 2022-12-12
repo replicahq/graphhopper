@@ -1,11 +1,12 @@
-# Configuration file for standard GraphHopper routers.
-# 1 profile loaded with default speeds is defined for each vehicle type
+# Modified version of test_gh_config.yaml that can be used when running the server locally
+# Be sure to run setup_tests.sh to populate the test-data dir before
 
 graphhopper:
-  datareader.file: {{ TEST_OSM }}
-  gtfs.file: {{ TEST_GTFS }}
+  datareader.file: web/test-data/micro_nor_cal.osm.pbf
+  gtfs.file: web/test-data/gtfs/f-9qc-fairfield~ca~us.zip,web/test-data/gtfs/rosevill.zip,web/test-data/gtfs/srtd.zip,web/test-data/gtfs/vacaville.zip
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
+  routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
   graph.flag_encoders: car,bike,foot,truck,small_truck
   graph.encoded_values: road_class,road_class_link
@@ -17,28 +18,19 @@ graphhopper:
   # graph.bytes_for_flags: 64
 
   # Profiles specifying vehicle and weightings for each mode type.
-  custom_model_folder: ./test-data # mvn tests run from the /web folder
   profiles:
     - name: gtfs_link_mapper
       vehicle: car
       weighting: custom
-      custom_model_file: local_car_custom_model.json
-    - name: car_default
-      vehicle: car
-      weighting: fastest
+      custom_model_file: web/test-data/local_car_custom_model.yaml
     - name: car_local
       vehicle: car
       weighting: custom
-      custom_model_file: local_car_custom_model.json
+      custom_model_file: web/test-data/local_car_custom_model.yaml
     - name: car_freeway
       vehicle: car
       weighting: custom
-      custom_model_file: freeway_car_custom_model.json
-    - name: car_custom_fast_thurton_drive
-      vehicle: car_custom_fast_thurton_drive
-      weighting: fastest
-      # sets a very high speed for Thurton Drive in Roseville (OSM way id 10485465)
-      custom_speed_file: test-data/custom_speeds/custom_fast_thurton_drive_speed.csv # mvn tests run from the /web folder
+      custom_model_file: web/test-data/freeway_car_custom_model.yaml
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -54,10 +46,8 @@ graphhopper:
 
   profiles_ch:
     - profile: gtfs_link_mapper
-    - profile: car_default
     - profile: car_local
     - profile: car_freeway
-    - profile: car_custom_fast_thurton_drive
     - profile: bike
     - profile: foot
     - profile: truck

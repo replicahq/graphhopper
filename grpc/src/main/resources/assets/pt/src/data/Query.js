@@ -28,6 +28,7 @@ const CreateQuery = (baseUrl, search) => {
     url.searchParams.set("pt.limit_street_time", search.limitStreetTimeSeconds);
     url.searchParams.set("pt.use_pareto", search.usePareto);
     url.searchParams.set("pt.beta_transfers", search.betaTransfers);
+    url.searchParams.set("pt.max_visited_nodes", search.maxVisitedNodes);
     return url.toString();
 };
 
@@ -71,6 +72,7 @@ const ParseQuery = (search, searchParams) => {
     parse("pt.limit_street_time", "limitStreetTimeSeconds", searchParams)
     parse("pt.use_pareto", "usePareto", searchParams);
     parse("pt.beta_transfers", "betaTransfers", searchParams);
+    parse("pt.max_visited_nodes", "maxVisitedNodes", searchParams);
     return search;
 };
 

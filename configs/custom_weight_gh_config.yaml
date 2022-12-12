@@ -5,7 +5,7 @@ graphhopper:
   datareader.file:
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,bike,foot,truck
+  graph.flag_encoders: car,bike,foot,truck,small_truck
 
   # Profiles specifying vehicle and weightings for each mode type.
   profiles:
@@ -23,6 +23,10 @@ graphhopper:
       custom_model_file: empty
     - name: truck
       vehicle: truck
+      weighting: custom
+      custom_model_file: empty
+    - name: small_truck
+      vehicle: small_truck
       weighting: custom
       custom_model_file: empty
 

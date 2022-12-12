@@ -94,6 +94,12 @@ class SearchInput extends React.Component {
                 onChange: this.handleInputChange,
                 actionType: "betaTransfers"
             }),
+            React.createElement(NumberInput, {
+                value: this.props.search.maxVisitedNodes,
+                label: "Max visited nodes",
+                onChange: this.handleInputChange,
+                actionType: "maxVisitedNodes"
+            }),
             /*
             React.createElement("div", {
                 className: "checkbox"
