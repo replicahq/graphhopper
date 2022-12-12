@@ -54,6 +54,19 @@ public class TruckTagParser extends CarTagParser {
                 initProperties();
     }
 
+    // Describes "small truck" - eg a delivery vehicle
+    public static TruckTagParser createSmallTruck(EncodedValueLookup lookup, PMap properties) {
+        if (!properties.has("name"))
+            properties = new PMap(properties).putObject("name", "small_truck");
+        if (!properties.has("max_speed"))
+            properties = new PMap(properties).putObject("max_speed", EE_TRUCK_MAX_SPEED);
+        return new TruckTagParser(lookup, properties).
+                setHeight(2.7D).setWidth(2.0D, 0.4D).setLength(5.5D).
+                setWeight(3.48D).setIsHGV(false).
+                initProperties();
+    }
+
+    // Unused function showing example of customizing various vehicle parameters
     public static TruckTagParser createCustomEE(EncodedValueLookup lookup, PMap properties) {
         if (!properties.has("name"))
             throw new IllegalArgumentException("custom_ee requires a name");

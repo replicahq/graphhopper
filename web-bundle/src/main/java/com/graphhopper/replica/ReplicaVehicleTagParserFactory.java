@@ -22,7 +22,6 @@ import com.google.common.collect.ImmutableMap;
 import com.graphhopper.http.TruckFlagEncoder;
 import com.graphhopper.http.TruckTagParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
-import com.graphhopper.routing.util.CarTagParser;
 import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParser;
 import com.graphhopper.util.PMap;
@@ -50,6 +49,9 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
         } else if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
             configuration.putObject("block_fords", false);
             return TruckTagParser.createTruck(lookup, configuration);
+        } else if (name.equals(TruckFlagEncoder.SMALL_TRUCK_VEHICLE_NAME)) {
+            configuration.putObject("block_fords", false);
+            return TruckTagParser.createSmallTruck(lookup, configuration);
         }
 
         return super.createParser(lookup, name, configuration);

@@ -27,6 +27,8 @@ public class ReplicaFlagEncoderFactory extends DefaultFlagEncoderFactory {
             return VehicleEncodedValues.car(configWithName);
         } else if (name.equals(TruckFlagEncoder.TRUCK_VEHICLE_NAME)) {
             return TruckFlagEncoder.createTruckFlagEncoder();
+        } else if (name.equals(TruckFlagEncoder.SMALL_TRUCK_VEHICLE_NAME)) {
+            return TruckFlagEncoder.createSmallTruckFlagEncoder();
         }
 
         return super.createFlagEncoder(name, configuration);
