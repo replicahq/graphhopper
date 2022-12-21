@@ -148,11 +148,6 @@
             <name>GraphHopper Core Packages</name>
             <url>https://maven.pkg.github.com/graphhopper/graphhopper</url>
         </repository>
-        <repository>
-            <id>github-mm</id>
-            <name>GraphHopper Map Matching Packages</name>
-            <url>https://maven.pkg.github.com/graphhopper/map-matching</url>
-        </repository>
     </repositories>
 
     <profiles>
