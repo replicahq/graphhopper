@@ -148,6 +148,7 @@ public class RouterServer {
                 public void run() {
                     recordNetworkingMetrics(statsDClient, workerEventLoopGroup, "worker");
                     recordNetworkingMetrics(statsDClient, bossEventLoopGroup, "boss");
+                    logger.info("Fired another round of network metrics collection");
                 }
             }, 0, 60, TimeUnit.SECONDS);
         }
@@ -204,9 +205,9 @@ public class RouterServer {
             poolSize++;
             if (eventExecutor instanceof SingleThreadEventExecutor) {
                 final SingleThreadEventExecutor singleExecutor = (SingleThreadEventExecutor) eventExecutor;
-                String metricName = "EventLoopGroup-" + componentName +  "-EventLoop-" + index+"-pending-tasks";
+                String metricName = "EventLoopGroup_" + componentName +  "_pending_tasks";
                 int pendingTasks = singleExecutor.pendingTasks();
-                statsDClient.gauge(metricName, pendingTasks);
+                statsDClient.gauge(metricName, pendingTasks, Integer.toString(index));
                 index++;
 
                 queueSize += pendingTasks;
@@ -216,9 +217,9 @@ public class RouterServer {
                 }
             }
         }
-        statsDClient.gauge(componentName + "-pool-size", poolSize);
-        statsDClient.gauge(componentName + "-queue-size", queueSize);
-        statsDClient.gauge(componentName + "-active-count", activeCount);
+        statsDClient.gauge(componentName + "_pool_size", poolSize);
+        statsDClient.gauge(componentName + "_queue_size", queueSize);
+        statsDClient.gauge(componentName + "_active_count", activeCount);
     }
 
     private void stop() throws InterruptedException {
