@@ -25,8 +25,6 @@ import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.PtRouterImpl;
 import com.graphhopper.gtfs.RealtimeFeed;
-import com.graphhopper.routing.GHMatrixAPI;
-import com.graphhopper.routing.MatrixAPI;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -93,9 +91,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                     graphHopper.getPathDetailsBuilderFactory());
         }
 
-        // Create matrix API instance
-        MatrixAPI matrixAPI = new GHMatrixAPI(graphHopper, graphHopperConfiguration);
-
         // Load GTFS link mapping and GTFS info maps for use in building responses
         Map<String, String> gtfsLinkMappings = null;
         Map<String, List<String>> gtfsRouteInfo = null;
@@ -113,7 +108,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         String uniqueName = InProcessServerBuilder.generateName();
         InProcessServerBuilder.forName(uniqueName)
                 .directExecutor() // directExecutor is fine for unit tests
-                .addService(new RouterImpl(graphHopper, ptRouter, matrixAPI, gtfsLinkMappings,
+                .addService(new RouterImpl(graphHopper, ptRouter, gtfsLinkMappings,
                         gtfsRouteInfo, gtfsFeedIdMapping, null, TEST_REGION_NAME, TEST_RELEASE_NAME))
                 .addService(ProtoReflectionService.newInstance())
                 .build().start();
