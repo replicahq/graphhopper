@@ -42,8 +42,11 @@ import io.dropwizard.setup.Environment;
 import io.grpc.Server;
 import io.grpc.internal.GrpcUtil;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
+import io.grpc.netty.shaded.io.netty.channel.EventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.grpc.netty.shaded.io.netty.util.concurrent.EventExecutor;
+import io.grpc.netty.shaded.io.netty.util.concurrent.SingleThreadEventExecutor;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpcweb.GrpcPortNumRelay;
 import io.grpcweb.GrpcWebTrafficServlet;
@@ -55,8 +58,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class RouterServer {
@@ -121,14 +126,28 @@ public class RouterServer {
             logger.info("No GTFS link mapping mapdb file found! Skipped loading GTFS link mappings.");
         }
 
+
+        NioEventLoopGroup workerEventLoopGroup = new NioEventLoopGroup(userDefinedProperties.getOrDefault("WORKER_EVENT_LOOP_THREADS", defaultProperties.get("WORKER_EVENT_LOOP_THREADS")));
+        NioEventLoopGroup bossEventLoopGroup = new NioEventLoopGroup(userDefinedProperties.getOrDefault("BOSS_EVENT_LOOP_THREADS", defaultProperties.get("BOSS_EVENT_LOOP_THREADS")));
+
         String metricsHost = System.getenv("METRICS_AGENT_HOST");
-        StatsDClient statsDClient = null;
+        Optional<StatsDClient> maybeStatsDClient = Optional.empty();
         if (metricsHost != null) {
             // Initialize Metrics client
-            statsDClient = new NonBlockingStatsDClientBuilder()
+            StatsDClient statsDClient = new NonBlockingStatsDClientBuilder()
                     .hostname(metricsHost)
                     .port(8125)
                     .build();
+            maybeStatsDClient = Optional.of(statsDClient);
+
+            ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
+            exec.scheduleAtFixedRate(new Runnable() {
+                @Override
+                public void run() {
+                    recordPendingTasksMetric(statsDClient, workerEventLoopGroup, "worker");
+                    recordPendingTasksMetric(statsDClient, bossEventLoopGroup, "boss");
+                }
+            }, 0, 60, TimeUnit.SECONDS);
         }
 
         logger.info("Metrics agent host IP is: " + metricsHost);
@@ -136,13 +155,13 @@ public class RouterServer {
         // Start server
         int grpcPort = 50051;
         server = NettyServerBuilder.forPort(grpcPort)
-                .addService(new RouterImpl(graphHopper, ptRouter, gtfsLinkMappings, gtfsRouteInfo, gtfsFeedIdMapping, statsDClient, regionName, releaseName))
+                .addService(new RouterImpl(graphHopper, ptRouter, gtfsLinkMappings, gtfsRouteInfo, gtfsFeedIdMapping, maybeStatsDClient.orElse(null), regionName, releaseName))
                 .addService(ProtoReflectionService.newInstance())
                 .maxConnectionAge(userDefinedProperties.getOrDefault("CONN_TIME_MAX_AGE_SECS", defaultProperties.get("CONN_TIME_MAX_AGE_SECS")), TimeUnit.SECONDS)
                 .maxConnectionAgeGrace(userDefinedProperties.getOrDefault("CONN_TIME_GRACE_PERIOD_SECS", defaultProperties.get("CONN_TIME_GRACE_PERIOD_SECS")), TimeUnit.SECONDS)
                 .executor(Executors.newFixedThreadPool(userDefinedProperties.getOrDefault("SERVER_THREADS", defaultProperties.get("SERVER_THREADS"))))
-                .workerEventLoopGroup(new NioEventLoopGroup(userDefinedProperties.getOrDefault("WORKER_EVENT_LOOP_THREADS", defaultProperties.get("WORKER_EVENT_LOOP_THREADS"))))
-                .bossEventLoopGroup(new NioEventLoopGroup(userDefinedProperties.getOrDefault("BOSS_EVENT_LOOP_THREADS", defaultProperties.get("BOSS_EVENT_LOOP_THREADS"))))
+                .workerEventLoopGroup(workerEventLoopGroup)
+                .bossEventLoopGroup(bossEventLoopGroup)
                 .channelType(NioServerSocketChannel.class)
                 .keepAliveTime(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIME_SECS", defaultProperties.get("KEEP_ALIVE_TIME_SECS")), TimeUnit.SECONDS)
                 .keepAliveTimeout(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIMEOUT_SECS", defaultProperties.get("KEEP_ALIVE_TIMEOUT_SECS")), TimeUnit.SECONDS)
@@ -170,6 +189,18 @@ public class RouterServer {
         // grpc-web proxy needs to know the grpc-port# so it could connect to the grpc service.
         GrpcPortNumRelay.setGrpcPortNum(grpcPort);
 
+    }
+
+    public static void recordPendingTasksMetric(final StatsDClient statsDClient, final EventLoopGroup elg, final String componentName) {
+        int index = 0;
+        for (final EventExecutor eventExecutor : elg) {
+            if (eventExecutor instanceof SingleThreadEventExecutor) {
+                final SingleThreadEventExecutor singleExecutor = (SingleThreadEventExecutor) eventExecutor;
+                String metricName = "EventLoopGroup-" + componentName +  "-EventLoop-" + index+"-pending-tasks";
+                statsDClient.gauge(metricName, singleExecutor.pendingTasks());
+                index++;
+            }
+        }
     }
 
     private void stop() throws InterruptedException {
