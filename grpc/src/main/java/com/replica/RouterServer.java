@@ -148,7 +148,6 @@ public class RouterServer {
                 public void run() {
                     recordNetworkingMetrics(statsDClient, workerEventLoopGroup, "worker");
                     recordNetworkingMetrics(statsDClient, bossEventLoopGroup, "boss");
-                    logger.info("Fired another round of network metrics collection");
                 }
             }, 0, 60, TimeUnit.SECONDS);
         }
@@ -217,6 +216,7 @@ public class RouterServer {
                 }
             }
         }
+        logger.info(componentName + " pool size: " + poolSize + " ; queue size: " + queueSize + " ; active count: " + activeCount);
         statsDClient.gauge(componentName + "_pool_size", poolSize);
         statsDClient.gauge(componentName + "_queue_size", queueSize);
         statsDClient.gauge(componentName + "_active_count", activeCount);
