@@ -47,6 +47,7 @@ import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.grpc.netty.shaded.io.netty.util.concurrent.EventExecutor;
 import io.grpc.netty.shaded.io.netty.util.concurrent.SingleThreadEventExecutor;
+import io.grpc.netty.shaded.io.netty.util.concurrent.ThreadProperties;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpcweb.GrpcPortNumRelay;
 import io.grpcweb.GrpcWebTrafficServlet;
@@ -141,11 +142,12 @@ public class RouterServer {
             maybeStatsDClient = Optional.of(statsDClient);
 
             ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
+            logger.info("Scheduling networking metrics collection");
             exec.scheduleAtFixedRate(new Runnable() {
                 @Override
                 public void run() {
-                    recordPendingTasksMetric(statsDClient, workerEventLoopGroup, "worker");
-                    recordPendingTasksMetric(statsDClient, bossEventLoopGroup, "boss");
+                    recordNetworkingMetrics(statsDClient, workerEventLoopGroup, "worker");
+                    recordNetworkingMetrics(statsDClient, bossEventLoopGroup, "boss");
                 }
             }, 0, 60, TimeUnit.SECONDS);
         }
@@ -191,16 +193,31 @@ public class RouterServer {
 
     }
 
-    public static void recordPendingTasksMetric(final StatsDClient statsDClient, final EventLoopGroup elg, final String componentName) {
+    // inspired by https://stackoverflow.com/questions/32933367/monitoring-the-size-of-the-netty-event-loop-queues and
+    // https://github.com/mpusher/mpush/blob/f8d5c97f30b2bde12f1b60d11709ae1b75587a2e/mpush-tools/src/main/java/com/mpush/tools/Utils.java#L213
+    public static void recordNetworkingMetrics(final StatsDClient statsDClient, final EventLoopGroup elg, final String componentName) {
+        logger.info("Recording networking metrics");
         int index = 0;
+        int poolSize = 0, queueSize = 0, activeCount = 0;
         for (final EventExecutor eventExecutor : elg) {
+            poolSize++;
             if (eventExecutor instanceof SingleThreadEventExecutor) {
                 final SingleThreadEventExecutor singleExecutor = (SingleThreadEventExecutor) eventExecutor;
                 String metricName = "EventLoopGroup-" + componentName +  "-EventLoop-" + index+"-pending-tasks";
-                statsDClient.gauge(metricName, singleExecutor.pendingTasks());
+                int pendingTasks = singleExecutor.pendingTasks();
+                statsDClient.gauge(metricName, pendingTasks);
                 index++;
+
+                queueSize += pendingTasks;
+                ThreadProperties tp = singleExecutor.threadProperties();
+                if (tp.state() == Thread.State.RUNNABLE) {
+                    activeCount++;
+                }
             }
         }
+        statsDClient.gauge(componentName + "-pool-size", poolSize);
+        statsDClient.gauge(componentName + "-queue-size", queueSize);
+        statsDClient.gauge(componentName + "-active-count", activeCount);
     }
 
     private void stop() throws InterruptedException {
