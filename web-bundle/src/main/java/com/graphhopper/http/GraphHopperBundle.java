@@ -31,17 +31,11 @@ import com.graphhopper.gtfs.PtRouterImpl;
 import com.graphhopper.http.health.GraphHopperHealthCheck;
 import com.graphhopper.jackson.GraphHopperConfigModule;
 import com.graphhopper.jackson.Jackson;
-import com.graphhopper.matrix.http.MatrixCalculationExceptionMapper;
-import com.graphhopper.matrix.model.MatrixQueue;
-import com.graphhopper.matrix.model.MatrixSerializer;
 import com.graphhopper.resources.*;
-import com.graphhopper.routing.GHMatrixAPI;
-import com.graphhopper.routing.MatrixAPI;
 import com.graphhopper.routing.ProfileResolver;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.storage.index.LocationIndex;
-import com.graphhopper.replica.MatrixResourceFactory;
 import com.graphhopper.util.TranslationMap;
 import com.graphhopper.util.details.PathDetailsBuilderFactory;
 import io.dropwizard.ConfiguredBundle;
@@ -49,7 +43,6 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import org.glassfish.hk2.api.Factory;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -248,8 +241,6 @@ public class GraphHopperBundle implements ConfiguredBundle<GraphHopperBundleConf
         environment.jersey().register(new MultiExceptionMapper());
         environment.jersey().register(new MultiExceptionGPXMessageBodyWriter());
 
-        environment.jersey().register(new MatrixCalculationExceptionMapper());
-
         // This makes an IllegalArgumentException come out as a MultiException with
         // a single entry.
         environment.jersey().register(new IllegalArgumentExceptionMapper());
@@ -300,30 +291,7 @@ public class GraphHopperBundle implements ConfiguredBundle<GraphHopperBundleConf
         environment.jersey().register(I18NResource.class);
         environment.jersey().register(InfoResource.class);
 
-        MatrixSerializer serializer = new MatrixSerializer(true);
-        MatrixAPI matrixAPI = new GHMatrixAPI(graphHopperManaged.getGraphHopper(), graphHopperBundleConfiguration.getGraphHopperConfiguration());
-        MatrixQueue matrixQueue = createAndStartQueue(graphHopperBundleConfiguration.getGraphHopperConfiguration(), matrixAPI, serializer);
-        environment.jersey().register(new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bind(serializer).to(MatrixSerializer.class);
-                bind(matrixAPI).to(MatrixAPI.class);
-                bind(matrixQueue).to(MatrixQueue.class);
-            }
-        });
-        environment.jersey().register(MatrixResourceFactory.class);
 
         environment.healthChecks().register("graphhopper", new GraphHopperHealthCheck(graphHopperManaged.getGraphHopper()));
-    }
-
-    private MatrixQueue createAndStartQueue(GraphHopperConfig args, MatrixAPI mCalc, MatrixSerializer matrixSerializer) {
-        int defaultCustomerPriority = args.getInt("matrix.default_customer_priority", 1);
-        // restrict to available processors (one thread for the GC and one for the free queue)
-        int threads = Runtime.getRuntime().availableProcessors() - 1;
-        threads = args.getInt("matrix.threads", threads);
-        LoggerFactory.getLogger(getClass()).info("default customer priority: " + defaultCustomerPriority + ", matrix threads " + (threads - 1) + ", free threads: 1");
-        MatrixQueue mQueue = new MatrixQueue(threads, mCalc, matrixSerializer);
-        mQueue.start();
-        return mQueue;
     }
 }

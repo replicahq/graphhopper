@@ -26,9 +26,6 @@ import com.graphhopper.*;
 import com.graphhopper.config.Profile;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
-import com.graphhopper.routing.GHMRequest;
-import com.graphhopper.routing.GHMResponse;
-import com.graphhopper.routing.MatrixAPI;
 import com.graphhopper.util.exceptions.PointNotFoundException;
 import com.graphhopper.util.shapes.BBox;
 import com.graphhopper.util.shapes.GHPoint;
@@ -49,14 +46,13 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     private static final Logger logger = LoggerFactory.getLogger(RouterImpl.class);
     private final GraphHopper graphHopper;
     private final PtRouter ptRouter;
-    private final MatrixAPI matrixAPI;
     private Map<String, String> gtfsLinkMappings;
     private Map<String, List<String>> gtfsRouteInfo;
     private Map<String, String> gtfsFeedIdMapping;
     private final StatsDClient statsDClient;
     private Map<String, String> customTags;
 
-    public RouterImpl(GraphHopper graphHopper, PtRouter ptRouter, MatrixAPI matrixAPI,
+    public RouterImpl(GraphHopper graphHopper, PtRouter ptRouter,
                       Map<String, String> gtfsLinkMappings,
                       Map<String, List<String>> gtfsRouteInfo,
                       Map<String, String> gtfsFeedIdMapping,
@@ -65,7 +61,6 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                       String releaseName) {
         this.graphHopper = graphHopper;
         this.ptRouter = ptRouter;
-        this.matrixAPI = matrixAPI;
         this.gtfsLinkMappings = gtfsLinkMappings;
         this.gtfsRouteInfo = gtfsRouteInfo;
         this.gtfsFeedIdMapping = gtfsFeedIdMapping;
@@ -204,39 +199,6 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             Status status = Status.newBuilder()
                     .setCode(Code.INTERNAL.getNumber())
                     .setMessage(message)
-                    .build();
-            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
-        }
-    }
-
-    // TODO: Clean up code based on fix-it comments in PR #26
-    @Override
-    public void routeMatrix(MatrixRouteRequest request, StreamObserver<MatrixRouteReply> responseObserver) {
-        long startTime = System.currentTimeMillis();
-        GHMRequest ghMatrixRequest = RouterConverters.toGHMRequest(request);
-
-        try {
-            GHMResponse ghMatrixResponse = matrixAPI.calc(ghMatrixRequest);
-            MatrixRouteReply result = RouterConverters.toMatrixRouteReply(ghMatrixResponse, ghMatrixRequest);
-
-            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {"mode:" + request.getMode() + "_matrix", "api:grpc", "routes_found:true"};
-            tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
-
-            responseObserver.onNext(result);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            logger.error("Error while completing GraphHopper matrix request! ", e);
-
-            double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {"mode:" + request.getMode() + "_matrix", "api:grpc", "routes_found:false"};
-            tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
-
-            Status status = Status.newBuilder()
-                    .setCode(Code.INTERNAL.getNumber())
-                    .setMessage("GH internal error! Matrix request could not be completed.")
                     .build();
             responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         }

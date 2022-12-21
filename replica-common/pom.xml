@@ -18,8 +18,33 @@
     <dependencies>
         <dependency>
             <groupId>com.graphhopper</groupId>
-            <artifactId>graphhopper-matrix</artifactId>
-            <version>3.0-replica4</version>
+            <artifactId>graphhopper-core</artifactId>
+            <version>2a5bbde1819d78e5b22deb2f50aa37c89c4a80d2</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-reader-gtfs</artifactId>
+            <version>2a5bbde1819d78e5b22deb2f50aa37c89c4a80d2</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-web-bundle</artifactId>
+            <version>2a5bbde1819d78e5b22deb2f50aa37c89c4a80d2</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-web</artifactId>
+            <version>2a5bbde1819d78e5b22deb2f50aa37c89c4a80d2</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-tools</artifactId>
+            <version>2a5bbde1819d78e5b22deb2f50aa37c89c4a80d2</version>
+            <type>pom</type>
         </dependency>
         <dependency>
             <groupId>com.replica</groupId>
