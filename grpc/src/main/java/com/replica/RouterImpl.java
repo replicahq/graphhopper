@@ -327,8 +327,16 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
             } else if (leg instanceof Trip.PtLeg) {
                 Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
-                path.getLegs().add(
-                        RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo));
+
+                long startTime = System.currentTimeMillis();
+                CustomPtLeg customPtLeg = RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo);
+                double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                if (statsDClient != null) {
+                    statsDClient.histogram("routers.to_custom_pt_leg_seconds", durationSeconds);
+                }
+                logger.info("routers.to_custom_pt_leg_seconds: " + durationSeconds);
+
+                path.getLegs().add(customPtLeg);
             }
         }
 
