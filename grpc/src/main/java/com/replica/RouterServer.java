@@ -128,8 +128,8 @@ public class RouterServer {
         }
 
 
-        NioEventLoopGroup workerEventLoopGroup = new NioEventLoopGroup(userDefinedProperties.getOrDefault("WORKER_EVENT_LOOP_THREADS", defaultProperties.get("WORKER_EVENT_LOOP_THREADS")));
-        NioEventLoopGroup bossEventLoopGroup = new NioEventLoopGroup(userDefinedProperties.getOrDefault("BOSS_EVENT_LOOP_THREADS", defaultProperties.get("BOSS_EVENT_LOOP_THREADS")));
+        // NioEventLoopGroup workerEventLoopGroup = new NioEventLoopGroup(userDefinedProperties.getOrDefault("WORKER_EVENT_LOOP_THREADS", defaultProperties.get("WORKER_EVENT_LOOP_THREADS")));
+        // NioEventLoopGroup bossEventLoopGroup = new NioEventLoopGroup(userDefinedProperties.getOrDefault("BOSS_EVENT_LOOP_THREADS", defaultProperties.get("BOSS_EVENT_LOOP_THREADS")));
 
         String metricsHost = System.getenv("METRICS_AGENT_HOST");
         Optional<StatsDClient> maybeStatsDClient = Optional.empty();
@@ -141,6 +141,7 @@ public class RouterServer {
                     .build();
             maybeStatsDClient = Optional.of(statsDClient);
 
+            /*
             ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
             logger.info("Scheduling networking metrics collection");
             exec.scheduleAtFixedRate(new Runnable() {
@@ -150,6 +151,8 @@ public class RouterServer {
                     recordNetworkingMetrics(statsDClient, bossEventLoopGroup, "boss");
                 }
             }, 0, 60, TimeUnit.SECONDS);
+
+             */
         }
 
         logger.info("Metrics agent host IP is: " + metricsHost);
@@ -159,20 +162,20 @@ public class RouterServer {
         server = NettyServerBuilder.forPort(grpcPort)
                 .addService(new RouterImpl(graphHopper, ptRouter, gtfsLinkMappings, gtfsRouteInfo, gtfsFeedIdMapping, maybeStatsDClient.orElse(null), regionName, releaseName))
                 .addService(ProtoReflectionService.newInstance())
-                .maxConnectionAge(userDefinedProperties.getOrDefault("CONN_TIME_MAX_AGE_SECS", defaultProperties.get("CONN_TIME_MAX_AGE_SECS")), TimeUnit.SECONDS)
-                .maxConnectionAgeGrace(userDefinedProperties.getOrDefault("CONN_TIME_GRACE_PERIOD_SECS", defaultProperties.get("CONN_TIME_GRACE_PERIOD_SECS")), TimeUnit.SECONDS)
+                // .maxConnectionAge(userDefinedProperties.getOrDefault("CONN_TIME_MAX_AGE_SECS", defaultProperties.get("CONN_TIME_MAX_AGE_SECS")), TimeUnit.SECONDS)
+                // .maxConnectionAgeGrace(userDefinedProperties.getOrDefault("CONN_TIME_GRACE_PERIOD_SECS", defaultProperties.get("CONN_TIME_GRACE_PERIOD_SECS")), TimeUnit.SECONDS)
                 .executor(Executors.newFixedThreadPool(userDefinedProperties.getOrDefault("SERVER_THREADS", defaultProperties.get("SERVER_THREADS"))))
-                .workerEventLoopGroup(workerEventLoopGroup)
-                .bossEventLoopGroup(bossEventLoopGroup)
+                // .workerEventLoopGroup(workerEventLoopGroup)
+                // .bossEventLoopGroup(bossEventLoopGroup)
                 .channelType(NioServerSocketChannel.class)
-                .keepAliveTime(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIME_SECS", defaultProperties.get("KEEP_ALIVE_TIME_SECS")), TimeUnit.SECONDS)
-                .keepAliveTimeout(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIMEOUT_SECS", defaultProperties.get("KEEP_ALIVE_TIMEOUT_SECS")), TimeUnit.SECONDS)
-                .flowControlWindow(userDefinedProperties.getOrDefault("FLOW_CONTROL_WINDOW_BYTES", defaultProperties.get("FLOW_CONTROL_WINDOW_BYTES")))
+                // .keepAliveTime(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIME_SECS", defaultProperties.get("KEEP_ALIVE_TIME_SECS")), TimeUnit.SECONDS)
+                // .keepAliveTimeout(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIMEOUT_SECS", defaultProperties.get("KEEP_ALIVE_TIMEOUT_SECS")), TimeUnit.SECONDS)
+                // .flowControlWindow(userDefinedProperties.getOrDefault("FLOW_CONTROL_WINDOW_BYTES", defaultProperties.get("FLOW_CONTROL_WINDOW_BYTES")))
                 .build()
                 .start();
 
         logger.info("Started server with the following user-provided properties: " + userDefinedProperties);
-        logger.info("All other properties utilize the default values: " + defaultProperties);
+        // logger.info("All other properties utilize the default values: " + defaultProperties);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.err.println("*** shutting down gRPC server since JVM is shutting down");
