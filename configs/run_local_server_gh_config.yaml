@@ -6,7 +6,6 @@ graphhopper:
   gtfs.file: web/test-data/gtfs/f-9qc-fairfield~ca~us.zip,web/test-data/gtfs/rosevill.zip,web/test-data/gtfs/srtd.zip,web/test-data/gtfs/vacaville.zip
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
-  routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
   graph.flag_encoders: car,bike,foot,truck,small_truck
   graph.encoded_values: road_class,road_class_link
@@ -18,19 +17,20 @@ graphhopper:
   # graph.bytes_for_flags: 64
 
   # Profiles specifying vehicle and weightings for each mode type.
+  custom_model_folder: ./web/test-data
   profiles:
     - name: gtfs_link_mapper
       vehicle: car
       weighting: custom
-      custom_model_file: web/test-data/local_car_custom_model.yaml
+      custom_model_file: local_car_custom_model.json
     - name: car_local
       vehicle: car
       weighting: custom
-      custom_model_file: web/test-data/local_car_custom_model.yaml
+      custom_model_file: local_car_custom_model.json
     - name: car_freeway
       vehicle: car
       weighting: custom
-      custom_model_file: web/test-data/freeway_car_custom_model.yaml
+      custom_model_file: freeway_car_custom_model.json
     - name: bike
       vehicle: bike
       weighting: fastest
