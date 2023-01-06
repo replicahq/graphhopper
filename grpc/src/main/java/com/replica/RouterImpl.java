@@ -261,6 +261,10 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
+                if (durationSeconds > 30) {
+                    logger.info("Slow request detected! Request took " + durationSeconds + " seconds; full request is " + ghPtRequest.toString());
+                }
+
                 responseObserver.onNext(replyBuilder.build());
                 responseObserver.onCompleted();
             }
