@@ -167,7 +167,7 @@ public class RouterServer {
                 .executor(Executors.newFixedThreadPool(userDefinedProperties.getOrDefault("SERVER_THREADS", defaultProperties.get("SERVER_THREADS"))))
                 // .workerEventLoopGroup(workerEventLoopGroup)
                 // .bossEventLoopGroup(bossEventLoopGroup)
-                // .channelType(NioServerSocketChannel.class)
+                .channelType(NioServerSocketChannel.class)
                 // .keepAliveTime(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIME_SECS", defaultProperties.get("KEEP_ALIVE_TIME_SECS")), TimeUnit.SECONDS)
                 // .keepAliveTimeout(userDefinedProperties.getOrDefault("KEEP_ALIVE_TIMEOUT_SECS", defaultProperties.get("KEEP_ALIVE_TIMEOUT_SECS")), TimeUnit.SECONDS)
                 // .flowControlWindow(userDefinedProperties.getOrDefault("FLOW_CONTROL_WINDOW_BYTES", defaultProperties.get("FLOW_CONTROL_WINDOW_BYTES")))
