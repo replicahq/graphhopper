@@ -315,6 +315,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         ArrayList<Trip.Leg> legs = new ArrayList<>(path.getLegs());
         path.getLegs().clear();
 
+        boolean accessExists = false;
+        boolean egressExists = false;
         for (int i = 0; i < legs.size(); i++) {
             Trip.Leg leg = legs.get(i);
             if (leg instanceof Trip.WalkLeg) {
@@ -323,8 +325,10 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 // Assign proper ACCESS/EGRESS/TRANSFER segment type based on position of walk leg in list
                 if (i == 0) {
                     travelSegmentType = "ACCESS";
+                    accessExists = true;
                 } else if (i == legs.size() - 1) {
                     travelSegmentType = "EGRESS";
+                    egressExists = true;
                 } else {
                     travelSegmentType = "TRANSFER";
                 }
@@ -344,11 +348,13 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             }
         }
 
-        // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
-        // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
-        CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
-        CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
-        accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
+        if (accessExists && egressExists) {
+            // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
+            // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
+            CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
+            CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
+            accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
+        }
 
         // Calculate correct distance incorporating foot + pt legs
         path.setDistance(path.getLegs().stream().mapToDouble(l -> l.distance).sum());
