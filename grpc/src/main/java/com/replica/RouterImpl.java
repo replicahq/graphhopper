@@ -224,7 +224,13 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         Request ghPtRequest = RouterConverters.toGHPtRequest(request);
 
         try {
+            long routeStartTime = System.currentTimeMillis();
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
+            double routeDuration = (System.currentTimeMillis() - routeStartTime) / 1000.0;
+            String[] tags = MetricUtils.applyCustomTags(new String[0], customTags);
+            MetricUtils.sendInternalRoutingStats(statsDClient, tags, routeDuration, "internal_duration");
+
+            long augmentStartTime = System.currentTimeMillis();
             List<ResponsePath> pathsWithStableIds = Lists.newArrayList();
             for (ResponsePath path : ghResponse.getAll()) {
                 // Ignore walking-only responses, because we route those separately from PT
@@ -235,13 +241,16 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 pathsWithStableIds.add(path);
             }
 
+            double augmentDuration = (System.currentTimeMillis() - augmentStartTime) / 1000.0;
+            MetricUtils.sendInternalRoutingStats(statsDClient, tags, augmentDuration, "augment_duration");
+
             if (pathsWithStableIds.size() == 0) {
                 String message = "Transit path could not be found between " + fromPoint.getLat() + "," +
                         fromPoint.getLon() + " to " + toPoint.getLat() + "," + toPoint.getLon();
                 // logger.warn(message);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
+                tags = new String[]{"mode:pt", "api:grpc", "routes_found:false"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
@@ -251,18 +260,24 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                         .build();
                 responseObserver.onError(StatusProto.toStatusRuntimeException(status));
             } else {
+                long replyBuildStart = System.currentTimeMillis();
                 PtRouteReply.Builder replyBuilder = PtRouteReply.newBuilder();
                 pathsWithStableIds.stream()
                         .map(RouterConverters::toPtPath)
                         .forEach(replyBuilder::addPaths);
 
+                double replyBuildDuration = (System.currentTimeMillis() - replyBuildStart) / 1000.0;
+                MetricUtils.sendInternalRoutingStats(statsDClient, tags, replyBuildDuration, "reply_build_duration");
+
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                String[] tags = {"mode:pt", "api:grpc", "routes_found:true"};
+                tags = new String[]{"mode:pt", "api:grpc", "routes_found:true"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
                 if (durationSeconds > 30) {
-                    logger.info("Slow request detected! Request took " + durationSeconds + " seconds; full request is " + request.toString());
+                    logger.info("Slow request detected! Full request time: " + durationSeconds + "; internal routing time: "
+                            + routeDuration + "; augment duration: " + augmentDuration + "; reply build duration: " + replyBuildDuration
+                            + "; full request is " + request.toString());
                 }
 
                 responseObserver.onNext(replyBuilder.build());
