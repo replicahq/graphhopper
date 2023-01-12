@@ -3,10 +3,7 @@ package com.graphhopper.replica;
 import com.google.common.collect.Lists;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.OsmHelper;
-import com.graphhopper.routing.ev.DecimalEncodedValue;
-import com.graphhopper.routing.ev.EnumEncodedValue;
-import com.graphhopper.routing.ev.IntEncodedValue;
-import com.graphhopper.routing.ev.RoadClass;
+import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.stableid.StableIdEncodedValues;
 import com.graphhopper.storage.IntsRef;
@@ -71,8 +68,7 @@ public class StreetEdgeExporter {
         this.encodingManager = configuredGraphHopper.getEncodingManager();
         this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
-        FlagEncoder car = this.encodingManager.getEncoder("car");
-        this.avgSpeedEnc = car.getAverageSpeedEnc();
+        this.avgSpeedEnc = this.encodingManager.getDecimalEncodedValue(VehicleSpeed.key("car"));
         this.osmWayIdEnc = this.encodingManager.getIntEncodedValue("osmid");
     }
 
@@ -143,12 +139,13 @@ public class StreetEdgeExporter {
         IntsRef edgeFlags = iteratorState.getFlags();
         Set<String> forwardFlags = Sets.newHashSet();
         Set<String> backwardFlags = Sets.newHashSet();
-        for (FlagEncoder encoder: encodingManager.fetchEdgeEncoders()) {
-            String mode = ACCESSIBILITY_MODE_MAP.get(encoder.getName());
-            if (encoder.getAccessEnc().getBool(false, edgeFlags)) {
+        for (String vehicle: encodingManager.getVehicles()) {
+            String mode = ACCESSIBILITY_MODE_MAP.get(vehicle);
+            BooleanEncodedValue access = encodingManager.getBooleanEncodedValue(VehicleAccess.key(vehicle));
+            if (access.getBool(false, edgeFlags)) {
                 forwardFlags.add("ALLOWS_" + mode);
             }
-            if (encoder.getAccessEnc().getBool(true, edgeFlags)) {
+            if (access.getBool(true, edgeFlags)) {
                 backwardFlags.add("ALLOWS_" + mode);
             }
         }

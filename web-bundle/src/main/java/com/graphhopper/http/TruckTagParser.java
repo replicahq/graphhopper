@@ -127,15 +127,14 @@ public class TruckTagParser extends CarTagParser {
         this(
                 lookup.getBooleanEncodedValue(getKey(properties.getString("name", "car"), "access")),
                 lookup.getDecimalEncodedValue(getKey(properties.getString("name", "car"), "average_speed")),
-                lookup.hasEncodedValue(TurnCost.key(properties.getString("name", "car"))) ? lookup.getDecimalEncodedValue(TurnCost.key(properties.getString("name", "car"))) : null,
                 lookup.getBooleanEncodedValue(Roundabout.KEY),
                 properties
         );
     }
 
-    public TruckTagParser(BooleanEncodedValue accessEnc, DecimalEncodedValue speedEnc, DecimalEncodedValue turnCostEnc,
+    public TruckTagParser(BooleanEncodedValue accessEnc, DecimalEncodedValue speedEnc,
                           BooleanEncodedValue roundaboutEnc, PMap properties) {
-        super(accessEnc, speedEnc, turnCostEnc, roundaboutEnc, properties, TransportationMode.CAR,
+        super(accessEnc, speedEnc, roundaboutEnc, properties, TransportationMode.CAR,
                 speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_TRUCK_MAX_SPEED)));
         if (!properties.getBool("block_private", true)) {
             restrictedValues.remove("private");

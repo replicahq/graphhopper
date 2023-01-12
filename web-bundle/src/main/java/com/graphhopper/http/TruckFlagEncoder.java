@@ -2,7 +2,6 @@ package com.graphhopper.http;
 
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.VehicleEncodedValues;
 
 // adapted from prod GraphHopper code (not available in OSS GraphHopper)
@@ -14,7 +13,7 @@ public class TruckFlagEncoder {
     private static final int TRUCK_SPEED_FACTOR = 2;  // truck and small_truck share this value
     private static final boolean ENABLE_TRUCK_TURN_RESTRICTIONS = false;
 
-    public static FlagEncoder createTruckFlagEncoder() {
+    public static VehicleEncodedValues createTruck() {
         // turn costs is binary -- restricted or unrestricted (1 is scaled to infinity further down the code)
         int maxTurnCosts = ENABLE_TRUCK_TURN_RESTRICTIONS ? 1 : 0;
         BooleanEncodedValue accessEnc = new SimpleBooleanEncodedValue(
@@ -22,16 +21,10 @@ public class TruckFlagEncoder {
         DecimalEncodedValue speedEnc = new DecimalEncodedValueImpl(
                 EncodingManager.getKey(TRUCK_VEHICLE_NAME, "average_speed"), TRUCK_SPEED_BITS, TRUCK_SPEED_FACTOR, false);
         DecimalEncodedValue turnCostEnc = maxTurnCosts > 0 ? TurnCost.create(TRUCK_VEHICLE_NAME, maxTurnCosts) : null;
-        double maxSpeed = speedEnc.getNextStorableValue(TruckTagParser.EE_TRUCK_MAX_SPEED);
-
-        // these flags are planned for GH removal
-        boolean isHGV = true;
-        boolean isMotorVehicle = true;
-
-        return new VehicleEncodedValues(TRUCK_VEHICLE_NAME, accessEnc, speedEnc, null, null, turnCostEnc, maxSpeed, isMotorVehicle, isHGV);
+        return new VehicleEncodedValues(TRUCK_VEHICLE_NAME, accessEnc, speedEnc, null, turnCostEnc);
     }
 
-    public static FlagEncoder createSmallTruckFlagEncoder() {
+    public static VehicleEncodedValues createSmallTruck() {
         // turn costs is binary -- restricted or unrestricted (1 is scaled to infinity further down the code)
         int maxTurnCosts = ENABLE_TRUCK_TURN_RESTRICTIONS ? 1 : 0;
         BooleanEncodedValue accessEnc = new SimpleBooleanEncodedValue(
@@ -39,12 +32,6 @@ public class TruckFlagEncoder {
         DecimalEncodedValue speedEnc = new DecimalEncodedValueImpl(
                 EncodingManager.getKey(SMALL_TRUCK_VEHICLE_NAME, "average_speed"), SMALL_TRUCK_SPEED_BITS, TRUCK_SPEED_FACTOR, false);
         DecimalEncodedValue turnCostEnc = maxTurnCosts > 0 ? TurnCost.create(SMALL_TRUCK_VEHICLE_NAME, maxTurnCosts) : null;
-        double maxSpeed = speedEnc.getNextStorableValue(TruckTagParser.EE_TRUCK_MAX_SPEED);
-
-        // these flags are planned for GH removal
-        boolean isHGV = false;
-        boolean isMotorVehicle = true;
-
-        return new VehicleEncodedValues(SMALL_TRUCK_VEHICLE_NAME, accessEnc, speedEnc, null, null, turnCostEnc, maxSpeed, isMotorVehicle, isHGV);
+        return new VehicleEncodedValues(SMALL_TRUCK_VEHICLE_NAME, accessEnc, speedEnc, null, turnCostEnc);
     }
 }
