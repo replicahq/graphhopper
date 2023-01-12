@@ -29,7 +29,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1097267, records.size());
+        assertEquals(1147753, records.size());
 
         // Sanity check OSM node + edge coverage and stable edge ID uniqueness
         int emptyNodeIdCount = 0;

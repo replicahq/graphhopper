@@ -7,7 +7,8 @@ graphhopper:
   gtfs.file:
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,foot
+  graph.vehicles: car,foot
+  import.osm.ignored_highways:
 
   # Profiles specifying vehicle and weightings for each mode type.
   # Save time by not building contraction hierarchies

@@ -5,8 +5,9 @@ graphhopper:
   datareader.file:
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,bike,foot,truck,small_truck
+  graph.vehicles: car,bike,foot,truck,small_truck
   prepare.ch.threads: 16
+  import.osm.ignored_highways:
 
   # Profiles specifying vehicle and weightings for each mode type.
   # For nationwide export, save time by not building contraction hierarchies
