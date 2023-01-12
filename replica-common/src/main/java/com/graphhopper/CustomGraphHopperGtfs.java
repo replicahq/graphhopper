@@ -147,6 +147,8 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         if (reader.getDataDate() != null)
             this.getProperties().put("datareader.data.date", f.format(reader.getDataDate()));
 
+        writeEncodingManagerToProperties();
+
         writeOsmNodeIds(reader.getGhNodeIdToOsmNodeIdMap());
         writeArtificialIdMapping(reader.getArtificialIdToOsmNodeIds());
     }

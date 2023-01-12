@@ -116,10 +116,10 @@ public class CustomGraphHopperOSM extends GraphHopper {
 
         LOG.info("start creating graph from " + this.getOSMFile());
         CustomOsmReader reader = new CustomOsmReader(this.getBaseGraph().getBaseGraph(), this.getEncodingManager(), this.getOSMParsers(), this.getReaderConfig())
-                .setFile(_getOSMFile()).
-                        setAreaIndex(areaIndex).
-                        setElevationProvider(this.getElevationProvider()).
-                        setCountryRuleFactory(this.getCountryRuleFactory());
+                .setFile(_getOSMFile())
+                .setAreaIndex(areaIndex)
+                .setElevationProvider(this.getElevationProvider())
+                .setCountryRuleFactory(this.getCountryRuleFactory());
 
         createBaseGraphAndProperties();
 
@@ -132,6 +132,8 @@ public class CustomGraphHopperOSM extends GraphHopper {
         this.getProperties().put("datareader.import.date", f.format(new Date()));
         if (reader.getDataDate() != null)
             this.getProperties().put("datareader.data.date", f.format(reader.getDataDate()));
+
+        writeEncodingManagerToProperties();
 
         writeOsmNodeIds(reader.getGhNodeIdToOsmNodeIdMap());
         writeArtificialIdMapping(reader.getArtificialIdToOsmNodeIds());
