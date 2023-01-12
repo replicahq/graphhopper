@@ -64,9 +64,9 @@ public class CustomWaySegmentParser {
     private Date timestamp;
 
     private CustomWaySegmentParser(PointAccess nodeAccess, Directory directory, ElevationProvider eleProvider,
-                             Predicate<ReaderWay> wayFilter, Predicate<ReaderNode> splitNodeFilter, WayPreprocessor wayPreprocessor,
-                             Consumer<ReaderRelation> relationPreprocessor, RelationProcessor relationProcessor,
-                             EdgeHandler edgeHandler, int workerThreads) {
+                                   Predicate<ReaderWay> wayFilter, Predicate<ReaderNode> splitNodeFilter, WayPreprocessor wayPreprocessor,
+                                   Consumer<ReaderRelation> relationPreprocessor, RelationProcessor relationProcessor,
+                                   EdgeHandler edgeHandler, int workerThreads) {
         this.eleProvider = eleProvider;
         this.wayFilter = wayFilter;
         this.splitNodeFilter = splitNodeFilter;
@@ -133,9 +133,9 @@ public class CustomWaySegmentParser {
     private class Pass1Handler implements ReaderElementHandler {
         private boolean handledWays;
         private boolean handledRelations;
-        private long wayCounter = 1;
+        private long wayCounter = 0;
         private long acceptedWays = 0;
-        private long relationsCounter = -1;
+        private long relationsCounter = 0;
 
         @Override
         public void handleWay(ReaderWay way) {
@@ -194,10 +194,10 @@ public class CustomWaySegmentParser {
         private boolean handledNodes;
         private boolean handledWays;
         private boolean handledRelations;
-        private long nodeCounter = -1;
+        private long nodeCounter = 0;
         private long acceptedNodes = 0;
         private long ignoredSplitNodes = 0;
-        private long wayCounter = -1;
+        private long wayCounter = 0;
 
         @Override
         public void handleNode(ReaderNode node) {
@@ -214,7 +214,7 @@ public class CustomWaySegmentParser {
                 LOGGER.info("pass2 - processed nodes: " + nf(nodeCounter) + ", accepted nodes: " + nf(acceptedNodes) +
                         ", " + Helper.getMemInfo());
 
-            int nodeType = nodeData.addCoordinatesIfMapped(node.getId(), node.getLat(), node.getLon(), eleProvider.getEle(node));
+            int nodeType = nodeData.addCoordinatesIfMapped(node.getId(), node.getLat(), node.getLon(), () -> eleProvider.getEle(node));
             if (nodeType == EMPTY_NODE)
                 return;
 
@@ -509,16 +509,16 @@ public class CustomWaySegmentParser {
     private interface ReaderElementHandler {
         default void handleElement(ReaderElement elem) throws ParseException {
             switch (elem.getType()) {
-                case ReaderElement.NODE:
+                case NODE:
                     handleNode((ReaderNode) elem);
                     break;
-                case ReaderElement.WAY:
+                case WAY:
                     handleWay((ReaderWay) elem);
                     break;
-                case ReaderElement.RELATION:
+                case RELATION:
                     handleRelation((ReaderRelation) elem);
                     break;
-                case ReaderElement.FILEHEADER:
+                case FILEHEADER:
                     handleFileHeader((OSMFileHeader) elem);
                     break;
                 default:

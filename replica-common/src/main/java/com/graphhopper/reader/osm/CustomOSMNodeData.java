@@ -3,20 +3,23 @@ package com.graphhopper.reader.osm;
 import com.google.common.collect.Maps;
 import com.graphhopper.coll.GHLongIntBTree;
 import com.graphhopper.coll.LongIntMap;
-import com.graphhopper.reader.PillarInfo;
 import com.graphhopper.reader.ReaderNode;
 import com.graphhopper.storage.Directory;
 import com.graphhopper.util.PointAccess;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint3D;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.DoubleSupplier;
 import java.util.function.IntUnaryOperator;
 
 import static java.util.Collections.emptyMap;
 
 /**
- * This class stores OSM node data while reading an OSM file in {@link WaySegmentParser}. It is not trivial to do this
+ * This class stores OSM node data while reading an OSM file in {@link CustomWaySegmentParser}. It is not trivial to do this
  * in a memory-efficient way. We use the following approach:
  * <pre>
  * - For each OSM node we store an integer id that points to the nodes coordinates. We use both positive and negative
@@ -24,10 +27,10 @@ import static java.util.Collections.emptyMap;
  *   pillar nodes. We use the negative ids for tower nodes and positive ids for pillar nodes. In the future we might
  *   have to consider the fact that there are more pillar nodes than tower nodes and use a different separation.
  * - We reserve a few special ids like {@link #JUNCTION_NODE} to distinguish the different node types when we read the
- *   OSM file for the first time (pass1) in {@link WaySegmentParser}. We then assign actual ids in the second pass.
+ *   OSM file for the first time (pass1) in {@link CustomWaySegmentParser}. We then assign actual ids in the second pass.
  * - We store the node coordinates for tower and pillar nodes in different places. The pillar node storage is only
  *   temporary, because at the time we store the coordinates it is unknown to which edge each pillar node will belong.
- *   The tower node storage, however, can be re-used for the final graph created by {@link OSMReader} so we store the
+ *   The tower node storage, however, can be re-used for the final graph created by {@link CustomOsmReader} so we store the
  *   tower coordinates there already to save memory during import.
  * - We store an additional mapping between OSM node Ids and tag indices that point into a list of node tags. We use
  *   a different mapping, because we store node tags for only a small fraction of all OSM nodes.
@@ -147,14 +150,14 @@ class CustomOSMNodeData {
      *
      * @return the node type this OSM node was associated with before this method was called
      */
-    public int addCoordinatesIfMapped(long osmNodeId, double lat, double lon, double ele) {
+    public int addCoordinatesIfMapped(long osmNodeId, double lat, double lon, DoubleSupplier getEle) {
         int nodeType = idsByOsmNodeIds.get(osmNodeId);
         if (nodeType == EMPTY_NODE)
             return nodeType;
         else if (nodeType == JUNCTION_NODE || nodeType == CONNECTION_NODE)
-            addTowerNode(osmNodeId, lat, lon, ele);
+            addTowerNode(osmNodeId, lat, lon, getEle.getAsDouble());
         else if (nodeType == INTERMEDIATE_NODE || nodeType == END_NODE)
-            addPillarNode(osmNodeId, lat, lon, ele);
+            addPillarNode(osmNodeId, lat, lon, getEle.getAsDouble());
         else
             throw new IllegalStateException("Unknown node type: " + nodeType + ", or coordinates already set. Possibly duplicate OSM node ID: " + osmNodeId);
         return nodeType;
@@ -179,6 +182,7 @@ class CustomOSMNodeData {
         nextPillarId++;
         return id;
     }
+
 
     /**
      * Creates a copy of the coordinates stored for the given node ID
