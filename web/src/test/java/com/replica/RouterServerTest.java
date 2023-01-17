@@ -342,7 +342,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
         // we route with 4 auto profiles and combine results, and each profile should have produced at least one
         // alternate
-        Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount >= 1L;
+        Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount > 1L;
         checkStreetBasedResponse(response, CAR_PROFILES, perProfilePathCountPredicate);
     }
 
