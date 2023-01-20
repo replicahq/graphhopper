@@ -183,6 +183,7 @@ public final class RouterConverters {
         CustomModel customModel;
         try {
             customModel = jsonOM.readValue(request.getCustomModel(), CustomModel.class);
+            ghRequest.setCustomModel(customModel);
         } catch (Exception e) {
             logger.error(e.getMessage());
             logger.error(e.getStackTrace().toString());
@@ -190,7 +191,6 @@ public final class RouterConverters {
                     "Couldn't read custom model from GH request! Full request: " + request.toString());
         }
         hints.putObject(Parameters.CH.DISABLE, true);
-        hints.putObject(CustomModel.KEY, customModel);
 
         hints.putObject(INSTRUCTIONS, false);
         if (request.getAlternateRouteMaxPaths() > 1) {
