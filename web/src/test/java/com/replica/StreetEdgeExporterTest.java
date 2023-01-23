@@ -40,7 +40,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         records.remove(0);
 
         // Remove small number of non-unique rows in output (expected due to OSM node ID parsing method).
-        // We unique rows before uploading to BQ, so this mimics the actualy results of our street export.
+        // We unique rows before uploading to BQ, so this mimics the actual results of our street export.
         // Note the gross method used to unique these records is due to CSVRecord not implementing toCompare(),
         // so plopping them in a Set doesn't work
         Set<String> allUniqueRowStrings = Sets.newHashSet();
@@ -52,10 +52,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
                 allUniqueRows.add(record);
             }
         }
-
-        System.out.println(records.size());
-        System.out.println(allUniqueRows.size());
-
+        
         for (CSVRecord record : allUniqueRows) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
