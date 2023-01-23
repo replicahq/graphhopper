@@ -116,7 +116,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
 
         LOG.info("start creating graph from " + this.getOSMFile());
         CustomOsmReader reader = new CustomOsmReader(this.getBaseGraph().getBaseGraph(), this.getEncodingManager(), this.getOSMParsers(), this.getReaderConfig())
-                .setFile(_getOSMFile())
+                .setFile(new File(this.getOSMFile()))
                 .setAreaIndex(areaIndex)
                 .setElevationProvider(this.getElevationProvider())
                 .setCountryRuleFactory(this.getCountryRuleFactory());
@@ -238,13 +238,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
         } catch (Exception e) {
             throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
         }
-    }
-
-    /**
-     * Currently we use this for a few tests where the dataReaderFile is loaded from the classpath
-     */
-    protected File _getOSMFile() {
-        return new File(super.getOSMFile());
     }
 
     private static String getHighwayFromOsmWay(ReaderWay way) {
