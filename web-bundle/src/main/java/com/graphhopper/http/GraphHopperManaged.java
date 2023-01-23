@@ -74,8 +74,8 @@ public class GraphHopperManaged implements Managed {
         graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
     }
 
-    // TODO: MUST UPDATE EVERY TIME A "GRAPHHOPPER CORE UPDATE" OCCURS
-    // Copied directly from GraphHopperManaged.java on commit f2c5e661308403190545eaec54e8728ab80de11f
+    // MUST UPDATE EVERY TIME A "GRAPHHOPPER CORE UPDATE" OCCURS
+    // Copied directly from GraphHopperManaged.java on commit 49b0dd189fddd751e5d170e7a741feaa81d4c486
     public static List<Profile> resolveCustomModelFiles(String customModelFolder, List<Profile> profiles) {
         ObjectMapper jsonOM = Jackson.newObjectMapper();
         List<Profile> newProfiles = new ArrayList<>();
@@ -85,36 +85,35 @@ public class GraphHopperManaged implements Managed {
                 continue;
             }
             Object cm = profile.getHints().getObject("custom_model", null);
-            CustomModel customModel;
             if (cm != null) {
                 try {
                     // custom_model can be an object tree (read from config) or an object (e.g. from tests)
-                    customModel = jsonOM.readValue(jsonOM.writeValueAsBytes(cm), CustomModel.class);
+                    CustomModel customModel = jsonOM.readValue(jsonOM.writeValueAsBytes(cm), CustomModel.class);
                     newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
+                    continue;
                 } catch (Exception ex) {
                     throw new RuntimeException("Cannot load custom_model from " + cm + " for profile " + profile.getName()
                             + ". If you are trying to load from a file, use 'custom_model_file' instead.", ex);
                 }
-            } else {
-                String customModelFileName = profile.getHints().getString("custom_model_file", "");
-                if (customModelFileName.isEmpty())
-                    throw new IllegalArgumentException("Missing 'custom_model' or 'custom_model_file' field in profile '"
-                            + profile.getName() + "'. To use default specify custom_model_file: empty");
-                if ("empty".equals(customModelFileName))
-                    newProfiles.add(new CustomProfile(profile).setCustomModel(customModel = new CustomModel()));
-                else {
-                    if (customModelFileName.contains(File.separator))
-                        throw new IllegalArgumentException("Use custom_model_folder for the custom_model_file parent");
-                    if (!customModelFileName.endsWith(".json"))
-                        throw new IllegalArgumentException("Yaml is no longer supported, see #2672. Use JSON with optional comments //");
-                    try {
-                        // Somehow dropwizard makes it very hard to find out the folder of config.yml -> use an extra parameter for the folder
-                        String string = Helper.readJSONFileWithoutComments(Paths.get(customModelFolder).resolve(customModelFileName).toFile().getAbsolutePath());
-                        customModel = jsonOM.readValue(string, CustomModel.class);
-                        newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
-                    } catch (Exception ex) {
-                        throw new RuntimeException("Cannot load custom_model from location " + customModelFileName + " for profile " + profile.getName(), ex);
-                    }
+            }
+            String customModelFileName = profile.getHints().getString("custom_model_file", "");
+            if (customModelFileName.isEmpty())
+                throw new IllegalArgumentException("Missing 'custom_model' or 'custom_model_file' field in profile '"
+                        + profile.getName() + "'. To use default specify custom_model_file: empty");
+            if ("empty".equals(customModelFileName))
+                newProfiles.add(new CustomProfile(profile).setCustomModel(new CustomModel()));
+            else {
+                if (customModelFileName.contains(File.separator))
+                    throw new IllegalArgumentException("Use custom_model_folder for the custom_model_file parent");
+                if (!customModelFileName.endsWith(".json"))
+                    throw new IllegalArgumentException("Yaml is no longer supported, see #2672. Use JSON with optional comments //");
+                try {
+                    // Somehow dropwizard makes it very hard to find out the folder of config.yml -> use an extra parameter for the folder
+                    String string = Helper.readJSONFileWithoutComments(Paths.get(customModelFolder).resolve(customModelFileName).toFile().getAbsolutePath());
+                    CustomModel customModel = jsonOM.readValue(string, CustomModel.class);
+                    newProfiles.add(new CustomProfile(profile).setCustomModel(customModel));
+                } catch (Exception ex) {
+                    throw new RuntimeException("Cannot load custom_model from location " + customModelFileName + " for profile " + profile.getName(), ex);
                 }
             }
         }
