@@ -355,9 +355,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 CustomPtLeg customPtLeg = RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo);
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = MetricUtils.applyCustomTags(new String[0], customTags);
-                if (statsDClient != null) {
-                    statsDClient.histogram("routers.to_custom_pt_leg_seconds", durationSeconds, tags);
-                }
+                MetricUtils.sendInternalRoutingStats(statsDClient, tags, durationSeconds, "to_custom_pt_leg_seconds");
 
                 path.getLegs().add(customPtLeg);
             }
