@@ -141,6 +141,8 @@ public class RouterServer {
                     .build();
             maybeStatsDClient = Optional.of(statsDClient);
 
+            // Uncomment below block to turn on logging about GRPC queueing activity
+            /*
             ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
             logger.info("Scheduling networking metrics collection");
             exec.scheduleAtFixedRate(new Runnable() {
@@ -150,6 +152,7 @@ public class RouterServer {
                     recordNetworkingMetrics(statsDClient, bossEventLoopGroup, "boss");
                 }
             }, 0, 60, TimeUnit.SECONDS);
+            */
         }
 
         logger.info("Metrics agent host IP is: " + metricsHost);
