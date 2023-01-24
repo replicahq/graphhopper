@@ -34,7 +34,7 @@ public class ImportSandboxCommand extends ConfiguredCommand<GraphHopperServerCon
 
     @Override
     protected void run(Bootstrap<GraphHopperServerConfiguration> bootstrap, Namespace namespace, GraphHopperServerConfiguration configuration) {
-        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration(), bootstrap.getObjectMapper());
+        final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration());
         CustomGraphHopperOSM gh = (CustomGraphHopperOSM) graphHopper.getGraphHopper();
         gh.importOrLoad();
         StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh, gh.getOsmHelper());

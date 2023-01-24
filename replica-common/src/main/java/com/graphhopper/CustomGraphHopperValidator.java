@@ -1,11 +1,16 @@
 package com.graphhopper;
 
 import com.graphhopper.gtfs.GraphHopperGtfs;
-import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.routing.lm.LandmarkStorage;
 import com.graphhopper.storage.LockFactory;
 import com.graphhopper.storage.NativeFSLockFactory;
-import com.graphhopper.storage.index.LocationIndex;
+import com.graphhopper.storage.RoutingCHGraph;
 
+/***
+ * Custom class used for "2-pass" GTFS validation; first pass with validate=False
+ * imports just the OSM; second pass with validate=True imports the GTFS
+ * todo: update to use new features that let you import OSM/GTFS in stages?
+***/
 public class CustomGraphHopperValidator extends GraphHopperGtfs {
     private boolean validate;
 
@@ -32,18 +37,20 @@ public class CustomGraphHopperValidator extends GraphHopperGtfs {
         }
 
         // Remainder of method is copied directly from GraphHopper.close()
-        GraphHopperStorage ghStorage = super.getGraphHopperStorage();
-        LocationIndex locationIndex = super.getLocationIndex();
-        if (ghStorage != null) {
-            ghStorage.close();
-        }
-        if (locationIndex != null) {
-            locationIndex.close();
-        }
+        if (getBaseGraph() != null)
+            getBaseGraph().close();
+        if (getProperties() != null)
+            getProperties().close();
+
+        getCHGraphs().values().forEach(RoutingCHGraph::close);
+        getLandmarks().values().forEach(LandmarkStorage::close);
+
+        if (getLocationIndex() != null)
+            getLocationIndex().close();
 
         try {
             lockFactory.forceRemove(fileLockName, true);
-        } catch (Exception e) {
+        } catch (Exception ex) {
             // silently fail e.g. on Windows where we cannot remove an unreleased native lock
         }
     }

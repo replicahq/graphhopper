@@ -26,8 +26,8 @@ import com.graphhopper.*;
 import com.graphhopper.config.Profile;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.Request;
+import com.graphhopper.storage.BaseGraph;
 import com.graphhopper.util.exceptions.PointNotFoundException;
-import com.graphhopper.util.shapes.BBox;
 import com.graphhopper.util.shapes.GHPoint;
 import com.replica.util.MetricUtils;
 import com.replica.util.RouterConverters;
@@ -206,10 +206,12 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
     @Override
     public void info(InfoRequest request, StreamObserver<InfoReply> responseObserver) {
-        BBox bounds = graphHopper.getGraphHopperStorage().getBounds();
-        responseObserver.onNext(InfoReply.newBuilder()
-                .addAllBbox(Arrays.asList(bounds.minLon, bounds.minLat, bounds.maxLon, bounds.maxLat))
-                .build());
+        BaseGraph baseGraph = graphHopper.getBaseGraph();
+        responseObserver.onNext(InfoReply.newBuilder().addAllBbox(
+                Arrays.asList(
+                        baseGraph.getBounds().minLon, baseGraph.getBounds().minLat,
+                        baseGraph.getBounds().maxLon, baseGraph.getBounds().maxLat
+                )).build());
         responseObserver.onCompleted();
     }
 
@@ -222,17 +224,25 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         Request ghPtRequest = RouterConverters.toGHPtRequest(request);
 
         try {
+            long routeStartTime = System.currentTimeMillis();
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
+            double routeDuration = (System.currentTimeMillis() - routeStartTime) / 1000.0;
+            String[] tags = MetricUtils.applyCustomTags(new String[0], customTags);
+            MetricUtils.sendInternalRoutingStats(statsDClient, tags, routeDuration, "internal_duration");
+
+            long augmentStartTime = System.currentTimeMillis();
             List<ResponsePath> pathsWithStableIds = Lists.newArrayList();
             for (ResponsePath path : ghResponse.getAll()) {
                 // Ignore walking-only responses, because we route those separately from PT
                 if (path.getLegs().size() == 1 && path.getLegs().get(0).type.equals("walk")) {
                     continue;
                 }
-
                 augmentLegsForPt(path);
                 pathsWithStableIds.add(path);
             }
+
+            double augmentDuration = (System.currentTimeMillis() - augmentStartTime) / 1000.0;
+            MetricUtils.sendInternalRoutingStats(statsDClient, tags, augmentDuration, "augment_duration");
 
             if (pathsWithStableIds.size() == 0) {
                 String message = "Transit path could not be found between " + fromPoint.getLat() + "," +
@@ -240,7 +250,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 // logger.warn(message);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
+                tags = new String[]{"mode:pt", "api:grpc", "routes_found:false"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
 
@@ -250,15 +260,28 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                         .build();
                 responseObserver.onError(StatusProto.toStatusRuntimeException(status));
             } else {
+                long replyBuildStart = System.currentTimeMillis();
                 PtRouteReply.Builder replyBuilder = PtRouteReply.newBuilder();
                 pathsWithStableIds.stream()
                         .map(RouterConverters::toPtPath)
                         .forEach(replyBuilder::addPaths);
 
+                double replyBuildDuration = (System.currentTimeMillis() - replyBuildStart) / 1000.0;
+                MetricUtils.sendInternalRoutingStats(statsDClient, tags, replyBuildDuration, "reply_build_duration");
+
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                String[] tags = {"mode:pt", "api:grpc", "routes_found:true"};
+                tags = new String[]{"mode:pt", "api:grpc", "routes_found:true"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+
+                // Request info log for slow-running requests; uncomment if needed for debugging
+                /*
+                if (durationSeconds > 30) {
+                    logger.info("Slow request detected! Full request time: " + durationSeconds + "; internal routing time: "
+                            + routeDuration + "; augment duration: " + augmentDuration + "; reply build duration: " + replyBuildDuration
+                            + "; full request is " + request.toString());
+                }
+                */
 
                 responseObserver.onNext(replyBuilder.build());
                 responseObserver.onCompleted();
@@ -310,71 +333,48 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         ArrayList<Trip.Leg> legs = new ArrayList<>(path.getLegs());
         path.getLegs().clear();
 
+        boolean accessExists = false;
+        boolean egressExists = false;
         for (int i = 0; i < legs.size(); i++) {
             Trip.Leg leg = legs.get(i);
             if (leg instanceof Trip.WalkLeg) {
                 Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
                 String travelSegmentType;
-                // We only expect graphhopper to return ACCESS + EGRESS walk legs
+                // Assign proper ACCESS/EGRESS/TRANSFER segment type based on position of walk leg in list
                 if (i == 0) {
                     travelSegmentType = "ACCESS";
-                } else {
+                    accessExists = true;
+                } else if (i == legs.size() - 1) {
                     travelSegmentType = "EGRESS";
+                    egressExists = true;
+                } else {
+                    travelSegmentType = "TRANSFER";
                 }
                 path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
             } else if (leg instanceof Trip.PtLeg) {
                 Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
-                path.getLegs().add(
-                        RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo));
 
-                // If this PT leg is followed by another PT leg, add a TRANSFER walk leg between them
-                if (i < legs.size() - 1 && legs.get(i + 1) instanceof Trip.PtLeg) {
-                    maybeGetTransferWalkLeg(thisLeg, (Trip.PtLeg) legs.get(i + 1)).ifPresent(path.getLegs()::add);
-                }
+                long startTime = System.currentTimeMillis();
+                CustomPtLeg customPtLeg = RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo);
+                double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                String[] tags = MetricUtils.applyCustomTags(new String[0], customTags);
+                MetricUtils.sendInternalRoutingStats(statsDClient, tags, durationSeconds, "to_custom_pt_leg_seconds");
+
+                path.getLegs().add(customPtLeg);
             }
         }
 
-        // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
-        // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
-        CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
-        CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
-        accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
+        if (accessExists && egressExists) {
+            // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
+            // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
+            CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
+            CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
+            accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
+        }
 
         // Calculate correct distance incorporating foot + pt legs
         path.setDistance(path.getLegs().stream().mapToDouble(l -> l.distance).sum());
 
         path.getPathDetails().clear();
-    }
-
-    /**
-     * @return a transfer walk leg between two consecutive legs of a PT trip, if necessary. returns an empty optional if
-     * the first leg ends where the second begins, or if a walking route could not be found.
-     */
-    private Optional<CustomWalkLeg> maybeGetTransferWalkLeg(Trip.PtLeg firstLeg, Trip.PtLeg secondLeg) {
-        Trip.Stop lastStopOfThisLeg = firstLeg.stops.get(firstLeg.stops.size() - 1);
-        Trip.Stop firstStopOfNextLeg = secondLeg.stops.get(0);
-        if (!lastStopOfThisLeg.stop_id.equals(firstStopOfNextLeg.stop_id)) {
-            GHRequest r = new GHRequest(
-                    lastStopOfThisLeg.geometry.getY(), lastStopOfThisLeg.geometry.getX(),
-                    firstStopOfNextLeg.geometry.getY(), firstStopOfNextLeg.geometry.getX());
-            r.setProfile("foot");
-            r.setPathDetails(Arrays.asList("stable_edge_ids"));
-            GHResponse transfer = graphHopper.route(r);
-            if (!transfer.hasErrors()) {
-                ResponsePath transferPath = transfer.getBest();
-                Trip.WalkLeg transferLeg = new Trip.WalkLeg(
-                        lastStopOfThisLeg.stop_name,
-                        firstLeg.getArrivalTime(),
-                        transferPath.getPoints().getCachedLineString(false),
-                        transferPath.getDistance(),
-                        transferPath.getInstructions(),
-                        transferPath.getPathDetails(),
-                        Date.from(firstLeg.getArrivalTime().toInstant().plusMillis(transferPath.getTime()))
-                );
-                return Optional.of(RouterConverters.toCustomWalkLeg(transferLeg, "TRANSFER"));
-            }
-        }
-
-        return Optional.empty();
     }
 }

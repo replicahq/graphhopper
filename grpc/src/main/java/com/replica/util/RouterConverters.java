@@ -1,7 +1,6 @@
 package com.replica.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.protobuf.Timestamp;
@@ -10,8 +9,7 @@ import com.graphhopper.ResponsePath;
 import com.graphhopper.Trip;
 import com.graphhopper.gtfs.Request;
 import com.graphhopper.jackson.Jackson;
-import com.graphhopper.routing.*;
-import com.graphhopper.routing.util.CustomModel;
+import com.graphhopper.util.CustomModel;
 import com.graphhopper.util.DistanceCalcEarth;
 import com.graphhopper.util.PMap;
 import com.graphhopper.util.Parameters;
@@ -33,7 +31,6 @@ import static java.util.stream.Collectors.toList;
 public final class RouterConverters {
 
     private static final Logger logger = LoggerFactory.getLogger(RouterConverters.class);
-    private static final ObjectMapper yamlOM = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
     private static final ObjectMapper jsonOM = Jackson.newObjectMapper();
 
     private static final int DEFAULT_MAX_VISITED_NODES = 1_000_000;
@@ -185,8 +182,8 @@ public final class RouterConverters {
         PMap hints = new PMap();
         CustomModel customModel;
         try {
-            customModel = (request.getCustomModel().startsWith("{") ? jsonOM : yamlOM)
-                    .readValue(request.getCustomModel(), CustomModel.class);
+            customModel = jsonOM.readValue(request.getCustomModel(), CustomModel.class);
+            ghRequest.setCustomModel(customModel);
         } catch (Exception e) {
             logger.error(e.getMessage());
             logger.error(e.getStackTrace().toString());
@@ -194,7 +191,6 @@ public final class RouterConverters {
                     "Couldn't read custom model from GH request! Full request: " + request.toString());
         }
         hints.putObject(Parameters.CH.DISABLE, true);
-        hints.putObject(CustomModel.KEY, customModel);
 
         hints.putObject(INSTRUCTIONS, false);
         if (request.getAlternateRouteMaxPaths() > 1) {
@@ -221,7 +217,7 @@ public final class RouterConverters {
         ghPtRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
         ghPtRequest.setProfileQuery(true);
         ghPtRequest.setMaxProfileDuration(Duration.ofMinutes(request.getMaxProfileDuration()));
-        ghPtRequest.setBetaWalkTime(request.getBetaWalkTime());
+        ghPtRequest.setBetaStreetTime(request.getBetaWalkTime());
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());

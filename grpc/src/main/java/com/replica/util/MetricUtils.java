@@ -19,6 +19,13 @@ public final class MetricUtils {
         }
     }
 
+    public static void sendInternalRoutingStats(StatsDClient statsDClient, String[] tags,
+                                                double durationSeconds, String statName) {
+        if (statsDClient != null) {
+            statsDClient.histogram("routers." + statName, durationSeconds, tags);
+        }
+    }
+
     // Apply region + helm release tags, if they exist
     public static String[] applyCustomTags(String[] tags, Map<String, String> customTags) {
         for (String tagName : customTags.keySet()) {

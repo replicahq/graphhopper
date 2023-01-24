@@ -6,7 +6,6 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.replica.StreetEdgeExportRecord;
 import com.graphhopper.replica.StreetEdgeExporter;
 import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -17,11 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith({ReplicaGraphHopperTestExtention.class})
 public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
@@ -32,22 +29,44 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         File expectedOutputLocation = new File(EXPORT_FILES_DIR + "street_edges.csv");
         CSVParser parser = CSVParser.parse(expectedOutputLocation, StandardCharsets.UTF_8, format);
         List<CSVRecord> records = parser.getRecords();
-        assertEquals(1095756, records.size());
+        assertEquals(1147753, records.size());
+
+        // Check for well-formed vehicle names in accessibility flags
+        int nullAccessibilityFlagCount = 0;
 
         // Sanity check OSM node + edge coverage and stable edge ID uniqueness
         int emptyNodeIdCount = 0;
         int emptyWayIdCount = 0;
         Set<String> observedStableEdgeIds = Sets.newHashSet();
-        for (int i = 1; i < 10001; i++) {
-            CSVRecord record = records.get(i);
+
+        // Remove header row
+        records.remove(0);
+
+        // Remove small number of non-unique rows in output (expected due to OSM node ID parsing method).
+        // We unique rows before uploading to BQ, so this mimics the actual results of our street export.
+        // Note the gross method used to unique these records is due to CSVRecord not implementing toCompare(),
+        // so plopping them in a Set doesn't work
+        Set<String> allUniqueRowStrings = Sets.newHashSet();
+        Set<CSVRecord> allUniqueRows = Sets.newHashSet();
+        for (CSVRecord record : records) {
+            String rowString = record.toMap().values().toString();
+            if (!allUniqueRowStrings.contains(rowString)) {
+                allUniqueRowStrings.add(rowString);
+                allUniqueRows.add(record);
+            }
+        }
+
+        for (CSVRecord record : allUniqueRows) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("endOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("osmid")) <= 0) emptyWayIdCount++;
+            if (record.get("flags").contains("null")) nullAccessibilityFlagCount++;
         }
-        assertEquals(0, emptyNodeIdCount);
-        assertEquals(0, emptyWayIdCount);
-        assertEquals(10000, observedStableEdgeIds.size());
+        assertEquals(0, emptyNodeIdCount); // no empty/negative OSM node IDs
+        assertEquals(0, emptyWayIdCount); // no empty/negative OSM way IDs
+        assertEquals(allUniqueRows.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
+        assertEquals(0, nullAccessibilityFlagCount); // no badly-formed vehicles appear in accessibility flags
 
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }
@@ -63,8 +82,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         StreetEdgeExporter exporter = new StreetEdgeExporter(
                 configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper()
         );
-        GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
-        AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
+        AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
 
         // Generate the rows for the first item in the edge iterator
         edgeIterator.next();

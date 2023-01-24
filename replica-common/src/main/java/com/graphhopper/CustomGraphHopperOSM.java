@@ -3,25 +3,32 @@ package com.graphhopper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.graphhopper.json.geo.JsonFeatureCollection;
-import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
-import com.graphhopper.reader.osm.*;
-import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.stableid.StableIdEncodedValues;
+import com.graphhopper.reader.osm.CustomOsmReader;
+import com.graphhopper.reader.osm.OSMInput;
+import com.graphhopper.reader.osm.OSMInputFile;
+import com.graphhopper.routing.util.AreaIndex;
+import com.graphhopper.routing.util.CustomArea;
+import com.graphhopper.storage.DAType;
 import com.graphhopper.storage.DataAccess;
-import com.graphhopper.storage.Directory;
-import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.storage.GHDirectory;
 import com.graphhopper.util.BitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static com.graphhopper.util.GHUtility.readCountries;
+import static com.graphhopper.util.Helper.createFormatter;
+import static com.graphhopper.util.Helper.isEmpty;
 
 /**
  * Custom implementation of internal class GraphHopper uses to parse OSM files into GH's internal graph data structures.
@@ -32,13 +39,12 @@ import java.util.Set;
  * data about a particular region's GH street network.
  */
 
-public class CustomGraphHopperOSM extends GraphHopperOSM {
+public class CustomGraphHopperOSM extends GraphHopper {
     private static final Logger LOG = LoggerFactory.getLogger(CustomGraphHopperOSM.class);
 
     // Tags considered by R5 when calculating the value of the `lanes` column
     private static final Set<String> LANE_TAGS = Sets.newHashSet("lanes", "lanes:forward", "lanes:backward");
     private String osmPath;
-
     // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToLaneTags;
     // Map of OSM ID to street name. Name is parsed directly from Way, unless name field isn't present,
@@ -46,14 +52,11 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
     private Map<Long, String> osmIdToStreetName;
     // Map of OSM ID to highway tag
     private Map<Long, String> osmIdToHighwayTag;
-    private DataAccess edgeMapping;
     private DataAccess nodeMapping;
-    private DataAccess edgeAdjacentMapping;
-    private DataAccess edgeBaseMapping;
+    private DataAccess artificialIdToOsmNodeIdMapping;
     private BitUtil bitUtil;
 
-    public CustomGraphHopperOSM(JsonFeatureCollection landmarkSplittingFeatureCollection, GraphHopperConfig ghConfig) {
-        super(landmarkSplittingFeatureCollection);
+    public CustomGraphHopperOSM(GraphHopperConfig ghConfig) {
         this.osmPath = ghConfig.getString("datareader.file", "");
         this.osmIdToLaneTags = Maps.newHashMap();
         this.osmIdToStreetName = Maps.newHashMap();
@@ -61,26 +64,16 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
     }
 
     @Override
-    protected void registerCustomEncodedValues(EncodingManager.Builder emBuilder) {
-        super.registerCustomEncodedValues(emBuilder);
-        StableIdEncodedValues.createAndAddEncodedValues(emBuilder);
-    }
-
-    @Override
-    public boolean load(String graphHopperFolder) {
-        boolean loaded = super.load(graphHopperFolder);
-        Directory dir = getGraphHopperStorage().getDirectory();
-        bitUtil = BitUtil.get(dir.getByteOrder());
-        edgeMapping = dir.find("edge_mapping");
-        nodeMapping = dir.find("node_mapping");
-        edgeAdjacentMapping = dir.find("edge_adjacent_mapping");
-        edgeBaseMapping = dir.find("edge_base_mapping");
+    public boolean load() {
+        boolean loaded = super.load();
+        GHDirectory dir = new GHDirectory(this.getGraphHopperLocation(), DAType.RAM_STORE);
+        bitUtil = BitUtil.LITTLE;
+        nodeMapping = dir.create("node_mapping");
+        artificialIdToOsmNodeIdMapping = dir.create("artificial_id_mapping");
 
         if(loaded) {
-            edgeMapping.loadExisting();
             nodeMapping.loadExisting();
-            edgeAdjacentMapping.loadExisting();
-            edgeBaseMapping.loadExisting();
+            artificialIdToOsmNodeIdMapping.loadExisting();
         }
 
         return loaded;
@@ -89,22 +82,86 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
     @Override
     protected void flush() {
         super.flush();
-        edgeMapping.flush();
         nodeMapping.flush();
-        edgeAdjacentMapping.flush();
-        edgeBaseMapping.flush();
+        artificialIdToOsmNodeIdMapping.flush();
     }
 
     public OsmHelper getOsmHelper(){
-        return new OsmHelper(edgeMapping, nodeMapping,
-                edgeAdjacentMapping, edgeBaseMapping, bitUtil,
-                getGraphHopperStorage().getEdges());
+        return new OsmHelper(
+                nodeMapping,
+                artificialIdToOsmNodeIdMapping,
+                bitUtil
+        );
     }
 
     @Override
-    protected DataReader createReader(GraphHopperStorage ghStorage) {
-        OSMReader reader = new CustomOsmReader(ghStorage);
-        return initDataReader(reader);
+    protected void importOSM() {
+        if (this.getOSMFile() == null)
+            throw new IllegalStateException("Couldn't load from existing folder: " + this.getGraphHopperLocation()
+                    + " but also cannot use file for DataReader as it wasn't specified!");
+
+        List<CustomArea> customAreas = readCountries();
+        if (isEmpty(this.getCustomAreasDirectory())) {
+            LOG.info("No custom areas are used, custom_areas.directory not given");
+        } else {
+            throw new RuntimeException("Custom areas are not currently supported in Replica's Graphhopper instance!");
+        }
+        AreaIndex<CustomArea> areaIndex = new AreaIndex<>(customAreas);
+
+        if (this.getCountryRuleFactory() == null || this.getCountryRuleFactory().getCountryToRuleMap().isEmpty()) {
+            LOG.info("No country rules available");
+        } else {
+            LOG.info("Applying rules for the following countries: {}", this.getCountryRuleFactory().getCountryToRuleMap().keySet());
+        }
+
+        LOG.info("start creating graph from " + this.getOSMFile());
+        CustomOsmReader reader = new CustomOsmReader(this.getBaseGraph().getBaseGraph(), this.getEncodingManager(), this.getOSMParsers(), this.getReaderConfig())
+                .setFile(new File(this.getOSMFile()))
+                .setAreaIndex(areaIndex)
+                .setElevationProvider(this.getElevationProvider())
+                .setCountryRuleFactory(this.getCountryRuleFactory());
+
+        createBaseGraphAndProperties();
+
+        try {
+            reader.readGraph();
+        } catch (IOException ex) {
+            throw new RuntimeException("Cannot read file " + getOSMFile(), ex);
+        }
+        DateFormat f = createFormatter();
+        this.getProperties().put("datareader.import.date", f.format(new Date()));
+        if (reader.getDataDate() != null)
+            this.getProperties().put("datareader.data.date", f.format(reader.getDataDate()));
+
+        writeEncodingManagerToProperties();
+
+        writeOsmNodeIds(reader.getGhNodeIdToOsmNodeIdMap());
+        writeArtificialIdMapping(reader.getArtificialIdToOsmNodeIds());
+    }
+
+    public void writeArtificialIdMapping(Map<Long, Long> artificialIdToOsmNodeId) {
+        for (long artificialId : artificialIdToOsmNodeId.keySet()) {
+            long realId = artificialIdToOsmNodeId.get(artificialId);
+            long pointer = 8L * artificialId;
+            artificialIdToOsmNodeIdMapping.ensureCapacity(pointer + 8L);
+            artificialIdToOsmNodeIdMapping.setInt(pointer, bitUtil.getIntLow(realId));
+            artificialIdToOsmNodeIdMapping.setInt(pointer + 4, bitUtil.getIntHigh(realId));
+        }
+    }
+
+    public void writeOsmNodeIds(Map<Integer, Long> ghToOsmNodeIds) {
+        for (int nodeId : ghToOsmNodeIds.keySet()) {
+            long osmNodeId = ghToOsmNodeIds.get(nodeId);
+            long pointer = 8L * nodeId;
+            try {
+                nodeMapping.ensureCapacity(pointer + 8L);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Capacity not there! nodeId: " + nodeId + "; osmNodeId: " + osmNodeId);
+                throw e;
+            }
+            nodeMapping.setInt(pointer, bitUtil.getIntLow(osmNodeId));
+            nodeMapping.setInt(pointer + 4, bitUtil.getIntHigh(osmNodeId));
+        }
     }
 
     // todo: can we move this logic into CustomOsmReader?
@@ -115,7 +172,7 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
         try (OSMInput input = new OSMInputFile(new File(osmPath)).setWorkerThreads(2).open()) {
             ReaderElement next;
             while((next = input.getNext()) != null) {
-                if (next.isType(ReaderElement.WAY)) {
+                if (next.isType(ReaderElement.Type.WAY)) {
                     if (++readCount % 100_000 == 0) {
                         LOG.info("Parsing tag info from OSM ways. " + readCount + " read so far.");
                     }
@@ -148,7 +205,7 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
                             }
                         }
                     }
-                } else if (next.isType(ReaderElement.RELATION)) {
+                } else if (next.isType(ReaderElement.Type.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
                     }
@@ -164,7 +221,7 @@ public class CustomGraphHopperOSM extends GraphHopperOSM {
                         LOG.info("Parsing tag info from OSM relations. " + readCount + " read so far.");
                     }
                     for (ReaderRelation.Member member : relation.getMembers()) {
-                        if (member.getType() == ReaderRelation.Member.WAY) {
+                        if (member.getType() == ReaderElement.Type.WAY) {
                             // If we haven't recorded a street name for a Way in this Relation,
                             // use the Relation's name instead, if it exists
                             if (!osmIdToStreetName.containsKey(member.getRef())) {

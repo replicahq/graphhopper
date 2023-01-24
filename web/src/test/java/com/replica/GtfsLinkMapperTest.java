@@ -87,7 +87,7 @@ public class GtfsLinkMapperTest extends ReplicaGraphHopperTest {
     @Test
     public void testNoStreetBasedRoutes() throws Exception {
         GTFSFeed feed = new GTFSFeed();
-        feed.loadFromFileAndLogErrors(new ZipFile("./test-data/link_mapping_test_feed.zip"));
+        feed.loadFromFileAndLogErrors(new File("./test-data/link_mapping_test_feed.zip"));
 
         // Set each route's route type to a non-street-based route type
         feed.routes.values().forEach(r -> r.route_type = 1);

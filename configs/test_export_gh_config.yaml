@@ -4,13 +4,13 @@
 graphhopper:
   datareader.file: ./test-data/micro_nor_cal.osm.pbf
   graph.location: transit_data/export_test/graphhopper
-  routing.ch.disabling_allowed: true
   routing.max_visited_nodes: 1500000
-  graph.flag_encoders: car,bike,foot,truck,small_truck
+  graph.vehicles: car,bike,foot,truck,small_truck
   prepare.ch.threads: 16
+  import.osm.ignored_highways:
 
   # Profiles specifying vehicle and weightings for each mode type.
-  # For export, save time by not building contraction hierarchies
+  # For nationwide export, save time by not building contraction hierarchies
   profiles:
     - name: car
       vehicle: car

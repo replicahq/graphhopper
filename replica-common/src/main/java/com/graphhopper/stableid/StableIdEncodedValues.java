@@ -5,7 +5,7 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Longs;
 import com.graphhopper.OsmHelper;
-import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
+import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.FetchMode;
@@ -13,17 +13,20 @@ import com.graphhopper.util.PointList;
 
 public class StableIdEncodedValues {
 
-    private UnsignedIntEncodedValue[] stableIdEnc = new UnsignedIntEncodedValue[8];
-    private UnsignedIntEncodedValue[] reverseStableIdEnc = new UnsignedIntEncodedValue[8];
+    private IntEncodedValue[] stableIdEnc = new IntEncodedValue[8];
+    private IntEncodedValue[] reverseStableIdEnc = new IntEncodedValue[8];
+    private IntEncodedValue osmWayIdEnc;
     private OsmHelper osmHelper;
 
     private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper) {
         this.osmHelper = osmHelper;
+        this.osmWayIdEnc = encodingManager.getIntEncodedValue("osmid");
+
         for (int i=0; i<8; i++) {
-            stableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("stable-id-byte-"+i);
+            stableIdEnc[i] = encodingManager.getIntEncodedValue("stable_id_byte_"+i);
         }
         for (int i=0; i<8; i++) {
-            reverseStableIdEnc[i] = (UnsignedIntEncodedValue) encodingManager.getIntEncodedValue("reverse-stable-id-byte-"+i);
+            reverseStableIdEnc[i] = encodingManager.getIntEncodedValue("reverse_stable_id_byte_"+i);
         }
     }
 
@@ -37,18 +40,9 @@ public class StableIdEncodedValues {
         return new StableIdEncodedValues(encodingManager, null);
     }
 
-    public static void createAndAddEncodedValues(EncodingManager.Builder emBuilder) {
-        for (int i=0; i<8; i++) {
-            emBuilder.add(new UnsignedIntEncodedValue("stable-id-byte-"+i, 8, false));
-        }
-        for (int i=0; i<8; i++) {
-            emBuilder.add(new UnsignedIntEncodedValue("reverse-stable-id-byte-"+i, 8, false));
-        }
-    }
-
     public final String getStableId(boolean reverse, EdgeIteratorState edge) {
         byte[] stableId = new byte[8];
-        UnsignedIntEncodedValue[] idByte = reverse ? reverseStableIdEnc : stableIdEnc;
+        IntEncodedValue[] idByte = reverse ? reverseStableIdEnc : stableIdEnc;
         for (int i=0; i<8; i++) {
             stableId[i] = (byte) edge.get(idByte[i]);
         }
@@ -56,14 +50,21 @@ public class StableIdEncodedValues {
     }
 
     public final void setStableId(boolean reverse, EdgeIteratorState edge) {
-        int ghEdgeId = edge.getEdge();
+        int startVertex = edge.getBaseNode();
+        int endVertex = edge.getAdjNode();
 
-        long startOsmNodeId = reverse ? osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId)) :
-                osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId));
-        long endOsmNodeId = reverse ? osmHelper.getOSMNode(osmHelper.getBaseNodeForEdge(ghEdgeId)) :
-                osmHelper.getOSMNode(osmHelper.getNodeAdjacentToEdge(ghEdgeId));
+        long startOsmNodeId = reverse ? osmHelper.getOSMNode(endVertex) : osmHelper.getOSMNode(startVertex);
+        long endOsmNodeId = reverse ? osmHelper.getOSMNode(startVertex) : osmHelper.getOSMNode(endVertex);
 
-        long osmWayId = osmHelper.getOSMWay(ghEdgeId);
+        // Check if start or end node IDs are artificial IDs; if so, replace them with real IDs
+        if (startOsmNodeId <= 0) {
+            startOsmNodeId = osmHelper.getRealNodeIdFromArtificial(startOsmNodeId);
+        }
+        if (endOsmNodeId <= 0) {
+            endOsmNodeId = osmHelper.getRealNodeIdFromArtificial(endOsmNodeId);
+        }
+
+        long osmWayId = edge.get(osmWayIdEnc);
 
         PointList wayGeometry = edge.fetchWayGeometry(FetchMode.ALL);
         String geometryString = wayGeometry.toLineString(false).toString();
@@ -72,16 +73,16 @@ public class StableIdEncodedValues {
             geometryString = wayGeometry.toLineString(false).toString();
         }
 
-        // Only set stable edge IDs for edges with complete OSM info stored (ie, the edges we export)
-        if (startOsmNodeId == 0L || endOsmNodeId == 0L || osmWayId == -1L) {
-            return;
+        // Ensure OSM node + way IDs are set for every edge
+        if (startOsmNodeId <= 0L || endOsmNodeId <= 0L || osmWayId <= 0L) {
+            throw new RuntimeException("Trying to set stable edge ID on edge with no OSM node or way IDs stored!");
         }
 
         byte[] stableId = calculateStableEdgeId(startOsmNodeId, endOsmNodeId, osmWayId, geometryString);
         if (stableId.length != 8)
             throw new IllegalArgumentException("stable ID must be 8 bytes: " + new String(stableId));
 
-        UnsignedIntEncodedValue[] idBytes = reverse ? reverseStableIdEnc : stableIdEnc;
+        IntEncodedValue[] idBytes = reverse ? reverseStableIdEnc : stableIdEnc;
         for (int i=0; i<8; i++) {
             edge.set(idBytes[i], Byte.toUnsignedInt(stableId[i]));
         }
