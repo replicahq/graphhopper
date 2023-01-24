@@ -31,6 +31,9 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         List<CSVRecord> records = parser.getRecords();
         assertEquals(1147753, records.size());
 
+        // Check for well-formed vehicle names in accessibility flags
+        int nullAccessibilityFlagCount = 0;
+
         // Sanity check OSM node + edge coverage and stable edge ID uniqueness
         int emptyNodeIdCount = 0;
         int emptyWayIdCount = 0;
@@ -58,10 +61,12 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("endOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("osmid")) <= 0) emptyWayIdCount++;
+            if (record.get("flags").contains("null")) nullAccessibilityFlagCount++;
         }
         assertEquals(0, emptyNodeIdCount); // no empty/negative OSM node IDs
         assertEquals(0, emptyWayIdCount); // no empty/negative OSM way IDs
         assertEquals(allUniqueRows.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
+        assertEquals(0, nullAccessibilityFlagCount); // no badly-formed vehicles appear in accessibility flags
 
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }

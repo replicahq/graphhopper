@@ -140,13 +140,16 @@ public class StreetEdgeExporter {
         Set<String> forwardFlags = Sets.newHashSet();
         Set<String> backwardFlags = Sets.newHashSet();
         for (String vehicle: encodingManager.getVehicles()) {
-            String mode = ACCESSIBILITY_MODE_MAP.get(vehicle);
-            BooleanEncodedValue access = encodingManager.getBooleanEncodedValue(VehicleAccess.key(vehicle));
-            if (access.getBool(false, edgeFlags)) {
-                forwardFlags.add("ALLOWS_" + mode);
-            }
-            if (access.getBool(true, edgeFlags)) {
-                backwardFlags.add("ALLOWS_" + mode);
+            // Only record accessibility for car, bike, and foot vehicles
+            String mode = ACCESSIBILITY_MODE_MAP.getOrDefault(vehicle, null);
+            if (mode != null) {
+                BooleanEncodedValue access = encodingManager.getBooleanEncodedValue(VehicleAccess.key(vehicle));
+                if (access.getBool(false, edgeFlags)) {
+                    forwardFlags.add("ALLOWS_" + mode);
+                }
+                if (access.getBool(true, edgeFlags)) {
+                    backwardFlags.add("ALLOWS_" + mode);
+                }
             }
         }
 
