@@ -52,7 +52,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
                 allUniqueRows.add(record);
             }
         }
-        
+
         for (CSVRecord record : allUniqueRows) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
