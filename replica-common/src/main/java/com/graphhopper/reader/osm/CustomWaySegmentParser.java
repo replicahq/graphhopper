@@ -399,7 +399,7 @@ public class CustomWaySegmentParser {
     }
 
     protected OSMInput openOsmInputFile(File osmFile) throws XMLStreamException, IOException {
-        return new OSMInputFile(osmFile).setWorkerThreads(workerThreads).open();
+        return new CustomOSMInputFile(osmFile).setWorkerThreads(workerThreads).open();
     }
 
     public static class Builder {

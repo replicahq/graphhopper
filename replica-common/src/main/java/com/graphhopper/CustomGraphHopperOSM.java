@@ -6,9 +6,9 @@ import com.google.common.collect.Sets;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
+import com.graphhopper.reader.osm.CustomOSMInputFile;
 import com.graphhopper.reader.osm.CustomOsmReader;
 import com.graphhopper.reader.osm.OSMInput;
-import com.graphhopper.reader.osm.OSMInputFile;
 import com.graphhopper.routing.util.AreaIndex;
 import com.graphhopper.routing.util.CustomArea;
 import com.graphhopper.storage.DAType;
@@ -169,7 +169,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
         LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
         List<ReaderRelation> roadRelations = Lists.newArrayList();
         int readCount = 0;
-        try (OSMInput input = new OSMInputFile(new File(osmPath)).setWorkerThreads(2).open()) {
+        try (OSMInput input = new CustomOSMInputFile(new File(osmPath)).setWorkerThreads(2).open()) {
             ReaderElement next;
             while((next = input.getNext()) != null) {
                 if (next.isType(ReaderElement.Type.WAY)) {
@@ -236,7 +236,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
             }
             LOG.info("Finished scanning road relations for additional street names. " + readCount + " total relations were considered.");
         } catch (Exception e) {
-            throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
+            throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!", e);
         }
     }
 
