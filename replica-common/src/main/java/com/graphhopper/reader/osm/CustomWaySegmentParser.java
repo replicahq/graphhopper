@@ -254,6 +254,7 @@ public class CustomWaySegmentParser {
 
         private void splitWayAtJunctionsAndEmptySections(List<SegmentNode> fullSegment, ReaderWay way) {
             List<SegmentNode> segment = new ArrayList<>();
+            int segmentIndex = 1;
             for (SegmentNode node : fullSegment) {
                 if (!isNodeId(node.id)) {
                     // this node exists in ways, but not in nodes. we ignore it, but we split the way when we encounter
@@ -261,13 +262,13 @@ public class CustomWaySegmentParser {
                     // back into it. we do not want to connect the exit/entry points using a straight line. this usually
                     // should only happen for OSM extracts
                     if (segment.size() > 1) {
-                        splitLoopSegments(segment, way);
+                        segmentIndex = splitLoopSegments(segment, way,segmentIndex);
                         segment = new ArrayList<>();
                     }
                 } else if (isTowerNode(node.id)) {
                     if (!segment.isEmpty()) {
                         segment.add(node);
-                        splitLoopSegments(segment, way);
+                        segmentIndex = splitLoopSegments(segment, way, segmentIndex);
                         segment = new ArrayList<>();
                     }
                     segment.add(node);
@@ -277,10 +278,10 @@ public class CustomWaySegmentParser {
             }
             // the last segment might end at the end of the way
             if (segment.size() > 1)
-                splitLoopSegments(segment, way);
+                splitLoopSegments(segment, way, segmentIndex);
         }
 
-        private void splitLoopSegments(List<SegmentNode> segment, ReaderWay way) {
+        private int splitLoopSegments(List<SegmentNode> segment, ReaderWay way, int segmentIndex) {
             if (segment.size() < 2)
                 throw new IllegalStateException("Segment size must be >= 2, but was: " + segment.size());
 
@@ -289,16 +290,16 @@ public class CustomWaySegmentParser {
                 LOGGER.warn("Loop in OSM way: {}, will be ignored, duplicate node: {}", way.getId(), segment.get(0).osmNodeId);
             } else if (isLoop) {
                 // split into two segments
-                splitSegmentAtSplitNodes(segment.subList(0, segment.size() - 1), way);
-                splitSegmentAtSplitNodes(segment.subList(segment.size() - 2, segment.size()), way);
+                segmentIndex = splitSegmentAtSplitNodes(segment.subList(0, segment.size() - 1), way, segmentIndex);
+                segmentIndex = splitSegmentAtSplitNodes(segment.subList(segment.size() - 2, segment.size()), way, segmentIndex);
             } else {
-                splitSegmentAtSplitNodes(segment, way);
+                segmentIndex = splitSegmentAtSplitNodes(segment, way, segmentIndex);
             }
+            return segmentIndex;
         }
 
-        private void splitSegmentAtSplitNodes(List<SegmentNode> parentSegment, ReaderWay way) {
+        private int splitSegmentAtSplitNodes(List<SegmentNode> parentSegment, ReaderWay way, int segmentIndex) {
             List<SegmentNode> segment = new ArrayList<>();
-            int segmentIndex = 0;
             for (int i = 0; i < parentSegment.size(); i++) {
                 SegmentNode node = parentSegment.get(i);
                 Map<String, Object> nodeTags = nodeData.getTags(node.osmNodeId);
@@ -316,6 +317,7 @@ public class CustomWaySegmentParser {
                     if (!segment.isEmpty()) {
                         segment.add(barrierFrom);
                         handleSegment(segment, way, emptyMap(), segmentIndex++);
+                        segmentIndex++;
                         segment = new ArrayList<>();
                     }
                     segment.add(barrierFrom);
@@ -333,6 +335,7 @@ public class CustomWaySegmentParser {
             }
             if (segment.size() > 1)
                 handleSegment(segment, way, emptyMap(), segmentIndex++);
+            return segmentIndex;
         }
 
         void handleSegment(List<SegmentNode> segment, ReaderWay way, Map<String, Object> nodeTags, int segmentIndex) {

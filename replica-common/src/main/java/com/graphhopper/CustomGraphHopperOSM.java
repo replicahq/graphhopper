@@ -142,6 +142,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
 
         writeOsmNodeIds(reader.getGhNodeIdToOsmNodeIdMap());
         writeArtificialIdMapping(reader.getArtificialIdToOsmNodeIds());
+        writeGhEdgeIdToSegmentIndexes(reader.getGhEdgeIdToSegmentIndex());
     }
 
     public void writeArtificialIdMapping(Map<Long, Long> artificialIdToOsmNodeId) {
