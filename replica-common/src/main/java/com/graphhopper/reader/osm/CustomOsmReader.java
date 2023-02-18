@@ -76,6 +76,7 @@ public class CustomOsmReader {
 
     private Map<Integer, Long> ghNodeIdToOsmNodeIdMap;
     private Map<Long, Long> artificialIdToOsmNodeIds;
+    private Map<Integer, Integer> ghEdgeIdToSegmentIndex;
 
 
     public CustomOsmReader(BaseGraph baseGraph, EncodingManager encodingManager, OSMParsers osmParsers, OSMReaderConfig config) {
@@ -97,6 +98,7 @@ public class CustomOsmReader {
 
         ghNodeIdToOsmNodeIdMap = Maps.newHashMap();
         artificialIdToOsmNodeIds = Maps.newHashMap();
+        ghEdgeIdToSegmentIndex = Maps.newHashMap();
     }
 
     public Map<Integer, Long> getGhNodeIdToOsmNodeIdMap() {
@@ -105,6 +107,10 @@ public class CustomOsmReader {
 
     public Map<Long, Long> getArtificialIdToOsmNodeIds() {
         return artificialIdToOsmNodeIds;
+    }
+
+    public Map<Integer, Integer> getGhEdgeIdToSegmentIndex() {
+        return ghEdgeIdToSegmentIndex;
     }
 
     /**
@@ -288,7 +294,7 @@ public class CustomOsmReader {
      * @param way       the OSM way this segment was taken from
      * @param nodeTags  node tags of this segment if it is an artificial edge, empty otherwise
      */
-    protected void addEdge(int fromIndex, int toIndex, PointList pointList, ReaderWay way, Map<String, Object> nodeTags) {
+    protected void addEdge(int fromIndex, int toIndex, PointList pointList, ReaderWay way, Map<String, Object> nodeTags, int segmentIndex) {
         // sanity checks
         if (fromIndex < 0 || toIndex < 0)
             throw new AssertionError("to or from index is invalid for this edge " + fromIndex + "->" + toIndex + ", points:" + pointList);
@@ -358,6 +364,7 @@ public class CustomOsmReader {
 
         checkDistance(edge);
         restrictedWaysToEdgesMap.putIfReserved(way.getId(), edge.getEdge());
+        ghEdgeIdToSegmentIndex.put(edge.getEdge(), segmentIndex);
     }
 
     private void checkCoordinates(int nodeIndex, GHPoint point) {

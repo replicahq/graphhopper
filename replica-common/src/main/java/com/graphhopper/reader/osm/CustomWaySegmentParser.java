@@ -298,6 +298,7 @@ public class CustomWaySegmentParser {
 
         private void splitSegmentAtSplitNodes(List<SegmentNode> parentSegment, ReaderWay way) {
             List<SegmentNode> segment = new ArrayList<>();
+            int segmentIndex = 0;
             for (int i = 0; i < parentSegment.size(); i++) {
                 SegmentNode node = parentSegment.get(i);
                 Map<String, Object> nodeTags = nodeData.getTags(node.osmNodeId);
@@ -314,12 +315,12 @@ public class CustomWaySegmentParser {
                     }
                     if (!segment.isEmpty()) {
                         segment.add(barrierFrom);
-                        handleSegment(segment, way, emptyMap());
+                        handleSegment(segment, way, emptyMap(), segmentIndex++);
                         segment = new ArrayList<>();
                     }
                     segment.add(barrierFrom);
                     segment.add(barrierTo);
-                    handleSegment(segment, way, nodeTags);
+                    handleSegment(segment, way, nodeTags, segmentIndex++);
                     segment = new ArrayList<>();
                     segment.add(barrierTo);
 
@@ -331,10 +332,10 @@ public class CustomWaySegmentParser {
                 }
             }
             if (segment.size() > 1)
-                handleSegment(segment, way, emptyMap());
+                handleSegment(segment, way, emptyMap(), segmentIndex++);
         }
 
-        void handleSegment(List<SegmentNode> segment, ReaderWay way, Map<String, Object> nodeTags) {
+        void handleSegment(List<SegmentNode> segment, ReaderWay way, Map<String, Object> nodeTags, int segmentIndex) {
             final PointList pointList = new PointList(segment.size(), nodeData.is3D());
             int from = -1;
             int to = -1;
@@ -358,7 +359,7 @@ public class CustomWaySegmentParser {
             }
             if (from < 0 || to < 0)
                 throw new IllegalStateException("The first and last nodes of a segment must be tower nodes, way: " + way.getId());
-            edgeHandler.handleEdge(from, to, pointList, way, nodeTags);
+            edgeHandler.handleEdge(from, to, pointList, way, nodeTags, segmentIndex);
         }
 
         @Override
@@ -414,8 +415,8 @@ public class CustomWaySegmentParser {
         };
         private RelationProcessor relationProcessor = (relation, map) -> {
         };
-        private EdgeHandler edgeHandler = (from, to, pointList, way, nodeTags) ->
-                System.out.println("edge " + from + "->" + to + " (" + pointList.size() + " points)");
+        private EdgeHandler edgeHandler = (from, to, pointList, way, nodeTags, segmentId) ->
+                System.out.println("edge " + from + "->" + to + " (" + pointList.size() + " points) with segmentIndex " + segmentId);
         private int workerThreads = 2;
 
         /**
@@ -543,7 +544,7 @@ public class CustomWaySegmentParser {
     }
 
     public interface EdgeHandler {
-        void handleEdge(int from, int to, PointList pointList, ReaderWay way, Map<String, Object> nodeTags);
+        void handleEdge(int from, int to, PointList pointList, ReaderWay way, Map<String, Object> nodeTags, int segmentIndex);
     }
 
     public interface RelationProcessor {
