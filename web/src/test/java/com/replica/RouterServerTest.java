@@ -232,6 +232,12 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertFalse(stop.getStopName().isEmpty());
             assertTrue(stop.hasPoint());
         }
+
+        // Check number of stable edge IDs for each leg is as-expected
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(8, 201, 3, 184, 15);
+        for (int i = 0; i < path.getLegsList().size(); i++) {
+            assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
+        }
     }
 
     @Test
@@ -291,6 +297,12 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertEquals(1, TEST_GTFS_FILE_NAMES.stream().filter(f -> stop.getStopId().startsWith(f)).count());
             assertFalse(stop.getStopName().isEmpty());
             assertTrue(stop.hasPoint());
+        }
+
+        // Check number of stable edge IDs for each leg is as-expected
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(19, 59, 3, 164, 15);
+        for (int i = 0; i < path.getLegsList().size(); i++) {
+            assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
     }
 
