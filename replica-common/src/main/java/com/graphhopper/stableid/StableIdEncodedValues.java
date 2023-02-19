@@ -73,7 +73,10 @@ public class StableIdEncodedValues {
     }
 
     public static String calculateHumanReadableStableEdgeId(long osmWayId, int segmentIndex, boolean reverse) {
-        String reverseSuffix = reverse ? "-" : "+";
-        return String.format("%d_%d%s", osmWayId, segmentIndex, reverseSuffix);
+        String reversePrefix = reverse ? "-" : "";
+        // we generated 1-indexed segments because 0 is a default value for "unset",
+        // but inrix uses 0 as their lowest index
+        segmentIndex--;
+        return String.format("%s%d_%d", reversePrefix, osmWayId, segmentIndex);
     }
 }
