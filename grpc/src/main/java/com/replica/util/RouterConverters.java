@@ -262,6 +262,7 @@ public final class RouterConverters {
     private static List<String> fetchWalkLegStableIds(Trip.WalkLeg leg) {
         return leg.details.get("stable_edge_ids").stream()
                 .map(idPathDetail -> (String) idPathDetail.getValue())
+                .filter(id -> id.length() == 20)
                 .collect(toList());
     }
 
