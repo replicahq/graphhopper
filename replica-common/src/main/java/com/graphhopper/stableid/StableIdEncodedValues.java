@@ -74,6 +74,11 @@ public class StableIdEncodedValues {
 
     public static String calculateHumanReadableStableEdgeId(long osmWayId, int segmentIndex, boolean reverse) {
         String reverseSuffix = reverse ? "-" : "+";
+        // We store 1-indexed segments because 0 is a default value for "unset",
+        // so 0 is used to sanity-check whether or not a segment index has
+        // been found for every edge. But, we want to output 0-indexed segments for
+        // human-readable IDs, so we bump the index down by 1 here before outputting them
+        segmentIndex--;
         return String.format("%d_%d%s", osmWayId, segmentIndex, reverseSuffix);
     }
 }
