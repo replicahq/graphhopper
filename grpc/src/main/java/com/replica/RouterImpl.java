@@ -364,6 +364,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             }
         }
 
+        // TODO: can we remove this clause? Or does the duplicate ID issue still exist for access/egress legs?
         if (accessExists && egressExists) {
             // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
             // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
