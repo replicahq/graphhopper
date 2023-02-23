@@ -254,6 +254,12 @@ public class CustomWaySegmentParser {
 
         private void splitWayAtJunctionsAndEmptySections(List<SegmentNode> fullSegment, ReaderWay way) {
             List<SegmentNode> segment = new ArrayList<>();
+
+            // We store 1-indexed segments because 0 is a default value for "unset",
+            // so 0 is used to sanity-check whether or not a segment index has
+            // been found for every edge later on. Later, when reading these IDs to output
+            // 0-indexed segments for human-readable IDs, we bump the index down by 1
+            // before outputting
             int segmentIndex = 1;
 
             for (SegmentNode node : fullSegment) {
