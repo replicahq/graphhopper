@@ -42,22 +42,8 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
 
         // Remove header row
         records.remove(0);
-
-        // Remove small number of non-unique rows in output (expected due to OSM node ID parsing method).
-        // We unique rows before uploading to BQ, so this mimics the actual results of our street export.
-        // Note the gross method used to unique these records is due to CSVRecord not implementing toCompare(),
-        // so plopping them in a Set doesn't work
-        Set<String> allUniqueRowStrings = Sets.newHashSet();
-        Set<CSVRecord> allUniqueRows = Sets.newHashSet();
+        
         for (CSVRecord record : records) {
-            String rowString = record.toMap().values().toString();
-            if (!allUniqueRowStrings.contains(rowString)) {
-                allUniqueRowStrings.add(rowString);
-                allUniqueRows.add(record);
-            }
-        }
-
-        for (CSVRecord record : allUniqueRows) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
             observedHumanReadableStableEdgeIds.add(record.get("humanReadableStableEdgeId"));
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
@@ -67,8 +53,8 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         }
         assertEquals(0, emptyNodeIdCount); // no empty/negative OSM node IDs
         assertEquals(0, emptyWayIdCount); // no empty/negative OSM way IDs
-        assertEquals(allUniqueRows.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
-        assertEquals(allUniqueRows.size(), observedHumanReadableStableEdgeIds.size()); // fully unique human-readable stable edge IDs
+        assertEquals(records.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
+        assertEquals(records.size(), observedHumanReadableStableEdgeIds.size()); // fully unique human-readable stable edge IDs
         assertEquals(0, nullAccessibilityFlagCount); // no badly-formed vehicles appear in accessibility flags
 
         Helper.removeDir(new File(EXPORT_FILES_DIR));
