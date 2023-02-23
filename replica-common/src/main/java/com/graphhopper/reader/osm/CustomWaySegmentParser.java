@@ -255,6 +255,7 @@ public class CustomWaySegmentParser {
         private void splitWayAtJunctionsAndEmptySections(List<SegmentNode> fullSegment, ReaderWay way) {
             List<SegmentNode> segment = new ArrayList<>();
             int segmentIndex = 1;
+
             for (SegmentNode node : fullSegment) {
                 if (!isNodeId(node.id)) {
                     // this node exists in ways, but not in nodes. we ignore it, but we split the way when we encounter
@@ -317,12 +318,14 @@ public class CustomWaySegmentParser {
                     if (!segment.isEmpty()) {
                         segment.add(barrierFrom);
                         handleSegment(segment, way, emptyMap(), segmentIndex++);
-                        segmentIndex++;
                         segment = new ArrayList<>();
                     }
                     segment.add(barrierFrom);
                     segment.add(barrierTo);
-                    handleSegment(segment, way, nodeTags, segmentIndex++);
+                    // Replicans: note that we don't increment segmentIndex here, because
+                    // this is a "dummy" edge created just to enforce a barrier, and it won't be
+                    // output in the street export/during routing
+                    handleSegment(segment, way, nodeTags, segmentIndex);
                     segment = new ArrayList<>();
                     segment.add(barrierTo);
 
