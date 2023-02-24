@@ -254,6 +254,14 @@ public class CustomWaySegmentParser {
 
         private void splitWayAtJunctionsAndEmptySections(List<SegmentNode> fullSegment, ReaderWay way) {
             List<SegmentNode> segment = new ArrayList<>();
+
+            // We store 1-indexed segments because 0 is a default value for "unset",
+            // so 0 is used to sanity-check whether or not a segment index has
+            // been found for every edge later on. Later, when reading these IDs to output
+            // 0-indexed segments for human-readable IDs, we bump the index down by 1
+            // before outputting
+            int segmentIndex = 1;
+
             for (SegmentNode node : fullSegment) {
                 if (!isNodeId(node.id)) {
                     // this node exists in ways, but not in nodes. we ignore it, but we split the way when we encounter
@@ -261,13 +269,13 @@ public class CustomWaySegmentParser {
                     // back into it. we do not want to connect the exit/entry points using a straight line. this usually
                     // should only happen for OSM extracts
                     if (segment.size() > 1) {
-                        splitLoopSegments(segment, way);
+                        segmentIndex = splitLoopSegments(segment, way,segmentIndex);
                         segment = new ArrayList<>();
                     }
                 } else if (isTowerNode(node.id)) {
                     if (!segment.isEmpty()) {
                         segment.add(node);
-                        splitLoopSegments(segment, way);
+                        segmentIndex = splitLoopSegments(segment, way, segmentIndex);
                         segment = new ArrayList<>();
                     }
                     segment.add(node);
@@ -277,10 +285,10 @@ public class CustomWaySegmentParser {
             }
             // the last segment might end at the end of the way
             if (segment.size() > 1)
-                splitLoopSegments(segment, way);
+                splitLoopSegments(segment, way, segmentIndex);
         }
 
-        private void splitLoopSegments(List<SegmentNode> segment, ReaderWay way) {
+        private int splitLoopSegments(List<SegmentNode> segment, ReaderWay way, int segmentIndex) {
             if (segment.size() < 2)
                 throw new IllegalStateException("Segment size must be >= 2, but was: " + segment.size());
 
@@ -289,14 +297,15 @@ public class CustomWaySegmentParser {
                 LOGGER.warn("Loop in OSM way: {}, will be ignored, duplicate node: {}", way.getId(), segment.get(0).osmNodeId);
             } else if (isLoop) {
                 // split into two segments
-                splitSegmentAtSplitNodes(segment.subList(0, segment.size() - 1), way);
-                splitSegmentAtSplitNodes(segment.subList(segment.size() - 2, segment.size()), way);
+                segmentIndex = splitSegmentAtSplitNodes(segment.subList(0, segment.size() - 1), way, segmentIndex);
+                segmentIndex = splitSegmentAtSplitNodes(segment.subList(segment.size() - 2, segment.size()), way, segmentIndex);
             } else {
-                splitSegmentAtSplitNodes(segment, way);
+                segmentIndex = splitSegmentAtSplitNodes(segment, way, segmentIndex);
             }
+            return segmentIndex;
         }
 
-        private void splitSegmentAtSplitNodes(List<SegmentNode> parentSegment, ReaderWay way) {
+        private int splitSegmentAtSplitNodes(List<SegmentNode> parentSegment, ReaderWay way, int segmentIndex) {
             List<SegmentNode> segment = new ArrayList<>();
             for (int i = 0; i < parentSegment.size(); i++) {
                 SegmentNode node = parentSegment.get(i);
@@ -314,12 +323,15 @@ public class CustomWaySegmentParser {
                     }
                     if (!segment.isEmpty()) {
                         segment.add(barrierFrom);
-                        handleSegment(segment, way, emptyMap());
+                        handleSegment(segment, way, emptyMap(), segmentIndex++);
                         segment = new ArrayList<>();
                     }
                     segment.add(barrierFrom);
                     segment.add(barrierTo);
-                    handleSegment(segment, way, nodeTags);
+                    // Replicans: note that we don't increment segmentIndex here, because
+                    // this is a "dummy" edge created just to enforce a barrier, and it won't be
+                    // output in the street export/during routing
+                    handleSegment(segment, way, nodeTags, segmentIndex);
                     segment = new ArrayList<>();
                     segment.add(barrierTo);
 
@@ -331,10 +343,11 @@ public class CustomWaySegmentParser {
                 }
             }
             if (segment.size() > 1)
-                handleSegment(segment, way, emptyMap());
+                handleSegment(segment, way, emptyMap(), segmentIndex++);
+            return segmentIndex;
         }
 
-        void handleSegment(List<SegmentNode> segment, ReaderWay way, Map<String, Object> nodeTags) {
+        void handleSegment(List<SegmentNode> segment, ReaderWay way, Map<String, Object> nodeTags, int segmentIndex) {
             final PointList pointList = new PointList(segment.size(), nodeData.is3D());
             int from = -1;
             int to = -1;
@@ -358,7 +371,7 @@ public class CustomWaySegmentParser {
             }
             if (from < 0 || to < 0)
                 throw new IllegalStateException("The first and last nodes of a segment must be tower nodes, way: " + way.getId());
-            edgeHandler.handleEdge(from, to, pointList, way, nodeTags);
+            edgeHandler.handleEdge(from, to, pointList, way, nodeTags, segmentIndex);
         }
 
         @Override
@@ -414,8 +427,8 @@ public class CustomWaySegmentParser {
         };
         private RelationProcessor relationProcessor = (relation, map) -> {
         };
-        private EdgeHandler edgeHandler = (from, to, pointList, way, nodeTags) ->
-                System.out.println("edge " + from + "->" + to + " (" + pointList.size() + " points)");
+        private EdgeHandler edgeHandler = (from, to, pointList, way, nodeTags, segmentId) ->
+                System.out.println("edge " + from + "->" + to + " (" + pointList.size() + " points) with segmentIndex " + segmentId);
         private int workerThreads = 2;
 
         /**
@@ -543,7 +556,7 @@ public class CustomWaySegmentParser {
     }
 
     public interface EdgeHandler {
-        void handleEdge(int from, int to, PointList pointList, ReaderWay way, Map<String, Object> nodeTags);
+        void handleEdge(int from, int to, PointList pointList, ReaderWay way, Map<String, Object> nodeTags, int segmentIndex);
     }
 
     public interface RelationProcessor {

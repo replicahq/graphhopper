@@ -59,6 +59,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     private Map<Long, String> osmIdToHighwayTag;
     private DataAccess nodeMapping;
     private DataAccess artificialIdToOsmNodeIdMapping;
+    private DataAccess ghEdgeIdToSegmentIndexMapping;
     private BitUtil bitUtil;
 
     public CustomGraphHopperGtfs(GraphHopperConfig ghConfig) {
@@ -84,10 +85,12 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         bitUtil = BitUtil.LITTLE;
         nodeMapping = dir.create("node_mapping");
         artificialIdToOsmNodeIdMapping = dir.create("artificial_id_mapping");
+        ghEdgeIdToSegmentIndexMapping = dir.create("gh_edge_id_to_segment_index");
 
         if(loaded) {
             nodeMapping.loadExisting();
             artificialIdToOsmNodeIdMapping.loadExisting();
+            ghEdgeIdToSegmentIndexMapping.loadExisting();
         }
 
         return loaded;
@@ -98,12 +101,14 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         super.flush();
         nodeMapping.flush();
         artificialIdToOsmNodeIdMapping.flush();
+        ghEdgeIdToSegmentIndexMapping.flush();
     }
 
     public OsmHelper getOsmHelper(){
         return new OsmHelper(
                 nodeMapping,
                 artificialIdToOsmNodeIdMapping,
+                ghEdgeIdToSegmentIndexMapping,
                 bitUtil
         );
     }
@@ -151,6 +156,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
 
         writeOsmNodeIds(reader.getGhNodeIdToOsmNodeIdMap());
         writeArtificialIdMapping(reader.getArtificialIdToOsmNodeIds());
+        writeGhEdgeIdToSegmentIndexes(reader.getGhEdgeIdToSegmentIndex());
     }
 
     public void writeArtificialIdMapping(Map<Long, Long> artificialIdToOsmNodeId) {
@@ -170,6 +176,15 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
             nodeMapping.ensureCapacity(pointer + 8L);
             nodeMapping.setInt(pointer, bitUtil.getIntLow(osmNodeId));
             nodeMapping.setInt(pointer + 4, bitUtil.getIntHigh(osmNodeId));
+        }
+    }
+
+    public void writeGhEdgeIdToSegmentIndexes(Map<Integer, Integer> ghEdgeIdToSegmentIndex) {
+        for (int ghEdgeId : ghEdgeIdToSegmentIndex.keySet()) {
+            int segmentIndex = ghEdgeIdToSegmentIndex.get(ghEdgeId);
+            long pointer = 4L * ghEdgeId;
+            ghEdgeIdToSegmentIndexMapping.ensureCapacity(pointer + 4L);
+            ghEdgeIdToSegmentIndexMapping.setInt(pointer, segmentIndex);
         }
     }
 

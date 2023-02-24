@@ -1,5 +1,6 @@
 package com.replica;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.graphhopper.CustomGraphHopperGtfs;
 import com.graphhopper.GraphHopper;
@@ -19,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith({ReplicaGraphHopperTestExtention.class})
 public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
@@ -38,35 +40,71 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         int emptyNodeIdCount = 0;
         int emptyWayIdCount = 0;
         Set<String> observedStableEdgeIds = Sets.newHashSet();
+        Set<String> observedHumanReadableStableEdgeIds = Sets.newHashSet();
 
         // Remove header row
         records.remove(0);
 
-        // Remove small number of non-unique rows in output (expected due to OSM node ID parsing method).
-        // We unique rows before uploading to BQ, so this mimics the actual results of our street export.
-        // Note the gross method used to unique these records is due to CSVRecord not implementing toCompare(),
-        // so plopping them in a Set doesn't work
-        Set<String> allUniqueRowStrings = Sets.newHashSet();
-        Set<CSVRecord> allUniqueRows = Sets.newHashSet();
-        for (CSVRecord record : records) {
-            String rowString = record.toMap().values().toString();
-            if (!allUniqueRowStrings.contains(rowString)) {
-                allUniqueRowStrings.add(rowString);
-                allUniqueRows.add(record);
-            }
-        }
+        Map<Long, Integer> osmIdToNumSubsegments = Maps.newHashMap();
+        Map<Long, Integer> osmIdToHighestSubsegment = Maps.newHashMap();
 
-        for (CSVRecord record : allUniqueRows) {
+        for (CSVRecord record : records) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
+            observedHumanReadableStableEdgeIds.add(record.get("humanReadableStableEdgeId"));
+
+            long osmId = Long.parseLong(record.get("osmid"));
+
             if (Long.parseLong(record.get("startOsmNode")) <= 0) emptyNodeIdCount++;
             if (Long.parseLong(record.get("endOsmNode")) <= 0) emptyNodeIdCount++;
-            if (Long.parseLong(record.get("osmid")) <= 0) emptyWayIdCount++;
+            if (osmId <= 0) emptyWayIdCount++;
             if (record.get("flags").contains("null")) nullAccessibilityFlagCount++;
+
+            String subsegmentSuffix = record.get("humanReadableStableEdgeId").split("_")[1];
+            if (subsegmentSuffix.endsWith("+")) {
+                // Record how many subsegments appear for each OSM Way
+                if (!osmIdToNumSubsegments.containsKey(osmId)) {
+                    osmIdToNumSubsegments.put(osmId, 1);
+                } else {
+                    osmIdToNumSubsegments.put(osmId, osmIdToNumSubsegments.get(osmId) + 1);
+                }
+
+                // Record higheset subsegment index found for each forward (+) OSM Way
+                int subsegmentIndex = Integer.parseInt(subsegmentSuffix.substring(0, subsegmentSuffix.length() - 1));
+                if (!osmIdToHighestSubsegment.containsKey(osmId)) {
+                    osmIdToHighestSubsegment.put(osmId, subsegmentIndex);
+                } else if (osmIdToHighestSubsegment.get(osmId) < subsegmentIndex) {
+                    osmIdToHighestSubsegment.put(osmId, subsegmentIndex);
+                }
+            }
         }
         assertEquals(0, emptyNodeIdCount); // no empty/negative OSM node IDs
         assertEquals(0, emptyWayIdCount); // no empty/negative OSM way IDs
-        assertEquals(allUniqueRows.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
+        assertEquals(records.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
+        assertEquals(records.size(), observedHumanReadableStableEdgeIds.size()); // fully unique human-readable stable edge IDs
         assertEquals(0, nullAccessibilityFlagCount); // no badly-formed vehicles appear in accessibility flags
+
+        // For every OSM Way, check that the number of recorded subsegments matches
+        // the highest-seen subsegment index in that Way's human-readable IDs
+        // This ensures we catch any cases where a given subsegment in the start or middle
+        // of an OSM way doesn't have a corresponding link in our export, but note that it
+        // doesn't catch the case where the final subsegment isn't there.
+        //
+        // Also note that we don't force 100% accuracy here; this is due to a tiny number of edge
+        // cases that cause us to drop subsegments that technically should be output.
+        // One known case is due to the fact that when we filter out edges with identical start/end
+        // points, we use a GH-specific class's comparison function, which rounds each lat/lon
+        // slightly. So, very short edges that technically should be output can be filtered out.
+        // However, I haven't figured out how to fix this (even with checking exact equality),
+        // because then certain "bad" edges - mainly fake edges added due to barrier nodes - start
+        // getting output, and we lose stable edge ID uniqueness
+        int numMissingSegmentIndexes = 0;
+        for (Long osmId : osmIdToNumSubsegments.keySet()) {
+            // Add 1 to the highest-seen subsegment index, because the indices start at 0
+            if (osmIdToNumSubsegments.get(osmId) != osmIdToHighestSubsegment.get(osmId) + 1) {
+                numMissingSegmentIndexes++;
+            }
+        }
+        assertTrue(numMissingSegmentIndexes < 5);
 
         Helper.removeDir(new File(EXPORT_FILES_DIR));
     }

@@ -8,8 +8,6 @@ import com.graphhopper.OsmHelper;
 import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.util.EdgeIteratorState;
-import com.graphhopper.util.FetchMode;
-import com.graphhopper.util.PointList;
 
 public class StableIdEncodedValues {
 
@@ -50,35 +48,15 @@ public class StableIdEncodedValues {
     }
 
     public final void setStableId(boolean reverse, EdgeIteratorState edge) {
-        int startVertex = edge.getBaseNode();
-        int endVertex = edge.getAdjNode();
-
-        long startOsmNodeId = reverse ? osmHelper.getOSMNode(endVertex) : osmHelper.getOSMNode(startVertex);
-        long endOsmNodeId = reverse ? osmHelper.getOSMNode(startVertex) : osmHelper.getOSMNode(endVertex);
-
-        // Check if start or end node IDs are artificial IDs; if so, replace them with real IDs
-        if (startOsmNodeId <= 0) {
-            startOsmNodeId = osmHelper.getRealNodeIdFromArtificial(startOsmNodeId);
-        }
-        if (endOsmNodeId <= 0) {
-            endOsmNodeId = osmHelper.getRealNodeIdFromArtificial(endOsmNodeId);
-        }
-
         long osmWayId = edge.get(osmWayIdEnc);
+        int segmentIndex = osmHelper.getSegmentIndexForGhEdge(edge.getEdge());
 
-        PointList wayGeometry = edge.fetchWayGeometry(FetchMode.ALL);
-        String geometryString = wayGeometry.toLineString(false).toString();
-        if (reverse) {
-            wayGeometry.reverse();
-            geometryString = wayGeometry.toLineString(false).toString();
+        // Ensure segment index is set for every edge
+        if (segmentIndex <= 0L) {
+            throw new RuntimeException("Trying to set stable edge ID on edge with no segment index stored!");
         }
 
-        // Ensure OSM node + way IDs are set for every edge
-        if (startOsmNodeId <= 0L || endOsmNodeId <= 0L || osmWayId <= 0L) {
-            throw new RuntimeException("Trying to set stable edge ID on edge with no OSM node or way IDs stored!");
-        }
-
-        byte[] stableId = calculateStableEdgeId(startOsmNodeId, endOsmNodeId, osmWayId, geometryString);
+        byte[] stableId = calculateStableEdgeId(osmWayId, segmentIndex, reverse);
         if (stableId.length != 8)
             throw new IllegalArgumentException("stable ID must be 8 bytes: " + new String(stableId));
 
@@ -88,10 +66,19 @@ public class StableIdEncodedValues {
         }
     }
 
-    private static byte[] calculateStableEdgeId(long startOsmNodeId, long endOsmNodeId, long osmWayId, String geometryString) {
-        String hashString = String.format("%d %d %d %s", startOsmNodeId, endOsmNodeId, osmWayId, geometryString);
-
+    private static byte[] calculateStableEdgeId(long osmWayId, int segmentIndex, boolean reverse) {
+        String hashString = calculateHumanReadableStableEdgeId(osmWayId, segmentIndex, reverse);
         HashCode hc = Hashing.farmHashFingerprint64().hashString(hashString, Charsets.UTF_8);
         return hc.asBytes();
+    }
+
+    public static String calculateHumanReadableStableEdgeId(long osmWayId, int segmentIndex, boolean reverse) {
+        String reverseSuffix = reverse ? "-" : "+";
+        // We store 1-indexed segments because 0 is a default value for "unset",
+        // so 0 is used to sanity-check whether or not a segment index has
+        // been found for every edge. But, we want to output 0-indexed segments for
+        // human-readable IDs, so we bump the index down by 1 here before outputting them
+        segmentIndex--;
+        return String.format("%d_%d%s", osmWayId, segmentIndex, reverseSuffix);
     }
 }
