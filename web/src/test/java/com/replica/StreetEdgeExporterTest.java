@@ -40,7 +40,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         int emptyNodeIdCount = 0;
         int emptyWayIdCount = 0;
         Set<String> observedStableEdgeIds = Sets.newHashSet();
-        Set<String> observedHumanReadableStableEdgeIds = Sets.newHashSet();
+        Set<String> observedSegmentIds = Sets.newHashSet();
 
         // Remove header row
         records.remove(0);
@@ -50,7 +50,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
 
         for (CSVRecord record : records) {
             observedStableEdgeIds.add(record.get("stableEdgeId"));
-            observedHumanReadableStableEdgeIds.add(record.get("humanReadableStableEdgeId"));
+            observedSegmentIds.add(record.get("segmentId"));
 
             long osmId = Long.parseLong(record.get("osmid"));
 
@@ -59,7 +59,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
             if (osmId <= 0) emptyWayIdCount++;
             if (record.get("flags").contains("null")) nullAccessibilityFlagCount++;
 
-            String subsegmentSuffix = record.get("humanReadableStableEdgeId").split("_")[1];
+            String subsegmentSuffix = record.get("segmentId").split("_")[1];
             if (subsegmentSuffix.endsWith("+")) {
                 // Record how many subsegments appear for each OSM Way
                 if (!osmIdToNumSubsegments.containsKey(osmId)) {
@@ -80,11 +80,11 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         assertEquals(0, emptyNodeIdCount); // no empty/negative OSM node IDs
         assertEquals(0, emptyWayIdCount); // no empty/negative OSM way IDs
         assertEquals(records.size(), observedStableEdgeIds.size()); // fully unique stable edge IDs
-        assertEquals(records.size(), observedHumanReadableStableEdgeIds.size()); // fully unique human-readable stable edge IDs
+        assertEquals(records.size(), observedSegmentIds.size()); // fully unique segment IDs
         assertEquals(0, nullAccessibilityFlagCount); // no badly-formed vehicles appear in accessibility flags
 
         // For every OSM Way, check that the number of recorded subsegments matches
-        // the highest-seen subsegment index in that Way's human-readable IDs
+        // the highest-seen subsegment index in that Way's segment IDs
         // This ensures we catch any cases where a given subsegment in the start or middle
         // of an OSM way doesn't have a corresponding link in our export, but note that it
         // doesn't catch the case where the final subsegment isn't there.

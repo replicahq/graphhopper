@@ -30,7 +30,7 @@ public class StreetEdgeExporter {
     );
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
-    private static final String[] COLUMN_HEADERS = {"stableEdgeId", "humanReadableStableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
+    private static final String[] COLUMN_HEADERS = {"stableEdgeId", "segmentId", "startVertex", "endVertex", "startLat", "startLon",
             "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
             "startOsmNode", "endOsmNode"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
@@ -63,7 +63,7 @@ public class StreetEdgeExporter {
 
         // Setup encoders for determining speed and road type info for each edge
         this.encodingManager = configuredGraphHopper.getEncodingManager();
-        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper);
+        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper, nodes);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
         this.avgSpeedEnc = this.encodingManager.getDecimalEncodedValue(VehicleSpeed.key("car"));
         this.osmWayIdEnc = this.encodingManager.getIntEncodedValue("osmid");
@@ -132,8 +132,8 @@ public class StreetEdgeExporter {
         String backwardStableEdgeId = stableIdEncodedValues.getStableId(true, iteratorState);
 
         int segmentIndex = osmHelper.getSegmentIndexForGhEdge(ghEdgeId);
-        String humanReadableForwardStableEdgeId = StableIdEncodedValues.calculateHumanReadableStableEdgeId(osmWayId, segmentIndex, false);
-        String humanReadableBackwardStableEdgeId = StableIdEncodedValues.calculateHumanReadableStableEdgeId(osmWayId, segmentIndex, true);
+        String forwardSegmentId = StableIdEncodedValues.calculateSegmentId(osmWayId, segmentIndex, false);
+        String backwardSegmentId = StableIdEncodedValues.calculateSegmentId(osmWayId, segmentIndex, true);
 
         // Set accessibility flags for each edge direction
         // Returned flags are from the set {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}
@@ -188,12 +188,12 @@ public class StreetEdgeExporter {
             // Print line for each edge direction, if edge is accessible; inaccessible edges should have
             // no flags set. Only remove inaccessible edges with highway tags of motorway or motorway_link
             if (!(forwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
-                output.add(new StreetEdgeExportRecord(forwardStableEdgeId, humanReadableForwardStableEdgeId,
+                output.add(new StreetEdgeExportRecord(forwardStableEdgeId, forwardSegmentId,
                         startVertex, endVertex, startLat, startLon, endLat, endLon, geometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag, startOsmNode, endOsmNode));
             }
             if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
-                output.add(new StreetEdgeExportRecord(backwardStableEdgeId, humanReadableBackwardStableEdgeId,
+                output.add(new StreetEdgeExportRecord(backwardStableEdgeId, backwardSegmentId,
                         endVertex, startVertex, endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag, endOsmNode, startOsmNode));
             }
@@ -228,7 +228,7 @@ public class StreetEdgeExporter {
                         skippedEdgeCount++;
                     }
                     for(StreetEdgeExportRecord r : records) {
-                        printer.printRecord(r.edgeId, r.humanReadableEdgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
+                        printer.printRecord(r.edgeId, r.segmentId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
                                 r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
                                 r.startOsmNode, r.endOsmNode);
                     }

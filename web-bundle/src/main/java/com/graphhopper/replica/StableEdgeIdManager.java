@@ -22,7 +22,7 @@ public class StableEdgeIdManager {
         AllEdgesIterator edgesIterator = graphHopper.getBaseGraph().getAllEdges();
         EncodingManager encodingManager = graphHopper.getEncodingManager();
 
-        StableIdEncodedValues stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(encodingManager, osmHelper);
+        StableIdEncodedValues stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(encodingManager, osmHelper, graphHopper.getBaseGraph().getNodeAccess());
 
         // Set both forward and reverse stable edge IDs for each edge
         int assignedIdCount = 0;

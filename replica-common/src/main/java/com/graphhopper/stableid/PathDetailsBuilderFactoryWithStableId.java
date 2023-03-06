@@ -20,6 +20,7 @@ import com.graphhopper.coll.MapEntry;
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.Graph;
+import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.details.*;
 
 import java.util.ArrayList;
@@ -31,6 +32,12 @@ import static com.graphhopper.routing.util.EncodingManager.getKey;
 import static com.graphhopper.util.Parameters.Details.*;
 
 public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFactory {
+
+    private NodeAccess nodes;
+
+    public PathDetailsBuilderFactoryWithStableId(NodeAccess nodes) {
+        this.nodes = nodes;
+    }
 
     @Override
     public List<PathDetailsBuilder> createPathDetailsBuilders(List<String> requestedPathDetails, EncodedValueLookup evl, Weighting weighting, Graph graph) {
@@ -71,7 +78,7 @@ public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFac
         }
 
         if (requestedPathDetails.contains("stable_edge_ids")) {
-            builders.add(new StableIdPathDetailsBuilder(evl));
+            builders.add(new StableIdPathDetailsBuilder(evl, nodes));
         }
 
         for (Map.Entry entry : Arrays.asList(new MapEntry<>(RoadClass.KEY, RoadClass.class),

@@ -2,7 +2,7 @@ package com.graphhopper.replica;
 
 public class StreetEdgeExportRecord {
     public String edgeId;
-    public String humanReadableEdgeId;
+    public String segmentId;
     public int startVertexId;
     public int endVertexId;
     public double startLat;
@@ -20,13 +20,13 @@ public class StreetEdgeExportRecord {
     public long startOsmNode;
     public long endOsmNode;
 
-    public StreetEdgeExportRecord(String edgeId, String humanReadableEdgeId, int startVertexId, int endVertexId,
+    public StreetEdgeExportRecord(String edgeId, String segmentId, int startVertexId, int endVertexId,
                                   double startLat, double startLon, double endLat, double endLon,
                                   String geometryString, String streetName, long distanceMillimeters,
                                   long osmId, int speedCms, String flags, int lanes, String highwayTag,
                                   long startOsmNode, long endOsmNode) {
         this.edgeId = edgeId;
-        this.humanReadableEdgeId = humanReadableEdgeId;
+        this.segmentId = segmentId;
         this.startVertexId = startVertexId;
         this.endVertexId = endVertexId;
         this.startLat = startLat;
