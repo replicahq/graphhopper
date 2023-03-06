@@ -16,6 +16,7 @@ package com.graphhopper.stableid;/*
  *  limitations under the License.
  */
 
+import com.graphhopper.GraphHopper;
 import com.graphhopper.coll.MapEntry;
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.weighting.Weighting;
@@ -33,10 +34,10 @@ import static com.graphhopper.util.Parameters.Details.*;
 
 public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFactory {
 
-    private NodeAccess nodes;
+    private GraphHopper graphhopper;
 
-    public PathDetailsBuilderFactoryWithStableId(NodeAccess nodes) {
-        this.nodes = nodes;
+    public PathDetailsBuilderFactoryWithStableId(GraphHopper graphhopper) {
+        this.graphhopper = graphhopper;
     }
 
     @Override
@@ -78,7 +79,7 @@ public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFac
         }
 
         if (requestedPathDetails.contains("stable_edge_ids")) {
-            builders.add(new StableIdPathDetailsBuilder(evl, nodes));
+            builders.add(new StableIdPathDetailsBuilder(evl, graphhopper));
         }
 
         for (Map.Entry entry : Arrays.asList(new MapEntry<>(RoadClass.KEY, RoadClass.class),

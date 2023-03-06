@@ -4,6 +4,7 @@ import com.google.common.base.Charsets;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Longs;
+import com.graphhopper.GraphHopper;
 import com.graphhopper.OsmHelper;
 import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
@@ -18,9 +19,9 @@ public class StableIdEncodedValues {
     private IntEncodedValue[] reverseStableIdEnc = new IntEncodedValue[8];
     private IntEncodedValue osmWayIdEnc;
     private OsmHelper osmHelper;
-    private NodeAccess nodes;
+    private GraphHopper graphhopper;
 
-    private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper, NodeAccess nodes) {
+    private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper, GraphHopper graphhopper) {
         this.osmHelper = osmHelper;
         this.osmWayIdEnc = encodingManager.getIntEncodedValue("osmid");
 
@@ -30,17 +31,17 @@ public class StableIdEncodedValues {
         for (int i=0; i<8; i++) {
             reverseStableIdEnc[i] = encodingManager.getIntEncodedValue("reverse_stable_id_byte_"+i);
         }
-        this.nodes = nodes;
+        this.graphhopper = graphhopper;
     }
 
-    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, OsmHelper osmHelper, NodeAccess nodes) {
-        return new StableIdEncodedValues(encodingManager, osmHelper, nodes);
+    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, OsmHelper osmHelper, GraphHopper graphhopper) {
+        return new StableIdEncodedValues(encodingManager, osmHelper, graphhopper);
     }
 
     // Used only for instances where stable edge IDs are being accessed (not set)
     // ie, StableIdPathDetailsBuilder
-    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, NodeAccess nodes) {
-        return new StableIdEncodedValues(encodingManager, null, nodes);
+    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, GraphHopper graphhopper) {
+        return new StableIdEncodedValues(encodingManager, null, graphhopper);
     }
 
     public final String getStableId(boolean reverse, EdgeIteratorState edge) {
@@ -69,12 +70,19 @@ public class StableIdEncodedValues {
 
         long osmWayId = edge.get(osmWayIdEnc);
 
+        NodeAccess nodes = graphhopper.getBaseGraph().getNodeAccess();
         double startLat = nodes.getLat(startVertex);
         double startLon = nodes.getLon(startVertex);
         double endLat = nodes.getLat(endVertex);
         double endLon = nodes.getLon(endVertex);
         long bearing = Math.round(AngleCalc.ANGLE_CALC.calcAzimuth(startLat, startLon, endLat, endLon));
-        long quadrant = bearing / 90;
+        // outputs which "quadrant" the line between start + end point falls in, between 0 and 3
+        long quadrant = (bearing % 360) / 90;
+
+        // Ensure quadrant makes sense
+        if (quadrant < 0L || quadrant > 3L) {
+            throw new RuntimeException("Quadrant for edge is outside of expected bounds of [0,3]!");
+        }
 
         // Ensure OSM node + way IDs are set for every edge
         if (startOsmNodeId <= 0L || endOsmNodeId <= 0L || osmWayId <= 0L) {
