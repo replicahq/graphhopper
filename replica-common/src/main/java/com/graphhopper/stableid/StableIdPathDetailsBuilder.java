@@ -18,10 +18,8 @@
 
 package com.graphhopper.stableid;
 
-import com.graphhopper.GraphHopper;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.details.AbstractPathDetailsBuilder;
 
@@ -30,9 +28,9 @@ public class StableIdPathDetailsBuilder extends AbstractPathDetailsBuilder {
     private int prevEdgeId = -1;
     private String currentValue;
 
-    public StableIdPathDetailsBuilder(EncodedValueLookup originalDirectionFlagEncoder, GraphHopper graphhopper) {
+    public StableIdPathDetailsBuilder(EncodedValueLookup originalDirectionFlagEncoder) {
         super("stable_edge_ids");
-        this.originalDirectionFlagEncoder = StableIdEncodedValues.fromEncodingManager((EncodingManager) originalDirectionFlagEncoder, graphhopper);
+        this.originalDirectionFlagEncoder = StableIdEncodedValues.fromEncodingManager((EncodingManager) originalDirectionFlagEncoder);
         currentValue = "";
     }
 

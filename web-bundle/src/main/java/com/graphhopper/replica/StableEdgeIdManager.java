@@ -22,15 +22,15 @@ public class StableEdgeIdManager {
         AllEdgesIterator edgesIterator = graphHopper.getBaseGraph().getAllEdges();
         EncodingManager encodingManager = graphHopper.getEncodingManager();
 
-        StableIdEncodedValues stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(encodingManager, osmHelper, graphHopper);
+        StableIdEncodedValues stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(encodingManager, osmHelper);
 
         // Set both forward and reverse stable edge IDs for each edge
         int assignedIdCount = 0;
         while (edgesIterator.next()) {
             // Ignore setting stable IDs for transit edges, which have a distance of 0
             if (edgesIterator.getDistance() != 0) {
-                stableIdEncodedValues.setStableId(true, edgesIterator);
-                stableIdEncodedValues.setStableId(false, edgesIterator);
+                stableIdEncodedValues.setStableId(true, edgesIterator, graphHopper);
+                stableIdEncodedValues.setStableId(false, edgesIterator, graphHopper);
                 assignedIdCount++;
             }
         }

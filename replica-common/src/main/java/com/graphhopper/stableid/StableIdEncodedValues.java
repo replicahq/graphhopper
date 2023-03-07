@@ -8,9 +8,10 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.OsmHelper;
 import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.AngleCalc;
 import com.graphhopper.util.EdgeIteratorState;
+import com.graphhopper.util.FetchMode;
+import com.graphhopper.util.PointList;
 
 
 public class StableIdEncodedValues {
@@ -19,9 +20,8 @@ public class StableIdEncodedValues {
     private IntEncodedValue[] reverseStableIdEnc = new IntEncodedValue[8];
     private IntEncodedValue osmWayIdEnc;
     private OsmHelper osmHelper;
-    private GraphHopper graphhopper;
 
-    private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper, GraphHopper graphhopper) {
+    private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper) {
         this.osmHelper = osmHelper;
         this.osmWayIdEnc = encodingManager.getIntEncodedValue("osmid");
 
@@ -31,17 +31,16 @@ public class StableIdEncodedValues {
         for (int i=0; i<8; i++) {
             reverseStableIdEnc[i] = encodingManager.getIntEncodedValue("reverse_stable_id_byte_"+i);
         }
-        this.graphhopper = graphhopper;
     }
 
-    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, OsmHelper osmHelper, GraphHopper graphhopper) {
-        return new StableIdEncodedValues(encodingManager, osmHelper, graphhopper);
+    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, OsmHelper osmHelper) {
+        return new StableIdEncodedValues(encodingManager, osmHelper);
     }
 
     // Used only for instances where stable edge IDs are being accessed (not set)
     // ie, StableIdPathDetailsBuilder
-    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, GraphHopper graphhopper) {
-        return new StableIdEncodedValues(encodingManager, null, graphhopper);
+    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager) {
+        return new StableIdEncodedValues(encodingManager, null);
     }
 
     public final String getStableId(boolean reverse, EdgeIteratorState edge) {
@@ -53,7 +52,7 @@ public class StableIdEncodedValues {
         return Long.toUnsignedString(Longs.fromByteArray(stableId));
     }
 
-    public final void setStableId(boolean reverse, EdgeIteratorState edge) {
+    public final void setStableId(boolean reverse, EdgeIteratorState edge, GraphHopper graphhopper) {
         int startVertex = edge.getBaseNode();
         int endVertex = edge.getAdjNode();
 
@@ -70,11 +69,18 @@ public class StableIdEncodedValues {
 
         long osmWayId = edge.get(osmWayIdEnc);
 
-        NodeAccess nodes = graphhopper.getBaseGraph().getNodeAccess();
-        double startLat = nodes.getLat(startVertex);
-        double startLon = nodes.getLon(startVertex);
-        double endLat = nodes.getLat(endVertex);
-        double endLon = nodes.getLon(endVertex);
+        PointList points = edge.fetchWayGeometry(FetchMode.ALL);
+
+        double startLat = points.getLat(0);
+        double startLon = points.getLon(0);
+        double endLat, endLon;
+        if (points.size() <= 1) {
+            return;
+        } else {
+            endLat = points.getLat(1);
+            endLon = points.getLon(1);
+        }
+
         long bearing = Math.round(AngleCalc.ANGLE_CALC.calcAzimuth(startLat, startLon, endLat, endLon));
         // outputs which "quadrant" the line between start + end point falls in, between 0 and 3
         long quadrant = (bearing % 360) / 90;
@@ -89,7 +95,7 @@ public class StableIdEncodedValues {
             throw new RuntimeException("Trying to set stable edge ID on edge with no OSM node or way IDs stored!");
         }
 
-        byte[] stableId = calculateStableEdgeId(startOsmNodeId, endOsmNodeId, osmWayId, quadrant);
+        byte[] stableId = calculateStableEdgeId(startOsmNodeId, endOsmNodeId, osmWayId, quadrant, reverse);
         if (stableId.length != 8)
             throw new IllegalArgumentException("stable ID must be 8 bytes: " + new String(stableId));
 
@@ -99,8 +105,9 @@ public class StableIdEncodedValues {
         }
     }
 
-    private static byte[] calculateStableEdgeId(long startOsmNodeId, long endOsmNodeId, long osmWayId, long quadrant) {
-        String hashString = String.format("%d %d %d %d", startOsmNodeId, endOsmNodeId, osmWayId, quadrant);
+    private static byte[] calculateStableEdgeId(long startOsmNodeId, long endOsmNodeId, long osmWayId, long quadrant, boolean reverse) {
+        String reverseSuffix = reverse ? "-" : "+";
+        String hashString = String.format("%d %d %d %d %s", startOsmNodeId, endOsmNodeId, osmWayId, quadrant, reverseSuffix);
 
         HashCode hc = Hashing.farmHashFingerprint64().hashString(hashString, Charsets.UTF_8);
         return hc.asBytes();

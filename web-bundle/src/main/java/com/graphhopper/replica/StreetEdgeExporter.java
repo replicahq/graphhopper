@@ -63,7 +63,7 @@ public class StreetEdgeExporter {
 
         // Setup encoders for determining speed and road type info for each edge
         this.encodingManager = configuredGraphHopper.getEncodingManager();
-        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper, configuredGraphHopper);
+        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
         this.avgSpeedEnc = this.encodingManager.getDecimalEncodedValue(VehicleSpeed.key("car"));
         this.osmWayIdEnc = this.encodingManager.getIntEncodedValue("osmid");
