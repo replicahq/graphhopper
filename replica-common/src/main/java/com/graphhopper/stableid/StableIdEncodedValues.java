@@ -83,11 +83,11 @@ public class StableIdEncodedValues {
 
         long bearing = Math.round(AngleCalc.ANGLE_CALC.calcAzimuth(startLat, startLon, endLat, endLon));
         // outputs which "quadrant" the line between start + end point falls in, between 0 and 3
-        long quadrant = (bearing % 360) / 90;
+        long quadrant = (bearing % 360) / 15;
 
         // Ensure quadrant makes sense
-        if (quadrant < 0L || quadrant > 3L) {
-            throw new RuntimeException("Quadrant for edge is outside of expected bounds of [0,3]!");
+        if (quadrant < 0L || quadrant > 23L) {
+            throw new RuntimeException("Quadrant for edge is outside of expected bounds of [0,23]!");
         }
 
         // Ensure OSM node + way IDs are set for every edge
