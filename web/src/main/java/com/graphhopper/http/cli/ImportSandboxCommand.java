@@ -37,7 +37,7 @@ public class ImportSandboxCommand extends ConfiguredCommand<GraphHopperServerCon
         final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration());
         CustomGraphHopperOSM gh = (CustomGraphHopperOSM) graphHopper.getGraphHopper();
         gh.importOrLoad();
-        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh, gh.getOsmHelper());
+        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh, gh.getOsmHelper(), gh.getOsmIdToHighwayTag());
         stableEdgeIdManager.setStableEdgeIds();
         gh.close();
     }

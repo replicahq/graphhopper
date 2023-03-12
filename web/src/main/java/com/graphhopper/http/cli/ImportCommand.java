@@ -37,7 +37,7 @@ public class ImportCommand extends ConfiguredCommand<GraphHopperServerConfigurat
         final GraphHopperManaged graphHopper = new GraphHopperManaged(configuration.getGraphHopperConfiguration());
         CustomGraphHopperGtfs gh = (CustomGraphHopperGtfs) graphHopper.getGraphHopper();
         gh.importOrLoad();
-        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh, gh.getOsmHelper());
+        StableEdgeIdManager stableEdgeIdManager = new StableEdgeIdManager(gh, gh.getOsmHelper(), gh.getOsmIdToHighwayTag());
         stableEdgeIdManager.setStableEdgeIds();
         gh.close();
     }

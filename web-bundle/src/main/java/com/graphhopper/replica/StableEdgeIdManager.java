@@ -8,14 +8,18 @@ import com.graphhopper.stableid.StableIdEncodedValues;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 public class StableEdgeIdManager {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final GraphHopper graphHopper;
     private final OsmHelper osmHelper;
+    private final Map<Long, String> osmIdToHighway;
 
-    public StableEdgeIdManager(GraphHopper graphHopper, OsmHelper osmHelper) {
+    public StableEdgeIdManager(GraphHopper graphHopper, OsmHelper osmHelper, Map<Long, String> osmIdToHighway) {
         this.graphHopper = graphHopper;
         this.osmHelper = osmHelper;
+        this.osmIdToHighway = osmIdToHighway;
     }
 
     public void setStableEdgeIds() {
@@ -29,8 +33,8 @@ public class StableEdgeIdManager {
         while (edgesIterator.next()) {
             // Ignore setting stable IDs for transit edges, which have a distance of 0
             if (edgesIterator.getDistance() != 0) {
-                stableIdEncodedValues.setStableId(true, edgesIterator, graphHopper);
-                stableIdEncodedValues.setStableId(false, edgesIterator, graphHopper);
+                stableIdEncodedValues.setStableId(true, edgesIterator, osmIdToHighway);
+                stableIdEncodedValues.setStableId(false, edgesIterator, osmIdToHighway);
                 assignedIdCount++;
             }
         }
