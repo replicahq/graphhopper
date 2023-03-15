@@ -11,6 +11,8 @@ import com.graphhopper.routing.ev.RoadClass;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.util.*;
 
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.Map;
 
 
@@ -89,7 +91,11 @@ public class StableIdEncodedValues {
             endLon = points.getLon(points.size() - 1);
         }
 
-        String pointsString = String.format("%.5f %.5f %.5f %.5f", startLat, startLon, endLat, endLon);
+        // String pointsString = String.format("%.5f %.5f %.5f %.5f", startLat, startLon, endLat, endLon);
+
+        DecimalFormat df = new DecimalFormat("#.#####");
+        df.setRoundingMode(RoundingMode.CEILING);
+        String pointsString = String.format("%s %s %s %s", df.format(startLat), df.format(startLon), df.format(endLat), df.format(endLon));
 
         long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDist(startLat, startLon, endLat, endLon));
         long distanceBucket = distanceMeters / DISTANCE_BUCKET_SIZE;
