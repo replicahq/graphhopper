@@ -26,7 +26,7 @@ public class StableIdEncodedValues {
 
     private final int QUADRANT_SIZE = 1;  // size (in degrees) of each quandrant used to generalize bearing
     private final long MAX_QUADRANT_INDEX = (360 / QUADRANT_SIZE) - 1;
-    private final int DISTANCE_BUCKET_SIZE = 2;  // size (in meters) of each "distance bucket" used to generalize distance
+    private final int DISTANCE_BUCKET_SIZE = 1;  // size (in meters) of each "distance bucket" used to generalize distance
 
     private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper) {
         this.osmHelper = osmHelper;
@@ -94,10 +94,13 @@ public class StableIdEncodedValues {
         // String pointsString = String.format("%.5f %.5f %.5f %.5f", startLat, startLon, endLat, endLon);
 
         DecimalFormat df = new DecimalFormat("#.#####");
-        df.setRoundingMode(RoundingMode.CEILING);
+        df.setRoundingMode(RoundingMode.HALF_UP);
         String pointsString = String.format("%s %s %s %s", df.format(startLat), df.format(startLon), df.format(endLat), df.format(endLon));
 
-        long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDist(startLat, startLon, endLat, endLon));
+        // long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDist(startLat, startLon, endLat, endLon));
+        long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDistance(points));
+
+
         long distanceBucket = distanceMeters / DISTANCE_BUCKET_SIZE;
 
         long bearing = Math.round(AngleCalc.ANGLE_CALC.calcAzimuth(startLat, startLon, endBearingLat, endBearingLon));

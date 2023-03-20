@@ -86,7 +86,8 @@ public class StreetEdgeExporter {
         wayGeometry.reverse();
         String reverseGeometryString = wayGeometry.toLineString(false).toString();
 
-        long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDist(startLat, startLon, endLat, endLon));
+        // long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDist(startLat, startLon, endLat, endLon));
+        long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDistance(wayGeometry));
         // Convert GH's km/h speed to cm/s to match R5's implementation
         int speedcms = (int) (iteratorState.get(avgSpeedEnc) / 3.6 * 100);
 
