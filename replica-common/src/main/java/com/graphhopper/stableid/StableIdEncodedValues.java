@@ -93,7 +93,7 @@ public class StableIdEncodedValues {
 
         // String pointsString = String.format("%.5f %.5f %.5f %.5f", startLat, startLon, endLat, endLon);
 
-        DecimalFormat df = new DecimalFormat("#.#####");
+        DecimalFormat df = new DecimalFormat("#.####");
         df.setRoundingMode(RoundingMode.HALF_UP);
         String pointsString = String.format("%s %s %s %s", df.format(startLat), df.format(startLon), df.format(endLat), df.format(endLon));
 
