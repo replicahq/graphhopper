@@ -191,6 +191,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     }
 
     // todo: can we move this logic into CustomOsmReader?
+    // todo: not all of the info we parse here is relevant for the server - can we stop parsing it here?
     public void collectOsmInfo() {
         LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
         List<ReaderRelation> roadRelations = Lists.newArrayList();
