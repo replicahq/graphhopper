@@ -1,5 +1,7 @@
 package com.graphhopper;
 
+import com.graphhopper.reader.ReaderElement;
+import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.storage.DataAccess;
 import com.graphhopper.util.BitUtil;
 
@@ -38,5 +40,25 @@ public class OsmHelper {
 
     public static Map<String, String> getLanesTag(long osmId, Map<Long, Map<String, String>> osmIdToLaneTags) {
         return osmIdToLaneTags.getOrDefault(osmId, null);
+    }
+
+    public static String getHighwayFromOsmWay(ReaderWay way) {
+        if (way.hasTag("highway")) {
+            return way.getTag("highway");
+        } else {
+            return null;
+        }
+    }
+
+    // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
+    public static String getConcatNameFromOsmElement(ReaderElement wayOrRelation) {
+        String name = null;
+        if (wayOrRelation.hasTag("name")) {
+            name = wayOrRelation.getTag("name");
+        }
+        if (wayOrRelation.hasTag("ref")) {
+            name = name == null ? wayOrRelation.getTag("ref") : wayOrRelation.getTag("ref") + ", " + name;
+        }
+        return name;
     }
 }

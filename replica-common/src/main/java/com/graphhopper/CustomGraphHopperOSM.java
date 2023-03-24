@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.graphhopper.OsmHelper.getConcatNameFromOsmElement;
+import static com.graphhopper.OsmHelper.getHighwayFromOsmWay;
 import static com.graphhopper.util.GHUtility.readCountries;
 import static com.graphhopper.util.Helper.createFormatter;
 import static com.graphhopper.util.Helper.isEmpty;
@@ -195,7 +197,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
                     long osmId = ghReaderWay.getId();
 
                     // Parse street name from Way, if it exists
-                    String wayName = getNameFromOsmElement(ghReaderWay);
+                    String wayName = getConcatNameFromOsmElement(ghReaderWay);
                     if (wayName != null) {
                         osmIdToStreetName.put(osmId, wayName);
                     }
@@ -240,7 +242,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
                             // If we haven't recorded a street name for a Way in this Relation,
                             // use the Relation's name instead, if it exists
                             if (!osmIdToStreetName.containsKey(member.getRef())) {
-                                String streetName = getNameFromOsmElement(relation);
+                                String streetName = getConcatNameFromOsmElement(relation);
                                 if (streetName != null) {
                                     osmIdToStreetName.put(member.getRef(), streetName);
                                 }
@@ -252,24 +254,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
             LOG.info("Finished scanning road relations for additional street names. " + readCount + " total relations were considered.");
         } catch (Exception e) {
             throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
-        }
-    }
-
-    private static String getHighwayFromOsmWay(ReaderWay way) {
-        if (way.hasTag("highway")) {
-            return way.getTag("highway");
-        } else {
-            return null;
-        }
-    }
-
-    private static String getNameFromOsmElement(ReaderElement wayOrRelation) {
-        if (wayOrRelation.hasTag("name")) {
-            return wayOrRelation.getTag("name");
-        } else if (wayOrRelation.hasTag("ref")) {
-            return wayOrRelation.getTag("ref");
-        } else {
-            return null;
         }
     }
 

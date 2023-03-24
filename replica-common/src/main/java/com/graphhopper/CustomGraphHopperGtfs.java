@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.graphhopper.OsmHelper.getConcatNameFromOsmElement;
+import static com.graphhopper.OsmHelper.getHighwayFromOsmWay;
 import static com.graphhopper.util.GHUtility.readCountries;
 import static com.graphhopper.util.Helper.createFormatter;
 import static com.graphhopper.util.Helper.isEmpty;
@@ -189,6 +191,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     }
 
     // todo: can we move this logic into CustomOsmReader?
+    // todo: not all of the info we parse here is relevant for the server - can we stop parsing it here?
     public void collectOsmInfo() {
         LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
         List<ReaderRelation> roadRelations = Lists.newArrayList();
@@ -262,26 +265,6 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         } catch (Exception e) {
             throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
         }
-    }
-
-    private static String getHighwayFromOsmWay(ReaderWay way) {
-        if (way.hasTag("highway")) {
-            return way.getTag("highway");
-        } else {
-            return null;
-        }
-    }
-
-    // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
-    private static String getConcatNameFromOsmElement(ReaderElement wayOrRelation) {
-        String name = null;
-        if (wayOrRelation.hasTag("name")) {
-            name = wayOrRelation.getTag("name");
-        }
-        if (wayOrRelation.hasTag("ref")) {
-            name = name == null ? wayOrRelation.getTag("ref") : wayOrRelation.getTag("ref") + ", " + name;
-        }
-        return name;
     }
 
     public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
