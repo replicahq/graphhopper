@@ -84,9 +84,10 @@ $(document).ready(function (e) {
         mapLayer.adjustMapSize();
     });
     $("#flex-example").click(function() {
-         $("#flex-input-text").val("speed_factor:\n  road_class:\n    motorway: 0.8\npriority:\n  road_class:\n    residential: 0.7\n");
+         $("#flex-input-text").val("{\n  \"speed\": [\n    {\n      \"if\": \"road_class == SECONDARY\",\n      \"multiply_by\": \"0.9\"\n    }\n  ],\n  \"priority\": [\n    {\n      \"if\": \"road_class == SECONDARY\",\n      \"multiply_by\": \"0.9\"\n    }\n  ],\n  \"distance_influence\": \"70\"\n}");
          return false;
     });
+
 
     var sendCustomData = function() {
        mapLayer.clearElevation();
