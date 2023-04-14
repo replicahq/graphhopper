@@ -64,8 +64,8 @@ jobs:
             ${{ runner.os }}-graphhopper-buildx
       # ---------------------
 
-        # Build image for unit tests
-      - name: Build test image
+        # Build base image for server + sandbox
+      - name: Build base image
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -80,24 +80,14 @@ jobs:
             MININORCAL_OSM_PATH=${{ secrets.MININORCAL_OSM_PATH}}
             MININORCAL_GTFS_PATH=${{ secrets.MININORCAL_GTFS_PATH}}
 
-      # Build the dev server + sandbox images used in functional test ahead of time
-      - name: build the server
+      # Build the dev server image used in unit + functional tests
+      - name: Build the server
         uses: docker/build-push-action@v2
         with:
           context: .
           push: true
           file: Dockerfile.server
           tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev"
-          build-args: |
-            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
-
-      - name: build the sandbox
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          file: Dockerfile.sandbox
-          tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-server-sandbox"
           build-args: |
             BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
 
