@@ -93,7 +93,7 @@ jobs:
           file: Dockerfile.sandbox
           tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-server-sandbox"
           build-args: |
-            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
+            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev
 
       - name: Install golang
         uses: actions/setup-go@v2
