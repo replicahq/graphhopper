@@ -69,7 +69,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          push: true
+          push: false
           file: Dockerfile.build
           tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-dev"
           build-args: |
@@ -103,5 +103,5 @@ jobs:
 
       - name: run unit tests
         run: |
-          docker run -t -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-dev /bin/bash
+          docker run -t -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev /bin/bash
           docker exec -i testrunner /bin/bash -c "mvn test"
