@@ -83,7 +83,7 @@ jobs:
             MININORCAL_OSM_PATH=${{ secrets.MININORCAL_OSM_PATH}}
             MININORCAL_GTFS_PATH=${{ secrets.MININORCAL_GTFS_PATH}}
 
-      # Build the dev server image used in unit + functional tests
+      # Build the dev server image used in functional tests
       - name: Build the server
         uses: docker/build-push-action@v2
         with:
@@ -101,5 +101,5 @@ jobs:
 
       - name: run unit tests
         run: |
-          docker run -t -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev /bin/bash
+          docker run -t -d --name testrunner us.gcr.io/model-159019/gh:${{ github.sha }}-dev /bin/bash
           docker exec -i testrunner /bin/bash -c "mvn test"
