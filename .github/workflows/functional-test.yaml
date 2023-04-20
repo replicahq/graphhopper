@@ -1,6 +1,6 @@
 name: Functional Test
 # This test does the following:
-# * Builds the "server" docker image that is used by the model repo
+# * Builds the sandbox docker image used for the router sandbox
 # * Runs functional tests queries against micro nor cal golden OD set
 # * Analyzes results of functional test queries, comparing against golden result set
 # * If tests pass, updates git and docker tags
@@ -23,7 +23,7 @@ jobs:
           GITHUB_CONTEXT: ${{ toJSON(github) }}
         run: echo "$GITHUB_CONTEXT"
   functional-test-queries:
-    name: "Build server image and run functional test queries"
+    name: "Build sandbox image and run functional test queries"
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
