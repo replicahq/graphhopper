@@ -1,6 +1,6 @@
 name: Functional Test
 # This test does the following:
-# * Builds the "server" docker image that is used by the model repo
+# * Builds the sandbox docker image used for the router sandbox
 # * Runs functional tests queries against micro nor cal golden OD set
 # * Analyzes results of functional test queries, comparing against golden result set
 # * If tests pass, updates git and docker tags
@@ -23,7 +23,7 @@ jobs:
           GITHUB_CONTEXT: ${{ toJSON(github) }}
         run: echo "$GITHUB_CONTEXT"
   functional-test-queries:
-    name: "Build server image and run functional test queries"
+    name: "Build sandbox image and run functional test queries"
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
@@ -85,17 +85,7 @@ jobs:
       - name: Set temp directory env variable
         run: echo "TMPDIR=$(mktemp -d)" >> $GITHUB_ENV
 
-      - name: build the server
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          file: Dockerfile.server
-          tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev"
-          build-args: |
-            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
-
-      - name: build the sandbox
+      - name: Build the sandbox
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -103,7 +93,7 @@ jobs:
           file: Dockerfile.sandbox
           tags: "us.gcr.io/model-159019/gh:${{ github.sha }}-server-sandbox"
           build-args: |
-            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-dev
+            BASE_IMAGE=us.gcr.io/model-159019/gh:${{ github.sha }}-server-dev
 
       - name: Install golang
         uses: actions/setup-go@v2
