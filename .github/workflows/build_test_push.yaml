@@ -83,7 +83,8 @@ jobs:
             MININORCAL_OSM_PATH=${{ secrets.MININORCAL_OSM_PATH}}
             MININORCAL_GTFS_PATH=${{ secrets.MININORCAL_GTFS_PATH}}
 
-      # Build the dev server image used in functional tests
+      # Build the dev server image used in functional tests ahead of time,
+      # so we can have it available for quick testing in the model repo ASAP
       - name: Build the server
         uses: docker/build-push-action@v2
         with:
