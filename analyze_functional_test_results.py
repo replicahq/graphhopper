@@ -179,11 +179,28 @@ def transit_ratio_mean_percent_change(
             matched_count += 1
             golden_ratio = calculate_transit_ratio(golden_response)
             to_compare_ratio = calculate_transit_ratio(to_compare)
+
+            # In some cases, transit paths contain stop-stop sections where stops
+            # are very closely spaced, and arrival/departure times for those stops
+            # are equal; in these cases, transit ratios will be 0, which cause issues
+            # in the calculations below. So, we skip these cases when they're identified.
+            if golden_ratio == 0:
+                assert to_compare_ratio == 0
+                matched_count -= 1  # consider these responses as "not matched"
+                continue
+
             if absolute:
                 sum_of_changes += abs((to_compare_ratio - golden_ratio) / golden_ratio)
             else:
                 sum_of_changes += (to_compare_ratio - golden_ratio) / golden_ratio
     return (1 / matched_count) * sum_of_changes
+
+
+# Check that for each response, stable_edge_ids and edge_durations_millis lists are equal length
+def validate_edge_ids_and_durations(response_set: dict):
+    for r in response_set.values():
+        for p in r["paths"]:
+            assert len(p["stable_edge_ids"]) == len(p["edge_durations_millis"])
 
 
 def run_all_validations(
@@ -253,6 +270,8 @@ def run_all_validations(
             validation_results["90th_percentile_query_time"]
             <= STREET_90TH_PERCENTILE_QUERY_TIME_THRESHOLD_MS
         )
+        # For street responses, check that stable edge ID + edge durations lists are equal length
+        validate_edge_ids_and_durations(responses_to_validate)
 
 
 if __name__ == "__main__":

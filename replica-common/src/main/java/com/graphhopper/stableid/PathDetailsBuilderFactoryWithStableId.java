@@ -19,6 +19,7 @@ package com.graphhopper.stableid;/*
 import com.graphhopper.coll.MapEntry;
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.weighting.Weighting;
+import com.graphhopper.storage.Graph;
 import com.graphhopper.util.details.*;
 
 import java.util.ArrayList;
@@ -32,15 +33,15 @@ import static com.graphhopper.util.Parameters.Details.*;
 public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFactory {
 
     @Override
-    public List<PathDetailsBuilder> createPathDetailsBuilders(List<String> requestedPathDetails, EncodedValueLookup evl, Weighting weighting) {
+    public List<PathDetailsBuilder> createPathDetailsBuilders(List<String> requestedPathDetails, EncodedValueLookup evl, Weighting weighting, Graph graph) {
         // request-scoped
         List<PathDetailsBuilder> builders = new ArrayList<>();
 
         if (requestedPathDetails.contains(AVERAGE_SPEED))
             builders.add(new AverageSpeedDetails(weighting));
 
-        if (requestedPathDetails.contains(STREET_NAME))
-            builders.add(new StreetNameDetails());
+        if (requestedPathDetails.contains("street_name"))
+            builders.add(new KVStringDetails("street_name"));
 
         if (requestedPathDetails.contains(EDGE_ID))
             builders.add(new EdgeIdDetails());

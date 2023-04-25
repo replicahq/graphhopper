@@ -30,6 +30,7 @@ const CreateQuery = (baseUrl, search) => {
     url.searchParams.set("pt.beta_transfers", search.betaTransfers);
     url.searchParams.set("pt.access_mode", search.accessMode);
     url.searchParams.set("pt.egress_mode", search.egressMode);
+    url.searchParams.set("pt.max_visited_nodes", search.maxVisitedNodes);
     return url.toString();
 };
 
@@ -75,6 +76,7 @@ const ParseQuery = (search, searchParams) => {
     parse("pt.beta_transfers", "betaTransfers", searchParams);
     parse("pt.access_mode", "accessMode", searchParams);
     parse("pt.egress_mode", "egressMode", searchParams);
+    parse("pt.max_visited_nodes", "maxVisitedNodes", searchParams);
     return search;
 };
 

@@ -25,22 +25,24 @@ import com.graphhopper.util.details.AbstractPathDetailsBuilder;
 
 public class StableIdPathDetailsBuilder extends AbstractPathDetailsBuilder {
     private final StableIdEncodedValues originalDirectionFlagEncoder;
-    private String edgeId;
+    private int prevEdgeId = -1;
+    private String currentValue;
 
     public StableIdPathDetailsBuilder(EncodedValueLookup originalDirectionFlagEncoder) {
         super("stable_edge_ids");
         this.originalDirectionFlagEncoder = StableIdEncodedValues.fromEncodingManager((EncodingManager) originalDirectionFlagEncoder);
-        edgeId = "";
+        currentValue = "";
     }
 
     @Override
     public boolean isEdgeDifferentToLastEdge(EdgeIteratorState edge) {
-        String newEdgeId = getStableId(edge);
-        if (newEdgeId.equals(edgeId)) {
+        if (edge.getEdge() != this.prevEdgeId) {
+            currentValue = getStableId(edge);
+            this.prevEdgeId = edge.getEdge();
+            return true;
+        } else {
             return false;
         }
-        edgeId = newEdgeId;
-        return true;
     }
 
     private String getStableId(EdgeIteratorState edge) {
@@ -50,6 +52,6 @@ public class StableIdPathDetailsBuilder extends AbstractPathDetailsBuilder {
 
     @Override
     public Object getCurrentValue() {
-        return this.edgeId;
+        return this.currentValue;
     }
 }

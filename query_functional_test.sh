@@ -20,25 +20,42 @@ docker rm --force $(docker ps --all -q)
 DOCKER_IMAGE_TAG="us.gcr.io/model-159019/gh:$TAG"
 
 # Import data into graphhopper's internal format. It's necessary to move test data from /web before
-# running import, because import paths are relative to base /graphhopper folder, unlike in `mvn test`
+# running import, because import paths are relative to base /graphhopper folder, unlike in `mvn test`.
 docker run \
-    -v "$TMPDIR:/graphhopper/transit_data/"\
+    -v "$TMPDIR:/graphhopper/transit_data/graphhopper" \
     --rm \
      "$DOCKER_IMAGE_TAG" \
-     /bin/bash -c "cp -r ./web/test-data . && java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import test_gh_config.yaml"
+     /bin/bash -c "cp -r ./web/test-data . && \
+     java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
+     -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar -server com.graphhopper.http.GraphHopperApplication import ./configs/test_gh_config.yaml"
 
 # Run link-mapping step
 docker run \
-    -v "$TMPDIR:/graphhopper/transit_data/"\
+    -v "$TMPDIR:/graphhopper/transit_data/graphhopper" \
+    -v "$TMPDIR:/graphhopper/transit_data/gtfs_link_mappings" \
     --rm \
     "$DOCKER_IMAGE_TAG" \
+    /bin/bash -c "cp -r ./web/test-data . && \
     java -Xmx2g -Xms1g -XX:+UseG1GC -XX:MetaspaceSize=100M \
-    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links test_gh_config.yaml
+    -classpath web/target/graphhopper-web-1.0-SNAPSHOT.jar com.graphhopper.http.GraphHopperApplication gtfs_links ./configs/test_gh_config.yaml"
 
-# Run server in background
-docker run --rm --log-driver=none --name functional_test_server -p 50051:50051 -p 8998:8998 \
-    -v "$TMPDIR:/graphhopper/transit_data/" "$DOCKER_IMAGE_TAG" &
+# Run server in background (override standard CMD in Dockerfile.server with test_gh_config.yaml)
+docker run --rm --log-driver=none --name functional_test_server -d -p 50051:50051 -p 8998:8998 \
+    -v "$TMPDIR:/graphhopper/transit_data/graphhopper" \
+    -v "$TMPDIR:/graphhopper/transit_data/gtfs_link_mappings" \
+    "$DOCKER_IMAGE_TAG" \
+    /bin/bash -c "cp -r ./web/test-data . && \
+      java -server -Xms6g -Xmx13g \
+      -Dcom.sun.management.jmxremote \
+      -Dcom.sun.management.jmxremote.authenticate=false \
+      -Dcom.sun.management.jmxremote.ssl=false \
+      -Dcom.sun.management.jmxremote.local.only=false \
+      -Dcom.sun.management.jmxremote.port=9010 \
+      -Dcom.sun.management.jmxremote.rmi.port=9010 \
+      -Djava.rmi.server.hostname=127.0.0.1 \
+      -XX:+UseG1GC -XX:MetaspaceSize=100M \
+      -classpath grpc/target/graphhopper-grpc-1.0-SNAPSHOT.jar \
+      com.replica.RouterServer ./configs/test_gh_config.yaml"
 
 echo "Waiting for graphhopper server to start up"
 sleep 30

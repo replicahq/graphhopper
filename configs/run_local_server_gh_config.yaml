@@ -1,0 +1,69 @@
+# Modified version of test_gh_config.yaml that can be used when running the server locally
+# Be sure to run setup_tests.sh to populate the test-data dir before
+
+graphhopper:
+  datareader.file: web/test-data/micro_nor_cal.osm.pbf
+  gtfs.file: web/test-data/gtfs/f-9qc-fairfield~ca~us.zip,web/test-data/gtfs/rosevill.zip,web/test-data/gtfs/srtd.zip,web/test-data/gtfs/vacaville.zip
+  gtfs.max_transfer_interpolation_walk_time_seconds: 300
+  graph.location: transit_data/graphhopper
+  routing.max_visited_nodes: 1500000
+  graph.vehicles: car,bike,foot,truck,small_truck
+  graph.encoded_values: road_class,road_class_link
+  prepare.ch.threads: 16
+  import.osm.ignored_highways:
+
+  # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
+  # prepare.ch.edge_based: edge_and_node
+  # graph.flag_encoders: car|turn_costs=true
+  # graph.bytes_for_flags: 64
+
+  # Profiles specifying vehicle and weightings for each mode type.
+  custom_model_folder: ./web/test-data
+  profiles:
+    - name: gtfs_link_mapper
+      vehicle: car
+      weighting: custom
+      custom_model_file: local_car_custom_model.json
+    - name: car_local
+      vehicle: car
+      weighting: custom
+      custom_model_file: local_car_custom_model.json
+    - name: car_freeway
+      vehicle: car
+      weighting: custom
+      custom_model_file: freeway_car_custom_model.json
+    - name: bike
+      vehicle: bike
+      weighting: fastest
+    - name: foot
+      vehicle: foot
+      weighting: fastest
+    - name: truck
+      vehicle: truck
+      weighting: fastest
+    - name: small_truck
+      vehicle: small_truck
+      weighting: fastest
+
+  profiles_ch:
+    - profile: gtfs_link_mapper
+    - profile: car_local
+    - profile: car_freeway
+    - profile: bike
+    - profile: foot
+    - profile: truck
+    - profile: small_truck
+
+server:
+  min_threads: 4
+  max_threads: 8
+  application_connectors:
+    - type: http
+      port: 8998
+      # for security reasons bind (localhost does not work with k8s svcs)
+      bind_host: 0.0.0.0
+      acceptor_threads: 1
+      selector_threads: 2
+      accept_queue_size: 8
+  request_log:
+    appenders: []

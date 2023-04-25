@@ -4,23 +4,22 @@ import com.google.common.base.Charsets;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Longs;
-import com.graphhopper.routing.ev.EnumEncodedValue;
-import com.graphhopper.routing.ev.IntEncodedValueImpl;
-import com.graphhopper.routing.ev.RoadClass;
+import com.graphhopper.OsmHelper;
 import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.storage.NodeAccess;
-import com.graphhopper.util.AngleCalc;
 import com.graphhopper.util.EdgeIteratorState;
 
 public class StableIdEncodedValues {
 
     private IntEncodedValue[] stableIdEnc = new IntEncodedValue[8];
     private IntEncodedValue[] reverseStableIdEnc = new IntEncodedValue[8];
-    private EnumEncodedValue<RoadClass> roadClassEnc;
+    private IntEncodedValue osmWayIdEnc;
+    private OsmHelper osmHelper;
 
-    private StableIdEncodedValues(EncodingManager encodingManager) {
-        this.roadClassEnc = encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
+    private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper) {
+        this.osmHelper = osmHelper;
+        this.osmWayIdEnc = encodingManager.getIntEncodedValue("osmid");
+
         for (int i=0; i<8; i++) {
             stableIdEnc[i] = encodingManager.getIntEncodedValue("stable_id_byte_"+i);
         }
@@ -29,17 +28,14 @@ public class StableIdEncodedValues {
         }
     }
 
-    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager) {
-        return new StableIdEncodedValues(encodingManager);
+    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager, OsmHelper osmHelper) {
+        return new StableIdEncodedValues(encodingManager, osmHelper);
     }
 
-    public static void createAndAddEncodedValues(EncodingManager.Builder emBuilder) {
-        for (int i=0; i<8; i++) {
-            emBuilder.add(new IntEncodedValueImpl("stable_id_byte_" + i, 8, false));
-        }
-        for (int i=0; i<8; i++) {
-            emBuilder.add(new IntEncodedValueImpl("reverse_stable_id_byte_" + i, 8, false));
-        }
+    // Used only for instances where stable edge IDs are being accessed (not set)
+    // ie, StableIdPathDetailsBuilder
+    public static StableIdEncodedValues fromEncodingManager(EncodingManager encodingManager) {
+        return new StableIdEncodedValues(encodingManager, null);
     }
 
     public final String getStableId(boolean reverse, EdgeIteratorState edge) {
@@ -51,8 +47,16 @@ public class StableIdEncodedValues {
         return Long.toUnsignedString(Longs.fromByteArray(stableId));
     }
 
-    public final void setStableId(boolean reverse, EdgeIteratorState edge, NodeAccess nodes) {
-        byte[] stableId = calculateStableEdgeId(reverse, edge, this.roadClassEnc, nodes);
+    public final void setStableId(boolean reverse, EdgeIteratorState edge) {
+        long osmWayId = edge.get(osmWayIdEnc);
+        int segmentIndex = osmHelper.getSegmentIndexForGhEdge(edge.getEdge());
+
+        // Ensure segment index is set for every edge
+        if (segmentIndex <= 0L) {
+            throw new RuntimeException("Trying to set stable edge ID on edge with no segment index stored!");
+        }
+
+        byte[] stableId = calculateStableEdgeId(osmWayId, segmentIndex, reverse);
         if (stableId.length != 8)
             throw new IllegalArgumentException("stable ID must be 8 bytes: " + new String(stableId));
 
@@ -62,51 +66,19 @@ public class StableIdEncodedValues {
         }
     }
 
-    private static byte[] calculateStableEdgeId(boolean reverse, EdgeIteratorState edge,
-                                                EnumEncodedValue<RoadClass> roadClassEnc, NodeAccess nodes) {
-        String highwayTag = edge.get(roadClassEnc).toString();
-
-        // Because GH edges are technically bi-directional, swap start/end nodes if calculating reverse ID
-        int startVertex = reverse ? edge.getAdjNode() : edge.getBaseNode();
-        int endVertex = reverse ? edge.getBaseNode() : edge.getAdjNode();
-        double startLat = nodes.getLat(startVertex);
-        double startLon = nodes.getLon(startVertex);
-        double endLat = nodes.getLat(endVertex);
-        double endLon = nodes.getLon(endVertex);
-
-        return calculateStableEdgeId(highwayTag, startLat, startLon, endLat, endLon);
-    }
-
-    private static byte[] calculateStableEdgeId(String highwayTag, double startLat, double startLon,
-                                                double endLat, double endLon) {
-        int formOfWay = getFormOfWay(highwayTag);
-        long bearing = Math.round(AngleCalc.ANGLE_CALC.calcAzimuth(startLat, startLon, endLat, endLon));
-
-        String hashString = String.format("Reference %d %.6f %.6f %.6f %.6f %d",
-                formOfWay, startLon, startLat, endLon, endLat, bearing);
-
+    private static byte[] calculateStableEdgeId(long osmWayId, int segmentIndex, boolean reverse) {
+        String hashString = calculateHumanReadableStableEdgeId(osmWayId, segmentIndex, reverse);
         HashCode hc = Hashing.farmHashFingerprint64().hashString(hashString, Charsets.UTF_8);
         return hc.asBytes();
     }
 
-    // Based off of shared streets' definition of "form of way"
-    private static int getFormOfWay(String highwayTag) {
-        highwayTag = highwayTag == null ? "" : highwayTag;
-        switch (highwayTag) {
-            case "motorway":
-                return 1;
-            case "primary":
-            case "trunk":
-                return 2;
-            case "secondary":
-            case "tertiary":
-            case "residential":
-            case "unclassified":
-                return 3;
-            case "roundabout":
-                return 4;
-            default:
-                return 7;
-        }
+    public static String calculateHumanReadableStableEdgeId(long osmWayId, int segmentIndex, boolean reverse) {
+        String reverseSuffix = reverse ? "-" : "+";
+        // We store 1-indexed segments because 0 is a default value for "unset",
+        // so 0 is used to sanity-check whether or not a segment index has
+        // been found for every edge. But, we want to output 0-indexed segments for
+        // human-readable IDs, so we bump the index down by 1 here before outputting them
+        segmentIndex--;
+        return String.format("%d_%d%s", osmWayId, segmentIndex, reverseSuffix);
     }
 }
