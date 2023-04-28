@@ -223,6 +223,25 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         Point toPoint = request.getPoints(1);
         Request ghPtRequest = RouterConverters.toGHPtRequest(request);
 
+        // Set access and egress leg modes if they've been explicitly provided. If explicitly provided,
+        // the profile used for routing will be the first profile defined in the GH config that's prefixed
+        // by the requested mode (ex: if you request "car", the first defined profile starting with "car"
+        // is used). Note: even if modes other than walk are requested, Graphhopper will return these legs
+        // as Trip.WalkLeg objects
+        final String requestedAccessMode = request.getAccessMode().equals("") ? "foot" : request.getAccessMode();
+        final String requestedEgressMode = request.getEgressMode().equals("") ? "foot" : request.getEgressMode();
+        String accessMode = graphHopper.getProfiles().stream()
+                .map(Profile::getName)
+                .filter(profile -> profile.startsWith(requestedAccessMode))
+                .findFirst().orElseThrow();
+        String egressMode = graphHopper.getProfiles().stream()
+                .map(Profile::getName)
+                .filter(profile -> profile.startsWith(requestedEgressMode))
+                .findFirst().orElseThrow();
+        ghPtRequest.setAccessProfile(accessMode);
+        ghPtRequest.setEgressProfile(egressMode);
+        logger.info("access: " + accessMode + " " + egressMode);
+
         try {
             long routeStartTime = System.currentTimeMillis();
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
@@ -234,7 +253,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             List<ResponsePath> pathsWithStableIds = Lists.newArrayList();
             for (ResponsePath path : ghResponse.getAll()) {
                 // Ignore walking-only responses, because we route those separately from PT
-                if (path.getLegs().size() == 1 && path.getLegs().get(0).type.equals("walk")) {
+                if (path.getLegs().size() == 1 && path.getLegs().get(0).type.equals("walk")) {  // todo: is this also wrong?? (foot vs walk)
                     continue;
                 }
                 augmentLegsForPt(path, ghPtRequest);
@@ -352,6 +371,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                     egressExists = true;
                     legMode = ghPtRequest.getEgressProfile();
                 } else {
+                    // Note: transfer legs are always walking (mode "foot")
                     travelSegmentType = "TRANSFER";
                 }
                 path.getLegs().add(RouterConverters.toCustomStreetLeg(thisLeg, travelSegmentType, legMode));

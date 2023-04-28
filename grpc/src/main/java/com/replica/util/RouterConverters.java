@@ -224,13 +224,6 @@ public final class RouterConverters {
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
         ghPtRequest.setMaxVisitedNodes(request.getMaxVisitedNodes() == 0 ? DEFAULT_MAX_VISITED_NODES : request.getMaxVisitedNodes());
 
-        // Set access and egress leg modes if they've been explicitly provided. Note: even if modes
-        // other than walk are requested, Graphhopper will return these legs as Trip.WalkLeg objects
-        String accessMode = request.getAccessMode().equals("") ? "foot" : request.getAccessMode();
-        String egressMode = request.getEgressMode().equals("") ? "foot" : request.getEgressMode();
-        ghPtRequest.setAccessProfile(accessMode);
-        ghPtRequest.setEgressProfile(egressMode);
-
         return ghPtRequest;
     }
 
