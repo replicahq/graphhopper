@@ -20,10 +20,10 @@ graphhopper:
   # Profiles specifying vehicle and weightings for each mode type.
   custom_model_folder: ./test-data # mvn tests run from the /web folder
   profiles:
-    - name: car
+    - name: car_default  # needed for comparison against Thurton Drive custom speeds profile
       vehicle: car
       weighting: fastest
-    - name: car_local
+    - name: car  # "car" profile name required for PT routing with custom access/egress mode
       vehicle: car
       weighting: custom
       custom_model_file: local_car_custom_model.json
@@ -50,8 +50,8 @@ graphhopper:
       weighting: fastest
 
   profiles_ch:
+    - profile: car_default
     - profile: car
-    - profile: car_local
     - profile: car_freeway
     - profile: car_custom_fast_thurton_drive
     - profile: bike

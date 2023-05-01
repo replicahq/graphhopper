@@ -86,7 +86,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final String FAST_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
     private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
     private static final ImmutableSet<String> CAR_PROFILES =
-            ImmutableSet.of("car_local", "car_freeway", DEFAULT_CAR_PROFILE_NAME, FAST_THURTON_DRIVE_CAR_PROFILE_NAME);
+            ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, FAST_THURTON_DRIVE_CAR_PROFILE_NAME);
 
     private static router.RouterGrpc.RouterBlockingStub routerStub = null;
 
@@ -243,7 +243,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         }
 
         // Check number of stable edge IDs for each leg is as-expected
-        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(8, 201, 3, 184, 15);
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(8, 219, 4, 208, 16);
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
@@ -309,7 +309,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         }
 
         // Check number of stable edge IDs for each leg is as-expected
-        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(19, 59, 3, 164, 15);
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(26, 65, 3, 188, 16);
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
@@ -326,20 +326,20 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .filter(l -> !l.hasTransitMetadata()).collect(Collectors.toList());
         List<RouterOuterClass.PtLeg> ptLegs = path.getLegsList().stream()
                 .filter(RouterOuterClass.PtLeg::hasTransitMetadata).collect(Collectors.toList());
-        assertEquals(2, ptLegs.size());
-        assertEquals(3, streetLegs.size()); // access, transfer, and egress
+        assertEquals(1, ptLegs.size());
+        assertEquals(2, streetLegs.size()); // access and egress
         assertTrue(path.getDistanceMeters() > 0);
         assertTrue(path.getDurationMillis() > 0);
 
         // Check that street legs contain proper info
         List<String> observedTravelSegmentTypes = Lists.newArrayList();
-        List<String> expectedTravelSegmentTypes = Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS");
+        List<String> expectedTravelSegmentTypes = Lists.newArrayList("ACCESS", "EGRESS");
         Map<String, Integer> observedModeCounts = Maps.newHashMap();
         observedModeCounts.put("car", 0);
         observedModeCounts.put("foot", 0);
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
         expectedModeCounts.put("car", 1);
-        expectedModeCounts.put("foot", 2);
+        expectedModeCounts.put("foot", 1);
         List<String> observedStableEdgeIds = Lists.newArrayList();
         int observedStableEdgeIdCount = 0;
         double observedDistanceMeters = 0;
@@ -389,7 +389,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         }
 
         // Check number of stable edge IDs for each leg is as-expected
-        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(8, 201, 3, 184, 15);
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(98, 211, 28);
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
