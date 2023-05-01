@@ -240,7 +240,6 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 .findFirst().orElseThrow();
         ghPtRequest.setAccessProfile(accessMode);
         ghPtRequest.setEgressProfile(egressMode);
-        logger.info("access: " + accessMode + " " + egressMode);
 
         try {
             long routeStartTime = System.currentTimeMillis();

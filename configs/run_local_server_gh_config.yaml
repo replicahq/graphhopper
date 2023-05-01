@@ -20,11 +20,7 @@ graphhopper:
   # Profiles specifying vehicle and weightings for each mode type.
   custom_model_folder: ./web/test-data
   profiles:
-    - name: gtfs_link_mapper
-      vehicle: car
-      weighting: custom
-      custom_model_file: local_car_custom_model.json
-    - name: car_local
+    - name: car
       vehicle: car
       weighting: custom
       custom_model_file: local_car_custom_model.json
@@ -46,8 +42,7 @@ graphhopper:
       weighting: fastest
 
   profiles_ch:
-    - profile: gtfs_link_mapper
-    - profile: car_local
+    - profile: car
     - profile: car_freeway
     - profile: bike
     - profile: foot
