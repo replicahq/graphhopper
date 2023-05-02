@@ -242,7 +242,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             List<ResponsePath> pathsWithStableIds = Lists.newArrayList();
             for (ResponsePath path : ghResponse.getAll()) {
                 // Ignore walking-only responses, because we route those separately from PT
-                if (path.getLegs().size() == 1 && path.getLegs().get(0).type.equals("walk")) {  // todo: is this also wrong?? (foot vs walk)
+                if (path.getLegs().size() == 1 && path.getLegs().get(0).type.equals("walk")) {
                     continue;
                 }
                 augmentLegsForPt(path, ghPtRequest);
