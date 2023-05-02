@@ -243,7 +243,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         }
 
         // Check number of stable edge IDs for each leg is as-expected
-        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(8, 219, 4, 208, 16);
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(8, 201, 3, 184, 15);
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
@@ -309,7 +309,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         }
 
         // Check number of stable edge IDs for each leg is as-expected
-        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(26, 65, 3, 188, 16);
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(19, 59, 3, 164, 15);
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
@@ -389,7 +389,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         }
 
         // Check number of stable edge IDs for each leg is as-expected
-        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(98, 211, 28);
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(92, 154, 27);
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
