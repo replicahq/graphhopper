@@ -65,23 +65,29 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-13T13:30:00Z").toEpochMilli() / 1000).build();
     private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467,-121.29023848101498}; // Roseville area
     private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281,-121.48746937746185}; // Sacramento area
-    private static final double[] REQUEST_DESTINATION = {38.55518457319914,-121.43714698730038}; // Sacramento area
+    private static final double[] REQUEST_ORIGIN_3 = {38.508810062393245,-121.5085223084316}; // South of Sacramento area
+    private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914,-121.43714698730038}; // Sacramento area
+    private static final double[] REQUEST_DESTINATION_2 = {38.64478548196401,-121.34168802760543}; // North of Sacramento area
+
     // PT_REQUEST_1 should force a transfer between routes from 2 distinct feeds
-    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_1 = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_1 = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     // PT_REQUEST_2 should force a transfer between routes from the same feed
-    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_2 = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION);
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_2 = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION_1);
     // PT_REQUEST_3 tests park-and-ride routing, with custom access/egress modes
-    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_3  = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION, "car", "foot");
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_3  = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, "car", "foot");
+    // PT_REQUEST_4 tests park-and-ride routing for a longer route (with a transfer)
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_4  = createPtRequest(REQUEST_ORIGIN_3, REQUEST_DESTINATION_2, "car", "foot");
+
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST =
-            createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+            createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST_WITH_ALTERNATIVES =
-            createStreetRequest("car", true, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+            createStreetRequest("car", true, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     private static final RouterOuterClass.StreetRouteRequest WALK_REQUEST =
-            createStreetRequest("foot", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+            createStreetRequest("foot", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     private static final RouterOuterClass.StreetRouteRequest TRUCK_REQUEST =
-            createStreetRequest("truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+            createStreetRequest("truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     private static final RouterOuterClass.StreetRouteRequest SMALL_TRUCK_REQUEST =
-            createStreetRequest("small_truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION);
+            createStreetRequest("small_truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
 
     private static final String FAST_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
     private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
@@ -390,6 +396,87 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
         // Check number of stable edge IDs for each leg is as-expected
         List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(92, 154, 27);
+        for (int i = 0; i < path.getLegsList().size(); i++) {
+            assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
+        }
+    }
+
+    @Test
+    public void testAccessEgressCustomModesWithTransfer() {
+        final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST_4);
+
+        // Check details of Path are set correctly
+        assertEquals(1, response.getPathsList().size());
+        RouterOuterClass.PtPath path = response.getPaths(0);
+        List<RouterOuterClass.PtLeg> streetLegs = path.getLegsList().stream()
+                .filter(l -> !l.hasTransitMetadata()).collect(Collectors.toList());
+        List<RouterOuterClass.PtLeg> ptLegs = path.getLegsList().stream()
+                .filter(RouterOuterClass.PtLeg::hasTransitMetadata).collect(Collectors.toList());
+        // Expected route is [car access -> transit -> transfer -> transit -> transit (no transfer) -> walk egress]
+        assertEquals(3, ptLegs.size());
+        assertEquals(3, streetLegs.size()); // access, 1 transfer leg, egress
+        assertTrue(path.getDistanceMeters() > 0);
+        assertTrue(path.getDurationMillis() > 0);
+
+        // Check that street legs contain proper info
+        List<String> observedTravelSegmentTypes = Lists.newArrayList();
+        List<String> expectedTravelSegmentTypes = Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS");
+        Map<String, Integer> observedModeCounts = Maps.newHashMap();
+        observedModeCounts.put("car", 0);
+        observedModeCounts.put("foot", 0);
+        Map<String, Integer> expectedModeCounts = Maps.newHashMap();
+        expectedModeCounts.put("car", 1);
+        expectedModeCounts.put("foot", 2);
+        List<String> observedStableEdgeIds = Lists.newArrayList();
+        int observedStableEdgeIdCount = 0;
+        double observedDistanceMeters = 0;
+        for (RouterOuterClass.PtLeg streetLeg : streetLegs) {
+            assertTrue(streetLeg.getStableEdgeIdsCount() > 0);
+            observedStableEdgeIdCount += streetLeg.getStableEdgeIdsCount();
+            observedStableEdgeIds.addAll(streetLeg.getStableEdgeIdsList());
+            assertTrue(streetLeg.getArrivalTime().getSeconds() > streetLeg.getDepartureTime().getSeconds());
+            assertTrue(streetLeg.getDistanceMeters() > 0);
+            assertFalse(streetLeg.getTravelSegmentType().isEmpty());
+            observedTravelSegmentTypes.add(streetLeg.getTravelSegmentType());
+            observedModeCounts.put(streetLeg.getMode(), observedModeCounts.get(streetLeg.getMode()) + 1);
+            observedDistanceMeters += streetLeg.getDistanceMeters();
+        }
+        assertEquals(expectedTravelSegmentTypes, observedTravelSegmentTypes);
+        assertEquals(expectedModeCounts, observedModeCounts);
+
+        // Check that PT legs contains proper info
+        for (RouterOuterClass.PtLeg ptLeg : ptLegs) {
+            assertTrue(ptLeg.getArrivalTime().getSeconds() > ptLeg.getDepartureTime().getSeconds());
+            assertTrue(ptLeg.getStableEdgeIdsCount() > 0); // check that the GTFS link mapper worked
+            observedStableEdgeIdCount += ptLeg.getStableEdgeIdsCount();
+            observedStableEdgeIds.addAll(ptLeg.getStableEdgeIdsList());
+            assertTrue(ptLeg.getDistanceMeters() > 0);
+            observedDistanceMeters += ptLeg.getDistanceMeters();
+
+            RouterOuterClass.TransitMetadata ptMetadata = ptLeg.getTransitMetadata();
+            assertFalse(ptMetadata.getTripId().isEmpty());
+            assertFalse(ptMetadata.getRouteId().isEmpty());
+            assertFalse(ptMetadata.getAgencyName().isEmpty());
+            assertFalse(ptMetadata.getRouteShortName().isEmpty());
+            assertFalse(ptMetadata.getRouteLongName().isEmpty());
+            assertFalse(ptMetadata.getRouteType().isEmpty());
+            assertFalse(ptMetadata.getDirection().isEmpty());
+        }
+        assertEquals(observedStableEdgeIdCount, observedStableEdgeIds.size());
+        assertEquals(path.getDistanceMeters(), observedDistanceMeters, 0.0001);
+
+        // Check stops in first PT leg
+        RouterOuterClass.PtLeg firstLeg = ptLegs.get(0);
+        assertTrue(firstLeg.getTransitMetadata().getStopsList().size() > 0);
+        for (RouterOuterClass.Stop stop : firstLeg.getTransitMetadata().getStopsList()) {
+            assertFalse(stop.getStopId().isEmpty());
+            assertEquals(1, TEST_GTFS_FILE_NAMES.stream().filter(f -> stop.getStopId().startsWith(f)).count());
+            assertFalse(stop.getStopName().isEmpty());
+            assertTrue(stop.hasPoint());
+        }
+
+        // Check number of stable edge IDs for each leg is as-expected
+        List<Integer> expectedStableEdgeIdCount = Lists.newArrayList(60, 102, 4, 243, 83, 11);
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
