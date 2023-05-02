@@ -157,7 +157,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     }
 
     private static RouterOuterClass.PtRouteRequest createPtRequest(double[] from, double[] to) {
-        return createPtRequest(from, to, "foot", "foot");
+        // Mimics the python client, which sends empty strings when access/egress modes are specified
+        return createPtRequest(from, to, "", "");
     }
 
     private static RouterOuterClass.PtRouteRequest createPtRequest(double[] from, double[] to, String accessMode, String egressMode) {
@@ -214,6 +215,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertFalse(footLeg.getTravelSegmentType().isEmpty());
             observedTravelSegmentTypes.add(footLeg.getTravelSegmentType());
             observedDistanceMeters += footLeg.getDistanceMeters();
+            assertEquals("foot", footLeg.getMode());  // expect walking when access/egress modes aren't specified
         }
         assertEquals(expectedTravelSegmentTypes, observedTravelSegmentTypes);
 
@@ -282,6 +284,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertFalse(footLeg.getTravelSegmentType().isEmpty());
             observedTravelSegmentTypes.add(footLeg.getTravelSegmentType());
             observedDistanceMeters += footLeg.getDistanceMeters();
+            assertEquals("foot", footLeg.getMode());  // expect walking when access/egress modes aren't specified
         }
         assertEquals(expectedTravelSegmentTypes, observedTravelSegmentTypes);
 
