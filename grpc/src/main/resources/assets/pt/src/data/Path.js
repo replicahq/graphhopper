@@ -92,7 +92,7 @@ export default class Path {
     // }
     apiPath.getLegsList().forEach((apiLeg, i) => {
       if (!apiLeg.hasTransitMetadata()) {
-        apiLeg.type = LegMode.WALK;
+        apiLeg.type = apiLeg.getMode();
         this.legs.push(new WalkLeg(apiLeg));
       } else {
         apiLeg.type = LegMode.PT;

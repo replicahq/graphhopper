@@ -100,6 +100,46 @@ class SearchInput extends React.Component {
                 onChange: this.handleInputChange,
                 actionType: "maxVisitedNodes"
             }),
+            React.createElement("p", {className: "accessEgressModes"}, "Access mode"),
+            React.createElement("select",
+                {
+                    name: "access_mode",
+                    onChange: e => this.handleInputChange({
+                        type: "accessMode",
+                        value: e.target.value
+                    }),
+                    value: this.props.search.accessMode
+                },
+                React.createElement("option", {
+                   value: "foot"
+               }, "foot"),
+                React.createElement("option", {
+                   value: "car"
+               }, "car"),
+                React.createElement("option", {
+                   value: "bike"
+               }, "bike")
+            ),
+            React.createElement("p", {className: "accessEgressModes"}, "Egress mode"),
+            React.createElement("select",
+                {
+                    name: "egress_mode",
+                    onChange: e => this.handleInputChange({
+                        type: "egressMode",
+                        value: e.target.value
+                    }),
+                    value: this.props.search.egressMode
+                },
+                React.createElement("option", {
+                   value: "foot"
+               }, "foot"),
+                React.createElement("option", {
+                   value: "car"
+               }, "car"),
+                React.createElement("option", {
+                   value: "bike"
+               }, "bike")
+            )
             /*
             React.createElement("div", {
                 className: "checkbox"

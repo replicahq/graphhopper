@@ -36,6 +36,8 @@ export default class App extends React.Component {
             betaWalkTime: 1.5,
             limitStreetTimeSeconds: 1440,
             usePareto: false,
+            accessMode: "foot",
+            egressMode: "foot",
             betaTransfers: 720000.0,
             maxVisitedNodes: 1000000,
             routes: {
@@ -92,6 +94,8 @@ export default class App extends React.Component {
                     ptRouteRequest.setLimitStreetTimeSeconds(this.state.limitStreetTimeSeconds)
                     ptRouteRequest.setUsePareto(this.state.usePareto);
                     ptRouteRequest.setBetaTransfers(this.state.betaTransfers);
+                    ptRouteRequest.setAccessMode(this.state.accessMode);
+                    ptRouteRequest.setEgressMode(this.state.egressMode);
                     ptRouteRequest.setMaxVisitedNodes(this.state.maxVisitedNodes);
 
                     // log request object for debugging

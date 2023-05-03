@@ -223,6 +223,16 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         Point toPoint = request.getPoints(1);
         Request ghPtRequest = RouterConverters.toGHPtRequest(request);
 
+        // Set access and egress leg modes if they've been explicitly provided.
+        // Note: even if modes other than walk are requested, Graphhopper will return these legs
+        // as Trip.WalkLeg objects
+        // Note: GraphHopper currently only accepts profiles with standard "base" names for
+        // access/egress modes. Therefore, "mode" and "profile" are somewhat interchangeable here
+        String accessMode = request.getAccessMode().equals("") ? "foot" : request.getAccessMode();
+        String egressMode = request.getEgressMode().equals("") ? "foot" : request.getEgressMode();
+        ghPtRequest.setAccessProfile(accessMode);
+        ghPtRequest.setEgressProfile(egressMode);
+
         try {
             long routeStartTime = System.currentTimeMillis();
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
@@ -237,7 +247,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 if (path.getLegs().size() == 1 && path.getLegs().get(0).type.equals("walk")) {
                     continue;
                 }
-                augmentLegsForPt(path);
+                augmentLegsForPt(path, ghPtRequest);
                 pathsWithStableIds.add(path);
             }
 
@@ -322,13 +332,12 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     /**
      * Performs public-transit-specific modifications to the legs of the ResponsePath. Specifically:
      *
-     * - adds transfer walk legs between PT legs where necessary (and updates the path distance accordingly)
      * - adds stable edge ids to the walk and PT legs
      * - stores ACCESS/EGRESS metadata on walk legs
      *
      * @param path the ResponsePath to augment. modified in place
      */
-    private void augmentLegsForPt(ResponsePath path) {
+    private void augmentLegsForPt(ResponsePath path, Request ghPtRequest) {
         // Replace the path's legs with newly-constructed legs containing stable edge IDs
         ArrayList<Trip.Leg> legs = new ArrayList<>(path.getLegs());
         path.getLegs().clear();
@@ -337,20 +346,26 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         boolean egressExists = false;
         for (int i = 0; i < legs.size(); i++) {
             Trip.Leg leg = legs.get(i);
+            // Note: graphhopper returns Trip.WalkLegs even if we requested different access/egress modes
             if (leg instanceof Trip.WalkLeg) {
                 Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
                 String travelSegmentType;
+                String legMode = "foot";
+
                 // Assign proper ACCESS/EGRESS/TRANSFER segment type based on position of walk leg in list
                 if (i == 0) {
                     travelSegmentType = "ACCESS";
                     accessExists = true;
+                    legMode = ghPtRequest.getAccessProfile();
                 } else if (i == legs.size() - 1) {
                     travelSegmentType = "EGRESS";
                     egressExists = true;
+                    legMode = ghPtRequest.getEgressProfile();
                 } else {
+                    // Note: transfer legs are always walking (mode "foot")
                     travelSegmentType = "TRANSFER";
                 }
-                path.getLegs().add(RouterConverters.toCustomWalkLeg(thisLeg, travelSegmentType));
+                path.getLegs().add(RouterConverters.toCustomStreetLeg(thisLeg, travelSegmentType, legMode));
             } else if (leg instanceof Trip.PtLeg) {
                 Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
 
@@ -368,8 +383,8 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         if (accessExists && egressExists) {
             // ACCESS legs contains stable IDs for both ACCESS and EGRESS legs for some reason,
             // so we remove the EGRESS leg IDs from the ACCESS leg before storing the path
-            CustomWalkLeg accessLeg = (CustomWalkLeg) path.getLegs().get(0);
-            CustomWalkLeg egressLeg = (CustomWalkLeg) path.getLegs().get(path.getLegs().size() - 1);
+            CustomStreetLeg accessLeg = (CustomStreetLeg) path.getLegs().get(0);
+            CustomStreetLeg egressLeg = (CustomStreetLeg) path.getLegs().get(path.getLegs().size() - 1);
             accessLeg.stableEdgeIds.removeAll(egressLeg.stableEdgeIds);
         }
 

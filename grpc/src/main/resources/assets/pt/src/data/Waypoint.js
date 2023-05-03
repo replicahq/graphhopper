@@ -92,10 +92,10 @@ export default class Waypoint {
       } else if (prevApiLeg) {
         this._name = this._findArrivalLocation(prevApiLeg);
       } else {
-        this._name = this._findWalkLocation(nextApiLeg, false);
+        this._name = nextApiLeg.type;
       }
     } else if (prevApiLeg) {
-      this._name = this._findWalkLocation(prevApiLeg, true);
+      this._name = prevApiLeg.type;
     }
   }
 

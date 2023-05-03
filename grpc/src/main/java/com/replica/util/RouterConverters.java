@@ -15,7 +15,7 @@ import com.graphhopper.util.PMap;
 import com.graphhopper.util.Parameters;
 import com.graphhopper.util.shapes.GHPoint;
 import com.replica.CustomPtLeg;
-import com.replica.CustomWalkLeg;
+import com.replica.CustomStreetLeg;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.*;
@@ -99,18 +99,19 @@ public final class RouterConverters {
     }
 
     public static PtLeg toPtLeg(Trip.Leg leg) {
-        if (leg.type.equals("walk")) {
-            CustomWalkLeg walkLeg = (CustomWalkLeg) leg;
+        if (!leg.type.equals("pt")) {
+            CustomStreetLeg streetLeg = (CustomStreetLeg) leg;
             return PtLeg.newBuilder()
                     .setDepartureTime(Timestamp.newBuilder()
-                            .setSeconds(walkLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
+                            .setSeconds(streetLeg.getDepartureTime().getTime() / 1000) // getTime() returns millis
                             .build())
                     .setArrivalTime(Timestamp.newBuilder()
-                            .setSeconds(walkLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
+                            .setSeconds(streetLeg.getArrivalTime().getTime() / 1000) // getTime() returns millis
                             .build())
-                    .setDistanceMeters(walkLeg.getDistance())
-                    .addAllStableEdgeIds(walkLeg.stableEdgeIds)
-                    .setTravelSegmentType(walkLeg.travelSegmentType)
+                    .setDistanceMeters(streetLeg.getDistance())
+                    .addAllStableEdgeIds(streetLeg.stableEdgeIds)
+                    .setTravelSegmentType(streetLeg.travelSegmentType)
+                    .setMode(streetLeg.mode)
                     .build();
         } else { // leg is a PT leg
             CustomPtLeg ptLeg = (CustomPtLeg) leg;
@@ -222,6 +223,7 @@ public final class RouterConverters {
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
         ghPtRequest.setMaxVisitedNodes(request.getMaxVisitedNodes() == 0 ? DEFAULT_MAX_VISITED_NODES : request.getMaxVisitedNodes());
+
         return ghPtRequest;
     }
 
@@ -255,11 +257,11 @@ public final class RouterConverters {
                 .build();
     }
 
-    public static CustomWalkLeg toCustomWalkLeg(Trip.WalkLeg leg, String travelSegmentType) {
-        return new CustomWalkLeg(leg, fetchWalkLegStableIds(leg), travelSegmentType);
+    public static CustomStreetLeg toCustomStreetLeg(Trip.WalkLeg leg, String travelSegmentType, String mode) {
+        return new CustomStreetLeg(leg, fetchStreetLegStableIds(leg), travelSegmentType, mode);
     }
 
-    private static List<String> fetchWalkLegStableIds(Trip.WalkLeg leg) {
+    private static List<String> fetchStreetLegStableIds(Trip.WalkLeg leg) {
         return leg.details.get("stable_edge_ids").stream()
                 .map(idPathDetail -> (String) idPathDetail.getValue())
                 .collect(toList());
