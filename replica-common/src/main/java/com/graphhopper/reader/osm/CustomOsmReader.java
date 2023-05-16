@@ -17,14 +17,14 @@ import com.graphhopper.reader.dem.EdgeSampling;
 import com.graphhopper.reader.dem.ElevationProvider;
 import com.graphhopper.routing.OSMReaderConfig;
 import com.graphhopper.routing.ev.Country;
+import com.graphhopper.routing.ev.EdgeIntAccess;
 import com.graphhopper.routing.util.AreaIndex;
 import com.graphhopper.routing.util.CustomArea;
-import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.OSMParsers;
 import com.graphhopper.routing.util.countryrules.CountryRule;
 import com.graphhopper.routing.util.countryrules.CountryRuleFactory;
 import com.graphhopper.routing.util.parsers.RestrictionSetter;
-import com.graphhopper.search.EdgeKVStorage;
+import com.graphhopper.search.KVStorage;
 import com.graphhopper.storage.BaseGraph;
 import com.graphhopper.storage.IntsRef;
 import com.graphhopper.storage.NodeAccess;
@@ -42,9 +42,10 @@ import java.util.function.LongToIntFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.graphhopper.search.EdgeKVStorage.KeyValue.*;
+import static com.graphhopper.search.KVStorage.KeyValue.*;
 import static com.graphhopper.util.Helper.nf;
 import static java.util.Collections.emptyList;
+
 
 public class CustomOsmReader {
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomOsmReader.class);
@@ -53,9 +54,9 @@ public class CustomOsmReader {
 
     private final OSMReaderConfig config;
     private final BaseGraph baseGraph;
+    private final EdgeIntAccess edgeIntAccess;
     private final NodeAccess nodeAccess;
     private final TurnCostStorage turnCostStorage;
-    private final EncodingManager encodingManager;
     private final OSMParsers osmParsers;
     private final DistanceCalc distCalc = DistanceCalcEarth.DIST_EARTH;
     private final RestrictionSetter restrictionSetter;
@@ -73,15 +74,13 @@ public class CustomOsmReader {
     private WayToEdgesMap restrictedWaysToEdgesMap = new WayToEdgesMap();
     private List<ReaderRelation> restrictionRelations = new ArrayList<>();
 
-
     private Map<Integer, Long> ghNodeIdToOsmNodeIdMap;
     private Map<Long, Long> artificialIdToOsmNodeIds;
     private Map<Integer, Integer> ghEdgeIdToSegmentIndex;
 
-
-    public CustomOsmReader(BaseGraph baseGraph, EncodingManager encodingManager, OSMParsers osmParsers, OSMReaderConfig config) {
+    public CustomOsmReader(BaseGraph baseGraph, OSMParsers osmParsers, OSMReaderConfig config) {
         this.baseGraph = baseGraph;
-        this.encodingManager = encodingManager;
+        this.edgeIntAccess = baseGraph.createEdgeIntAccess();
         this.config = config;
         this.nodeAccess = baseGraph.getNodeAccess();
         this.osmParsers = osmParsers;
@@ -158,8 +157,7 @@ public class CustomOsmReader {
         if (!baseGraph.isInitialized())
             throw new IllegalStateException("BaseGraph must be initialize before we can read OSM");
 
-        CustomWaySegmentParser waySegmentParser = new CustomWaySegmentParser.Builder(baseGraph.getNodeAccess())
-                .setDirectory(baseGraph.getDirectory())
+        CustomWaySegmentParser waySegmentParser = new CustomWaySegmentParser.Builder(baseGraph.getNodeAccess(), baseGraph.getDirectory())
                 .setElevationProvider(eleProvider)
                 .setWayFilter(this::acceptWay)
                 .setSplitNodeFilter(this::isBarrierNode)
@@ -228,7 +226,7 @@ public class CustomOsmReader {
      * This method is called during the second pass of {@link WaySegmentParser} and provides an entry point to enrich
      * the given OSM way with additional tags before it is passed on to the tag parsers.
      */
-    protected void setArtificialWayTags(PointList pointList, ReaderWay way, double distance, Map<String, Object> nodeTags) {
+    protected void setArtificialWayTags(PointList pointList, ReaderWay way, double distance, List<Map<String, Object>> nodeTags) {
         way.setTag("node_tags", nodeTags);
         way.setTag("edge_distance", distance);
         way.setTag("point_list", pointList);
@@ -262,6 +260,7 @@ public class CustomOsmReader {
         Country country = Country.MISSING;
         CustomArea prevCustomArea = null;
         for (CustomArea customArea : customAreas) {
+            if (customArea.getProperties() == null) continue;
             Object alpha3 = customArea.getProperties().get(Country.ISO_ALPHA3);
             if (alpha3 == null)
                 continue;
@@ -294,12 +293,14 @@ public class CustomOsmReader {
      * @param way       the OSM way this segment was taken from
      * @param nodeTags  node tags of this segment if it is an artificial edge, empty otherwise
      */
-    protected void addEdge(int fromIndex, int toIndex, PointList pointList, ReaderWay way, Map<String, Object> nodeTags, int segmentIndex) {
-        // sanity checks
+    protected void addEdge(int fromIndex, int toIndex, PointList pointList, ReaderWay way, List<Map<String, Object>> nodeTags, int segmentIndex) {
+// sanity checks
         if (fromIndex < 0 || toIndex < 0)
             throw new AssertionError("to or from index is invalid for this edge " + fromIndex + "->" + toIndex + ", points:" + pointList);
         if (pointList.getDimension() != nodeAccess.getDimension())
             throw new AssertionError("Dimension does not match for pointList vs. nodeAccess " + pointList.getDimension() + " <-> " + nodeAccess.getDimension());
+        if (pointList.size() != nodeTags.size())
+            throw new AssertionError("there should be as many maps of node tags as there are points. node tags: " + nodeTags.size() + ", points: " + pointList.size());
 
         // todo: in principle it should be possible to delay elevation calculation so we do not need to store
         // elevations during import (saves memory in pillar info during import). also note that we already need to
@@ -346,10 +347,9 @@ public class CustomOsmReader {
 
         setArtificialWayTags(pointList, way, distance, nodeTags);
         IntsRef relationFlags = getRelFlagsMap(way.getId());
-        IntsRef edgeFlags = encodingManager.createEdgeFlags();
-        edgeFlags = osmParsers.handleWayTags(edgeFlags, way, relationFlags);
-        EdgeIteratorState edge = baseGraph.edge(fromIndex, toIndex).setDistance(distance).setFlags(edgeFlags);
-        List<EdgeKVStorage.KeyValue> list = way.getTag("key_values", Collections.emptyList());
+        EdgeIteratorState edge = baseGraph.edge(fromIndex, toIndex).setDistance(distance);
+        osmParsers.handleWayTags(edge.getEdge(), edgeIntAccess, way, relationFlags);
+        List<KVStorage.KeyValue> list = way.getTag("key_values", Collections.emptyList());
         if (!list.isEmpty())
             edge.setKeyValues(list);
 
@@ -394,7 +394,7 @@ public class CustomOsmReader {
      */
     protected void preprocessWay(ReaderWay way, CustomWaySegmentParser.CoordinateSupplier coordinateSupplier) {
         // storing the road name does not yet depend on the flagEncoder so manage it directly
-        List<EdgeKVStorage.KeyValue> list = new ArrayList<>();
+        List<KVStorage.KeyValue> list = new ArrayList<>();
         if (config.isParseWayNames()) {
             // http://wiki.openstreetmap.org/wiki/Key:name
             String name = "";
@@ -403,31 +403,32 @@ public class CustomOsmReader {
             if (name.isEmpty())
                 name = fixWayName(way.getTag("name"));
             if (!name.isEmpty())
-                list.add(new EdgeKVStorage.KeyValue(STREET_NAME, name));
+                list.add(new KVStorage.KeyValue(STREET_NAME, name));
 
             // http://wiki.openstreetmap.org/wiki/Key:ref
             String refName = fixWayName(way.getTag("ref"));
             if (!refName.isEmpty())
-                list.add(new EdgeKVStorage.KeyValue(STREET_REF, refName));
+                list.add(new KVStorage.KeyValue(STREET_REF, refName));
 
             if (way.hasTag("destination:ref")) {
-                list.add(new EdgeKVStorage.KeyValue(STREET_DESTINATION_REF, fixWayName(way.getTag("destination:ref"))));
+                list.add(new KVStorage.KeyValue(STREET_DESTINATION_REF, fixWayName(way.getTag("destination:ref"))));
             } else {
                 if (way.hasTag("destination:ref:forward"))
-                    list.add(new EdgeKVStorage.KeyValue(STREET_DESTINATION_REF, fixWayName(way.getTag("destination:ref:forward")), true, false));
+                    list.add(new KVStorage.KeyValue(STREET_DESTINATION_REF, fixWayName(way.getTag("destination:ref:forward")), true, false));
                 if (way.hasTag("destination:ref:backward"))
-                    list.add(new EdgeKVStorage.KeyValue(STREET_DESTINATION_REF, fixWayName(way.getTag("destination:ref:backward")), false, true));
+                    list.add(new KVStorage.KeyValue(STREET_DESTINATION_REF, fixWayName(way.getTag("destination:ref:backward")), false, true));
             }
             if (way.hasTag("destination")) {
-                list.add(new EdgeKVStorage.KeyValue(STREET_DESTINATION, fixWayName(way.getTag("destination"))));
+                list.add(new KVStorage.KeyValue(STREET_DESTINATION, fixWayName(way.getTag("destination"))));
             } else {
                 if (way.hasTag("destination:forward"))
-                    list.add(new EdgeKVStorage.KeyValue(STREET_DESTINATION, fixWayName(way.getTag("destination:forward")), true, false));
+                    list.add(new KVStorage.KeyValue(STREET_DESTINATION, fixWayName(way.getTag("destination:forward")), true, false));
                 if (way.hasTag("destination:backward"))
-                    list.add(new EdgeKVStorage.KeyValue(STREET_DESTINATION, fixWayName(way.getTag("destination:backward")), false, true));
+                    list.add(new KVStorage.KeyValue(STREET_DESTINATION, fixWayName(way.getTag("destination:backward")), false, true));
             }
         }
         way.setTag("key_values", list);
+
 
         if (!isCalculateWayDistance(way))
             return;
@@ -478,8 +479,8 @@ public class CustomOsmReader {
     static String fixWayName(String str) {
         if (str == null)
             return "";
-        // the EdgeKVStorage does not accept too long strings -> Helper.cutStringForKV
-        return EdgeKVStorage.cutString(WAY_NAME_PATTERN.matcher(str).replaceAll(", "));
+        // the KVStorage does not accept too long strings -> Helper.cutStringForKV
+        return KVStorage.cutString(WAY_NAME_PATTERN.matcher(str).replaceAll(", "));
     }
 
     /**
