@@ -3,12 +3,12 @@ package com.graphhopper.replica;
 import com.google.common.collect.ImmutableMap;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.ev.EncodedValueLookup;
-import com.graphhopper.routing.util.CarTagParser;
+import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
 import com.graphhopper.util.PMap;
 
 import java.util.Objects;
 
-public class ReplicaCustomSpeedsCarTagParser extends CarTagParser {
+public class ReplicaCustomSpeedsCarTagParser extends CarAverageSpeedParser {
     private final ImmutableMap<Long, Double> osmWayIdToMaxSpeed;
 
     public ReplicaCustomSpeedsCarTagParser(EncodedValueLookup lookup, PMap configuration, ImmutableMap<Long, Double> osmWayIdToMaxSpeed) {
@@ -17,11 +17,11 @@ public class ReplicaCustomSpeedsCarTagParser extends CarTagParser {
     }
 
     @Override
-    protected double applyMaxSpeed(ReaderWay way, double speed) {
+    protected double applyMaxSpeed(ReaderWay way, double speed, boolean bwd) {
         // n.b. superclass logic sets max speed to be 90% of the OSM's max speed for the way, but we don't apply the 90%
         // discount for the custom speeds we've been explicitly given
         Double knownMaxSpeed = osmWayIdToMaxSpeed.get(way.getId());
-        return Objects.requireNonNullElseGet(knownMaxSpeed, () -> super.applyMaxSpeed(way, speed));
+        return Objects.requireNonNullElseGet(knownMaxSpeed, () -> super.applyMaxSpeed(way, speed, bwd));
     }
 
     @Override

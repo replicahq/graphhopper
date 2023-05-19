@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 GraphHopper GmbH.
+ * Copyright 2014-2023 GraphHopper GmbH.
  *
  * NOTICE:  All information contained herein is, and remains the property of
  * GraphHopper GmbH. The intellectual and technical concepts contained herein
@@ -15,10 +15,14 @@ import com.graphhopper.reader.osm.conditional.ConditionalOSMTagInspector;
 import com.graphhopper.reader.osm.conditional.ConditionalParser;
 import com.graphhopper.reader.osm.conditional.ConditionalValueParser;
 import com.graphhopper.reader.osm.conditional.DateRangeParser;
-import com.graphhopper.routing.ev.*;
-import com.graphhopper.routing.util.CarTagParser;
+import com.graphhopper.routing.ev.BooleanEncodedValue;
+import com.graphhopper.routing.ev.EncodedValueLookup;
+import com.graphhopper.routing.ev.Roundabout;
+import com.graphhopper.routing.ev.VehicleAccess;
 import com.graphhopper.routing.util.TransportationMode;
 import com.graphhopper.routing.util.WayAccess;
+import com.graphhopper.routing.util.parsers.AbstractAccessParser;
+import com.graphhopper.routing.util.parsers.CarAccessParser;
 import com.graphhopper.routing.util.parsers.helpers.OSMValueExtractor;
 import com.graphhopper.util.PMap;
 import org.slf4j.Logger;
@@ -26,88 +30,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static com.graphhopper.routing.util.EncodingManager.getKey;
-import static com.graphhopper.util.Helper.toLowerCase;
+import static com.graphhopper.routing.util.parsers.AbstractAverageSpeedParser.getMaxSpeed;
 
-/**
- * Truck encoder with various properties. See truck limits bugs in OSM e.g.
- * maxheights etc: http://maxheight.bplaced.net/overpass/map.html
- * <p>
- *
- * @author Peter Karich
- */
-public class TruckTagParser extends CarTagParser {
-    public static final double EE_TRUCK_MAX_SPEED = 95;
+public class TruckAccessParser extends CarAccessParser {
 
-    /**
-     * Describes a big HGV truck with 3 axes. E.g. the 6 wheeler here:
-     * http://www.grabtrucks.com/willitfit/ where we only increased the length
-     */
-    public static TruckTagParser createTruck(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "truck");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_TRUCK_MAX_SPEED);
-        return new TruckTagParser(lookup, properties).
-                setHeight(3.7).setWidth(2.6, 0.34).setLength(12).
-                setWeight(13.0 + 13.0).setAxes(3).setIsHGV(true).
-                initProperties();
-    }
-
-    // Describes "small truck" - eg a delivery vehicle
-    public static TruckTagParser createSmallTruck(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            properties = new PMap(properties).putObject("name", "small_truck");
-        if (!properties.has("max_speed"))
-            properties = new PMap(properties).putObject("max_speed", EE_TRUCK_MAX_SPEED);
-        return new TruckTagParser(lookup, properties).
-                setHeight(2.7D).setWidth(2.0D, 0.4D).setLength(5.5D).
-                setWeight(3.48D).setIsHGV(false).
-                initProperties();
-    }
-
-    // Unused function showing example of customizing various vehicle parameters
-    public static TruckTagParser createCustomEE(EncodedValueLookup lookup, PMap properties) {
-        if (!properties.has("name"))
-            throw new IllegalArgumentException("custom_ee requires a name");
-        if (!properties.has("max_speed"))
-            throw new IllegalArgumentException("custom_ee requires max_speed");
-        if (properties.getBool("soft_oneway", false))
-            throw new IllegalArgumentException("soft_oneway is no longer supported. Use roads FlagEncoder with car_access instead");
-        return new TruckTagParser(lookup, properties).
-                setHeight(properties.getDouble("height", 2.7)).
-                setWidth(properties.getDouble("width", 2), properties.getDouble("mirror_width", 0.4)).
-                setLength(properties.getDouble("length", 5.5)).
-                setWeight(properties.getDouble("weight", 2.08)).
-                setIsHGV(properties.getBool("hgv", false)).
-                setAxes(properties.getInt("axes", 2)).
-                setCarriesGoods(properties.getBool("carries_goods", false)).
-                setCarriesHazard(properties.getBool("carries_hazard", false)).
-                setIsAgricultural(properties.getBool("agricultural", false)).
-                setIsTaxi(properties.getBool("taxi", false)).
-                setExcludeMaxSpeed(properties.getDouble("exclude_max_speed", 0)).
-                initProperties(createSpeedMap(properties.getString("speed", "")));
-    }
-
-    // small_truck|custom_ee=true|speed=primary=30;secondary=20
-    private static Map<String, Integer> createSpeedMap(String semicolonStr) {
-        Map<String, Integer> map = new HashMap<>();
-        for (String arg : semicolonStr.split(";")) {
-            int index = arg.indexOf("=");
-            if (index <= 0)
-                continue;
-
-            String key = arg.substring(0, index);
-            String value = arg.substring(index + 1);
-            Integer integ = map.put(key, Integer.parseInt(value));
-            if (integ != null)
-                throw new IllegalArgumentException("Pair '" + toLowerCase(key) + "'='" + value + "' not possible to " +
-                        "add to the speed map as the key already exists with '" + integ + "'");
-        }
-        return map;
-    }
-
-    private static final Logger logger = LoggerFactory.getLogger(TruckTagParser.class);
+    private static final Logger logger = LoggerFactory.getLogger(TruckAccessParser.class);
     // default settings "isCarLike == true"
     private boolean isHGV = false;
     private boolean carriesGoods = true;
@@ -123,19 +50,16 @@ public class TruckTagParser extends CarTagParser {
     private double excludeMaxSpeed;
     private int axes = 2;
 
-    public TruckTagParser(EncodedValueLookup lookup, PMap properties) {
+    public TruckAccessParser(EncodedValueLookup lookup, PMap properties) {
         this(
-                lookup.getBooleanEncodedValue(getKey(properties.getString("name", "car"), "access")),
-                lookup.getDecimalEncodedValue(getKey(properties.getString("name", "car"), "average_speed")),
+                lookup.getBooleanEncodedValue(VehicleAccess.key(properties.getString("name", "car"))),
                 lookup.getBooleanEncodedValue(Roundabout.KEY),
                 properties
         );
     }
 
-    public TruckTagParser(BooleanEncodedValue accessEnc, DecimalEncodedValue speedEnc,
-                          BooleanEncodedValue roundaboutEnc, PMap properties) {
-        super(accessEnc, speedEnc, roundaboutEnc, properties, TransportationMode.CAR,
-                speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_TRUCK_MAX_SPEED)));
+    public TruckAccessParser(BooleanEncodedValue accessEnc, BooleanEncodedValue roundaboutEnc, PMap properties) {
+        super(accessEnc, roundaboutEnc, properties, TransportationMode.CAR);
         if (!properties.getBool("block_private", true)) {
             restrictedValues.remove("private");
             intendedValues.add("private");
@@ -151,23 +75,23 @@ public class TruckTagParser extends CarTagParser {
         }
     }
 
-    public TruckTagParser setHeight(double height) {
+    public TruckAccessParser setHeight(double height) {
         this.height = height;
         return this;
     }
 
-    public TruckTagParser setLength(double length) {
+    public TruckAccessParser setLength(double length) {
         this.length = length;
         return this;
     }
 
-    public TruckTagParser setWidth(double width, double mirrorWidth) {
+    public TruckAccessParser setWidth(double width, double mirrorWidth) {
         this.width = width;
         this.mirrorWidth = mirrorWidth;
         return this;
     }
 
-    public TruckTagParser setAxes(int axes) {
+    public TruckAccessParser setAxes(int axes) {
         this.axes = axes;
         return this;
     }
@@ -175,7 +99,7 @@ public class TruckTagParser extends CarTagParser {
     /**
      * Sets the weight of the vehicle including people, equipment and payload in tons
      */
-    public TruckTagParser setWeight(double weight) {
+    public TruckAccessParser setWeight(double weight) {
         this.weight = weight;
         return this;
     }
@@ -183,7 +107,7 @@ public class TruckTagParser extends CarTagParser {
     /**
      * Sets if this vehicle should be a heavy goods vehicle
      */
-    public TruckTagParser setIsHGV(boolean isHGV) {
+    public TruckAccessParser setIsHGV(boolean isHGV) {
         this.isHGV = isHGV;
         return this;
     }
@@ -192,33 +116,33 @@ public class TruckTagParser extends CarTagParser {
         return isHGV;
     }
 
-    public TruckTagParser setCarriesGoods(boolean carriesGoods) {
+    public TruckAccessParser setCarriesGoods(boolean carriesGoods) {
         this.carriesGoods = carriesGoods;
         return this;
     }
 
-    public TruckTagParser setCarriesHazard(boolean carriesHazard) {
+    public TruckAccessParser setCarriesHazard(boolean carriesHazard) {
         this.carriesHazard = carriesHazard;
         return this;
     }
 
-    public TruckTagParser setIsAgricultural(boolean isAgricultural) {
+    public TruckAccessParser setIsAgricultural(boolean isAgricultural) {
         this.isAgricultural = isAgricultural;
         return this;
     }
 
-    public TruckTagParser setIsTaxi(boolean isTaxi) {
+    public TruckAccessParser setIsTaxi(boolean isTaxi) {
         this.isTaxi = isTaxi;
         this.isPSV = isTaxi;
         return this;
     }
 
-    public TruckTagParser setExcludeMaxSpeed(double maxSpeed) {
+    public TruckAccessParser setExcludeMaxSpeed(double maxSpeed) {
         excludeMaxSpeed = maxSpeed;
         return this;
     }
 
-    public TruckTagParser initProperties() {
+    public TruckAccessParser initProperties() {
         // TODO merge with init somehow?
         return initProperties(null);
     }
@@ -227,23 +151,20 @@ public class TruckTagParser extends CarTagParser {
      * This method initialized the speed and the specified speedMap or car
      * speeds will be used for default speeds. Maps highway tags to speeds.
      */
-    public TruckTagParser initProperties(Map<String, Integer> speedMap) {
+    public TruckAccessParser initProperties(Map<String, Integer> speedMap) {
         final List<String> tmpRestrictions = new ArrayList<>();
         if (isCarLike()) {
-            trackTypeSpeedMap.clear();
-            trackTypeSpeedMap.put("grade2", 12);
-            trackTypeSpeedMap.put("grade1", 14);
-            trackTypeSpeedMap.put(null, 8);
+            trackTypeValues.clear();
+            trackTypeValues.addAll(Arrays.asList("grade2", "grade1", null));
 
         } else if (isAgricultural) {
-            defaultSpeedMap.put("forestry", 15);
-            defaultSpeedMap.remove("track");
+            highwayValues.add("forestry");
+            highwayValues.remove("track");
 
             restrictions.remove("motorcar");
             tmpRestrictions.add("agricultural");
         } else {
-            defaultSpeedMap.remove("track");
-
+            highwayValues.remove("track");
             restrictions.remove("motorcar");
         }
 
@@ -251,45 +172,12 @@ public class TruckTagParser extends CarTagParser {
         if (isCarLike()) {
             // keep values
         } else if (weight <= 10.0 && width <= 2.7) {
-            // small truck
-            defaultSpeedMap.put("motorway", 90);
-            defaultSpeedMap.put("motorway_link", 75);
-            defaultSpeedMap.put("motorroad", 75);
-            defaultSpeedMap.put("trunk", 70);
-            defaultSpeedMap.put("trunk_link", 60);
-            defaultSpeedMap.put("primary", 65);
-            defaultSpeedMap.put("primary_link", 60);
-            defaultSpeedMap.put("secondary", 55);
-            defaultSpeedMap.put("secondary_link", 50);
-            defaultSpeedMap.put("tertiary", 30);
-            defaultSpeedMap.put("tertiary_link", 25);
-            defaultSpeedMap.put("unclassified", 25);
-            defaultSpeedMap.put("residential", 20);
-            defaultSpeedMap.put("living_street", 5);
-            defaultSpeedMap.put("service", 15);
-            defaultSpeedMap.put("road", 15);
+            // keep values (small truck)
+
         } else {
             // wide enough trucks can pass this trap
             barriers.remove("bus_trap");
             barriers.remove("sump_buster");
-
-            // truck / bus
-            defaultSpeedMap.put("motorway", 80);
-            defaultSpeedMap.put("motorway_link", 75);
-            defaultSpeedMap.put("motorroad", 70);
-            defaultSpeedMap.put("trunk", 70);
-            defaultSpeedMap.put("trunk_link", 60);
-            defaultSpeedMap.put("primary", 60);
-            defaultSpeedMap.put("primary_link", 55);
-            defaultSpeedMap.put("secondary", 55);
-            defaultSpeedMap.put("secondary_link", 55);
-            defaultSpeedMap.put("tertiary", 20);
-            defaultSpeedMap.put("tertiary_link", 20);
-            defaultSpeedMap.put("unclassified", 20);
-            defaultSpeedMap.put("residential", 15);
-            defaultSpeedMap.put("living_street", 5);
-            defaultSpeedMap.put("service", 10);
-            defaultSpeedMap.put("road", 10);
         }
 
         if (carriesHazard) {
@@ -316,10 +204,10 @@ public class TruckTagParser extends CarTagParser {
 
         if (speedMap != null) {
             for (Map.Entry<String, Integer> entry : speedMap.entrySet()) {
-                if (entry.getValue() <= 0) {
-                    defaultSpeedMap.remove(entry.getKey());
+                if (entry.getValue() < 0) {
+                    highwayValues.remove(entry.getKey());
                 } else {
-                    defaultSpeedMap.put(entry.getKey(), entry.getValue());
+                    highwayValues.add(entry.getKey());
                 }
             }
         } else {
@@ -330,7 +218,7 @@ public class TruckTagParser extends CarTagParser {
     }
 
     @Override
-    public void init(DateRangeParser dateRangeParser) {
+    public AbstractAccessParser init(DateRangeParser dateRangeParser) {
         super.init(dateRangeParser);
 
         List<String> tmpRestrictions = new ArrayList<>(restrictions);
@@ -367,21 +255,15 @@ public class TruckTagParser extends CarTagParser {
             });
 
         setConditionalTagInspector(condInspector);
+        return this;
     }
 
     boolean isCarLike() {
         return weight <= 3.0 && width <= 2 && length < 6;
     }
 
-    double getDefaultSpeed(String key) {
-        return defaultSpeedMap.get(key);
-    }
-
     @Override
     public WayAccess getAccess(ReaderWay way) {
-        if (maxPossibleSpeed < 1)
-            throw new IllegalStateException("maxPossibleSpeed cannot be smaller 1 but was " + maxPossibleSpeed + ". Call initProperties before using TruckFlagEncoder");
-
         String highwayValue = way.getTag("highway");
         String firstValue = way.getFirstPriorityTag(restrictions);
         if (highwayValue == null) {
@@ -398,14 +280,14 @@ public class TruckTagParser extends CarTagParser {
             return WayAccess.CAN_SKIP;
         }
 
-        if ("track".equals(highwayValue) && trackTypeSpeedMap.get(way.getTag("tracktype")) == null)
+        if ("track".equals(highwayValue) && !trackTypeValues.contains(way.getTag("tracktype")))
             return WayAccess.CAN_SKIP;
 
-        if (!defaultSpeedMap.containsKey(highwayValue)) {
+        if (!highwayValues.contains(highwayValue)) {
             return WayAccess.CAN_SKIP;
         }
 
-        if (excludeMaxSpeed > 0 && getMaxSpeed(way) > excludeMaxSpeed) {
+        if (excludeMaxSpeed > 0 && Math.max(getMaxSpeed(way, false), getMaxSpeed(way, true)) > excludeMaxSpeed) {
             return WayAccess.CAN_SKIP;
         }
 
@@ -479,39 +361,11 @@ public class TruckTagParser extends CarTagParser {
     }
 
     @Override
-    protected double getSpeed(ReaderWay way) {
-        double speed = super.getSpeed(way);
-
-        double boost = 0;
-        if (isPSV) {
-            if (way.hasTag("lanes:psv")) {
-                boost = 4;
-            }
-
-            if (isTaxi && way.hasTag("lanes:taxi")) {
-                boost = 4;
-            }
-        }
-
-        return speed + boost;
-    }
-
-    @Override
     protected boolean isBackwardOneway(ReaderWay way) {
         return super.isBackwardOneway(way)
                 // the tag lanes:psv:backward can contain a positive number
                 || isPSV && (way.hasTag("oneway:psv", "no") || way.hasTag("psv", "opposite_lane") || way.hasTag("lanes:psv:backward") || way.hasTag("psv:lanes:backward") || way.hasTag("psv:backward", "yes"))
                 || isPSV && isTaxi && (way.hasTag("oneway:taxi", "no") || way.hasTag("taxi", "opposite_lane") || way.hasTag("lanes:taxi:backward") || way.hasTag("taxi:lanes:backward") || way.hasTag("taxi:backward", "yes"));
-    }
-
-    @Override
-    protected double applyMaxSpeed(ReaderWay way, double speed) {
-        // pick max speed as it is. reduce it in SpeedModel and not by a constant factor of 0.9 like done in CarFlagEncoder
-        double maxSpeed = getMaxSpeed(way);
-        if (maxSpeed >= 0) {
-            return Math.max(5, Math.min(maxPossibleSpeed, maxSpeed));
-        }
-        return speed;
     }
 
     public boolean smallerWeight(ReaderWay way, String key, double val) {
