@@ -178,6 +178,7 @@ public class CustomOsmReader {
                 osmFile.getAbsolutePath(), nf(baseGraph.getNodes()), nf(baseGraph.getEdges()), nf(zeroCounter));
         this.ghNodeIdToOsmNodeIdMap = waySegmentParser.getGhNodeIdToOsmNodeIdMap();
         this.artificialIdToOsmNodeIds = waySegmentParser.getArtificialIdToOsmNodeIds();
+        waySegmentParser.releaseNodeData();
     }
 
     /**

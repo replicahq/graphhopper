@@ -91,7 +91,10 @@ public class CustomWaySegmentParser {
         readOSM(osmFile, new Pass2Handler(), SkipOptions.none());
         LOGGER.info("pass2 - finished, took: {}", sw2.stop().getTimeString());
 
-        nodeData.release();
+        // Replica-specific: usually, node data would be cleared here. But, we want
+        // access to that data post-OSM-read. So, we removed the release() call here,
+        // and moved it into a helper below that we can call after fetching the
+        // data we care about from the read step
 
         LOGGER.info("Finished reading OSM file." +
                 " pass1: " + (int) sw1.getSeconds() + "s, " +
@@ -109,8 +112,18 @@ public class CustomWaySegmentParser {
         return nodeData.getGhIdToOsmIdMap();
     }
 
+    /**
+     * Replica-added helper to get access to internal mapping of GH artificial node IDs to OSM node ID
+     */
     public Map<Long, Long> getArtificialIdToOsmNodeIds() {
         return nodeData.getArtificialIdToOsmNodeIds();
+    }
+
+    /**
+     * Replica-added helper to clear node data object post-read (after we've grabbed info we care about)
+     */
+    public void releaseNodeData() {
+        nodeData.release();
     }
 
     /**
