@@ -13,23 +13,23 @@ graphhopper:
     - name: car
       vehicle: car
       weighting: custom
-      custom_model_file: empty
+      custom_model_files: []
     - name: bike
       vehicle: bike
       weighting: custom
-      custom_model_file: empty
+      custom_model_files: []
     - name: foot
       vehicle: foot
       weighting: custom
-      custom_model_file: empty
+      custom_model_files: []
     - name: truck
       vehicle: truck
       weighting: custom
-      custom_model_file: empty
+      custom_model_files: []
     - name: small_truck
       vehicle: small_truck
       weighting: custom
-      custom_model_file: empty
+      custom_model_files: []
 
 server:
   min_threads: 4

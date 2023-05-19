@@ -23,11 +23,11 @@ graphhopper:
     - name: car
       vehicle: car
       weighting: custom
-      custom_model_file: local_car_custom_model.json
+      custom_model_files: [local_car_custom_model.json]
     - name: car_freeway
       vehicle: car
       weighting: custom
-      custom_model_file: freeway_car_custom_model.json
+      custom_model_files: [freeway_car_custom_model.json]
     - name: bike
       vehicle: bike
       weighting: fastest

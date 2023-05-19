@@ -51,7 +51,7 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
             // internals to tolerate it
             PMap configWithName = new PMap(configuration).putObject("name", name);
             return new VehicleTagParsers(
-                    new CarAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
+                    new CarAccessParser(lookup, configWithName).init(configWithName.getObject("date_range_parser", new DateRangeParser())),
                     new ReplicaCustomSpeedsCarTagParser(lookup, configWithName, vehicleNameToCustomSpeeds.get(name)),
                     null
             );
