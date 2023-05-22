@@ -77,10 +77,16 @@ class SearchInput extends React.Component {
                 actionType: "maxProfileDuration"
             }),
             React.createElement(NumberInput, {
-                value: this.props.search.betaWalkTime,
-                label: "Beta walk time (values > 1.0 disincentivize walking)",
+                value: this.props.search.betaAccessTime,
+                label: "Beta access time (values > 1.0 disincentivize walking)",
                 onChange: this.handleInputChange,
-                actionType: "betaWalkTime"
+                actionType: "betaAccessTime"
+            }),
+            React.createElement(NumberInput, {
+                value: this.props.search.betaEgressTime,
+                label: "Beta egress time (values > 1.0 disincentivize walking)",
+                onChange: this.handleInputChange,
+                actionType: "betaEgressTime"
             }),
             React.createElement(NumberInput, {
                 value: this.props.search.limitStreetTimeSeconds,

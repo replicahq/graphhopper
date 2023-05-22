@@ -33,11 +33,12 @@ export default class App extends React.Component {
             departureDateTime: new moment(),
             limitSolutions: 4,
             maxProfileDuration: 10,
-            betaWalkTime: 1.5,
             limitStreetTimeSeconds: 1440,
             usePareto: false,
             accessMode: "foot",
             egressMode: "foot",
+            betaAccessTime: 1.5,
+            betaEgressTime: 1.5,
             betaTransfers: 720000.0,
             maxVisitedNodes: 1000000,
             routes: {
@@ -90,12 +91,13 @@ export default class App extends React.Component {
                     ptRouteRequest.setEarliestDepartureTime(timestampFromDate);
                     ptRouteRequest.setLimitSolutions(this.state.limitSolutions);
                     ptRouteRequest.setMaxProfileDuration(this.state.maxProfileDuration);
-                    ptRouteRequest.setBetaWalkTime(this.state.betaWalkTime);
                     ptRouteRequest.setLimitStreetTimeSeconds(this.state.limitStreetTimeSeconds)
                     ptRouteRequest.setUsePareto(this.state.usePareto);
                     ptRouteRequest.setBetaTransfers(this.state.betaTransfers);
                     ptRouteRequest.setAccessMode(this.state.accessMode);
                     ptRouteRequest.setEgressMode(this.state.egressMode);
+                    ptRouteRequest.setBetaAccessTime(this.state.betaAccessTime);
+                    ptRouteRequest.setBetaEgressTime(this.state.betaEgressTime);
                     ptRouteRequest.setMaxVisitedNodes(this.state.maxVisitedNodes);
 
                     // log request object for debugging

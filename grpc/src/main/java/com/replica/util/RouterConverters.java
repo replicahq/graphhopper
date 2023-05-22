@@ -224,6 +224,23 @@ public final class RouterConverters {
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
         ghPtRequest.setMaxVisitedNodes(request.getMaxVisitedNodes() == 0 ? DEFAULT_MAX_VISITED_NODES : request.getMaxVisitedNodes());
 
+        // Set access and egress leg modes if they've been explicitly provided.
+        // Note: even if modes other than walk are requested, Graphhopper will return these legs
+        // as Trip.WalkLeg objects
+        // Note: GraphHopper currently only accepts profiles with standard "base" names for
+        // access/egress modes. Therefore, "mode" and "profile" are somewhat interchangeable here
+        String accessMode = request.getAccessMode().equals("") ? "foot" : request.getAccessMode();
+        String egressMode = request.getEgressMode().equals("") ? "foot" : request.getEgressMode();
+        ghPtRequest.setAccessProfile(accessMode);
+        ghPtRequest.setEgressProfile(egressMode);
+
+        // If beta access/egress time hasn't been explicitly set, assume caller is using older protos
+        // where only one global beta walk time param is provided, and use that value
+        double betaAccessTime = request.getBetaAccessTime() == 0.0 ? request.getBetaWalkTime() : request.getBetaAccessTime();
+        double betaEgressTime = request.getBetaEgressTime() == 0.0 ? request.getBetaWalkTime() : request.getBetaEgressTime();
+        ghPtRequest.setBetaAccessTime(betaAccessTime);
+        ghPtRequest.setBetaEgressTime(betaEgressTime);
+
         return ghPtRequest;
     }
 

@@ -223,16 +223,6 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
         Point toPoint = request.getPoints(1);
         Request ghPtRequest = RouterConverters.toGHPtRequest(request);
 
-        // Set access and egress leg modes if they've been explicitly provided.
-        // Note: even if modes other than walk are requested, Graphhopper will return these legs
-        // as Trip.WalkLeg objects
-        // Note: GraphHopper currently only accepts profiles with standard "base" names for
-        // access/egress modes. Therefore, "mode" and "profile" are somewhat interchangeable here
-        String accessMode = request.getAccessMode().equals("") ? "foot" : request.getAccessMode();
-        String egressMode = request.getEgressMode().equals("") ? "foot" : request.getEgressMode();
-        ghPtRequest.setAccessProfile(accessMode);
-        ghPtRequest.setEgressProfile(egressMode);
-
         try {
             long routeStartTime = System.currentTimeMillis();
             GHResponse ghResponse = ptRouter.route(ghPtRequest);
