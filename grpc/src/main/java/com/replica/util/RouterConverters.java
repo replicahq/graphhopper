@@ -218,7 +218,6 @@ public final class RouterConverters {
         ghPtRequest.setPathDetails(Lists.newArrayList("stable_edge_ids"));
         ghPtRequest.setProfileQuery(true);
         ghPtRequest.setMaxProfileDuration(Duration.ofMinutes(request.getMaxProfileDuration()));
-        ghPtRequest.setBetaStreetTime(request.getBetaWalkTime());
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
         ghPtRequest.setIgnoreTransfers(!request.getUsePareto()); // ignoreTransfers=true means pareto queries are off
         ghPtRequest.setBetaTransfers(request.getBetaTransfers());
