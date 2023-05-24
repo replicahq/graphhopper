@@ -136,7 +136,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         }
 
         LOG.info("start creating graph from " + this.getOSMFile());
-        CustomOsmReader reader = new CustomOsmReader(this.getBaseGraph().getBaseGraph(), this.getEncodingManager(), this.getOSMParsers(), this.getReaderConfig())
+        CustomOsmReader reader = new CustomOsmReader(this.getBaseGraph().getBaseGraph(), this.getOSMParsers(), this.getReaderConfig())
                 .setFile(new File(this.getOSMFile())).
                 setAreaIndex(areaIndex).
                 setElevationProvider(this.getElevationProvider()).
@@ -199,7 +199,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         try (OSMInput input = new OSMInputFile(new File(osmPath)).setWorkerThreads(2).open()) {
             ReaderElement next;
             while((next = input.getNext()) != null) {
-                if (next.isType(ReaderElement.Type.WAY)) {
+                if (next.getType().equals(ReaderElement.Type.WAY)) {
                     if (++readCount % 100_000 == 0) {
                         LOG.info("Parsing tag info from OSM ways. " + readCount + " read so far.");
                     }
@@ -232,7 +232,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                             }
                         }
                     }
-                } else if (next.isType(ReaderElement.Type.RELATION)) {
+                } else if (next.getType().equals(ReaderElement.Type.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
                     }

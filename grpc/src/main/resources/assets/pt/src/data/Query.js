@@ -24,12 +24,13 @@ const CreateQuery = (baseUrl, search) => {
     url.searchParams.set("profile", "pt");
     url.searchParams.set("pt.limit_solutions", search.limitSolutions);
     url.searchParams.set("pt.max_profile_duration", search.maxProfileDuration);
-    url.searchParams.set("pt.beta_walk_time", search.betaWalkTime);
     url.searchParams.set("pt.limit_street_time", search.limitStreetTimeSeconds);
     url.searchParams.set("pt.use_pareto", search.usePareto);
     url.searchParams.set("pt.beta_transfers", search.betaTransfers);
     url.searchParams.set("pt.access_mode", search.accessMode);
     url.searchParams.set("pt.egress_mode", search.egressMode);
+    url.searchParams.set("pt.beta_access_time", search.betaAccessTime);
+    url.searchParams.set("pt.beta_egress_time", search.betaEgressTime);
     url.searchParams.set("pt.max_visited_nodes", search.maxVisitedNodes);
     return url.toString();
 };
@@ -70,12 +71,13 @@ const ParseQuery = (search, searchParams) => {
     parse("pt.profile_duration", "rangeQueryDuration", searchParams);
     parse("pt.ignore_transfers", "ignoreTransfers", searchParams);
     parse("pt.max_profile_duration", "maxProfileDuration", searchParams);
-    parse("pt.beta_walk_time", "betaWalkTime", searchParams);
-    parse("pt.limit_street_time", "limitStreetTimeSeconds", searchParams)
+    parse("pt.limit_street_time", "limitStreetTimeSeconds", searchParams);
     parse("pt.use_pareto", "usePareto", searchParams);
     parse("pt.beta_transfers", "betaTransfers", searchParams);
     parse("pt.access_mode", "accessMode", searchParams);
     parse("pt.egress_mode", "egressMode", searchParams);
+    parse("pt.beta_access_time", "betaAccessTime", searchParams);
+    parse("pt.beta_egress_time", "betaEgressTime", searchParams);
     parse("pt.max_visited_nodes", "maxVisitedNodes", searchParams);
     return search;
 };

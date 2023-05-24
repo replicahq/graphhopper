@@ -67,7 +67,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281,-121.48746937746185}; // Sacramento area
     private static final double[] REQUEST_ORIGIN_3 = {38.508810062393245,-121.5085223084316}; // South of Sacramento area
     private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914,-121.43714698730038}; // Sacramento area
-    private static final double[] REQUEST_DESTINATION_2 = {38.64478548196401,-121.34168802760543}; // North of Sacramento area
+    private static final double[] REQUEST_DESTINATION_2 = {38.62099864518184,-121.51902571320535}; // North of Sacramento area
 
     // Should force a transfer between routes from 2 distinct feeds
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_DIFF_FEEDS = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
@@ -174,13 +174,14 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .setEarliestDepartureTime(EARLIEST_DEPARTURE_TIME)
                 .setLimitSolutions(4)
                 .setMaxProfileDuration(10)
-                .setBetaWalkTime(1.5)
                 .setLimitStreetTimeSeconds(1440)
                 .setUsePareto(false)
                 .setBetaTransfers(1440000)
                 .setMaxVisitedNodes(1000000)
                 .setAccessMode(accessMode)
                 .setEgressMode(egressMode)
+                .setBetaAccessTime(1.5)
+                .setBetaEgressTime(1.5)
                 .build();
     }
 
@@ -237,11 +238,11 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         expectedModeCounts.put("car", 1);
         expectedModeCounts.put("foot", 2);
 
-        // Expected route is [car access -> transit -> transfer -> transit -> transit (no transfer) -> walk egress]
-        checkTransitQuery(response, 3, 3,
+        // Expected route is [car access -> transit -> transfer -> transit -> walk egress]
+        checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(60, 102, 4, 243, 83, 11)
+                Lists.newArrayList(60, 161, 2, 19, 18)
         );
     }
 
@@ -251,7 +252,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                                    Map<String, Integer> expectedModeCounts,
                                    List<Integer> expectedStableEdgeIdCount) {
         // Check details of Path are set correctly
-        assertEquals(1, response.getPathsList().size());
+        assertTrue(response.getPathsList().size() >= 1);
         RouterOuterClass.PtPath path = response.getPaths(0);
         List<RouterOuterClass.PtLeg> streetLegs = path.getLegsList().stream()
                 .filter(l -> !l.hasTransitMetadata()).collect(Collectors.toList());

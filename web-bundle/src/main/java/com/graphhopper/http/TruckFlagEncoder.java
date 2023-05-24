@@ -19,7 +19,7 @@ public class TruckFlagEncoder {
         BooleanEncodedValue accessEnc = new SimpleBooleanEncodedValue(
                 EncodingManager.getKey(TRUCK_VEHICLE_NAME, "access"), true);
         DecimalEncodedValue speedEnc = new DecimalEncodedValueImpl(
-                EncodingManager.getKey(TRUCK_VEHICLE_NAME, "average_speed"), TRUCK_SPEED_BITS, TRUCK_SPEED_FACTOR, false);
+                EncodingManager.getKey(TRUCK_VEHICLE_NAME, "average_speed"), TRUCK_SPEED_BITS, TRUCK_SPEED_FACTOR, true);
         DecimalEncodedValue turnCostEnc = maxTurnCosts > 0 ? TurnCost.create(TRUCK_VEHICLE_NAME, maxTurnCosts) : null;
         return new VehicleEncodedValues(TRUCK_VEHICLE_NAME, accessEnc, speedEnc, null, turnCostEnc);
     }
@@ -30,7 +30,7 @@ public class TruckFlagEncoder {
         BooleanEncodedValue accessEnc = new SimpleBooleanEncodedValue(
                 EncodingManager.getKey(SMALL_TRUCK_VEHICLE_NAME, "access"), true);
         DecimalEncodedValue speedEnc = new DecimalEncodedValueImpl(
-                EncodingManager.getKey(SMALL_TRUCK_VEHICLE_NAME, "average_speed"), SMALL_TRUCK_SPEED_BITS, TRUCK_SPEED_FACTOR, false);
+                EncodingManager.getKey(SMALL_TRUCK_VEHICLE_NAME, "average_speed"), SMALL_TRUCK_SPEED_BITS, TRUCK_SPEED_FACTOR, true);
         DecimalEncodedValue turnCostEnc = maxTurnCosts > 0 ? TurnCost.create(SMALL_TRUCK_VEHICLE_NAME, maxTurnCosts) : null;
         return new VehicleEncodedValues(SMALL_TRUCK_VEHICLE_NAME, accessEnc, speedEnc, null, turnCostEnc);
     }

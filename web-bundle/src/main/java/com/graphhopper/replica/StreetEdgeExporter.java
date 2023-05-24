@@ -145,10 +145,10 @@ public class StreetEdgeExporter {
             String mode = ACCESSIBILITY_MODE_MAP.getOrDefault(vehicle, null);
             if (mode != null) {
                 BooleanEncodedValue access = encodingManager.getBooleanEncodedValue(VehicleAccess.key(vehicle));
-                if (access.getBool(false, edgeFlags)) {
+                if (access.getBool(false, ghEdgeId, new IntsRefEdgeIntAccess(edgeFlags))) {
                     forwardFlags.add("ALLOWS_" + mode);
                 }
-                if (access.getBool(true, edgeFlags)) {
+                if (access.getBool(true, ghEdgeId, new IntsRefEdgeIntAccess(edgeFlags))) {
                     backwardFlags.add("ALLOWS_" + mode);
                 }
             }

@@ -21,46 +21,48 @@ package com.graphhopper.stableid;
 import com.graphhopper.routing.ev.DefaultEncodedValueFactory;
 import com.graphhopper.routing.ev.EncodedValue;
 import com.graphhopper.routing.ev.IntEncodedValueImpl;
+import com.graphhopper.util.PMap;
 
 public class EncodedValueFactoryWithStableId extends DefaultEncodedValueFactory {
+
     @Override
-    public EncodedValue create(String encodedValueString) {
-        if (encodedValueString.startsWith("stable_id_byte_0")) {
+    public EncodedValue create(String name, PMap properties) {
+        if (name.startsWith("stable_id_byte_0")) {
             return new IntEncodedValueImpl("stable_id_byte_0", 8, false);
-        } else if (encodedValueString.startsWith("stable_id_byte_1")) {
+        } else if (name.startsWith("stable_id_byte_1")) {
             return new IntEncodedValueImpl("stable_id_byte_1", 8, false);
-        } else if (encodedValueString.startsWith("stable_id_byte_2")) {
+        } else if (name.startsWith("stable_id_byte_2")) {
             return new IntEncodedValueImpl("stable_id_byte_2", 8, false);
-        } else if (encodedValueString.startsWith("stable_id_byte_3")) {
+        } else if (name.startsWith("stable_id_byte_3")) {
             return new IntEncodedValueImpl("stable_id_byte_3", 8, false);
-        } else if (encodedValueString.startsWith("stable_id_byte_4")) {
+        } else if (name.startsWith("stable_id_byte_4")) {
             return new IntEncodedValueImpl("stable_id_byte_4", 8, false);
-        } else if (encodedValueString.startsWith("stable_id_byte_5")) {
+        } else if (name.startsWith("stable_id_byte_5")) {
             return new IntEncodedValueImpl("stable_id_byte_5", 8, false);
-        } else if (encodedValueString.startsWith("stable_id_byte_6")) {
+        } else if (name.startsWith("stable_id_byte_6")) {
             return new IntEncodedValueImpl("stable_id_byte_6", 8, false);
-        } else if (encodedValueString.startsWith("stable_id_byte_7")) {
+        } else if (name.startsWith("stable_id_byte_7")) {
             return new IntEncodedValueImpl("stable_id_byte_7", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_0")) {
+        } else if (name.startsWith("reverse_stable_id_byte_0")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_0", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_1")) {
+        } else if (name.startsWith("reverse_stable_id_byte_1")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_1", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_2")) {
+        } else if (name.startsWith("reverse_stable_id_byte_2")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_2", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_3")) {
+        } else if (name.startsWith("reverse_stable_id_byte_3")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_3", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_4")) {
+        } else if (name.startsWith("reverse_stable_id_byte_4")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_4", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_5")) {
+        } else if (name.startsWith("reverse_stable_id_byte_5")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_5", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_6")) {
+        } else if (name.startsWith("reverse_stable_id_byte_6")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_6", 8, false);
-        } else if (encodedValueString.startsWith("reverse_stable_id_byte_7")) {
+        } else if (name.startsWith("reverse_stable_id_byte_7")) {
             return new IntEncodedValueImpl("reverse_stable_id_byte_7", 8, false);
-        } else if (encodedValueString.startsWith("osmid")) {
+        } else if (name.startsWith("osmid")) {
             return new IntEncodedValueImpl("osmid", 31, false);
         } else {
-            return super.create(encodedValueString);
+            return super.create(name, properties);
         }
     }
 }
