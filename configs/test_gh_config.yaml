@@ -36,6 +36,11 @@ graphhopper:
       weighting: fastest
       # sets a very high speed for Thurton Drive in Roseville (OSM way id 10485465)
       custom_speed_file: test-data/custom_speeds/custom_fast_thurton_drive_speed.csv # mvn tests run from the /web folder
+    - name: car_custom_closed_baseline_road
+      vehicle: car_custom_closed_baseline_road
+      weighting: fastest
+      # sets a zero speed for a section of Baseline Road in Roseville (OSM way id 76254223)
+      custom_speed_file: test-data/custom_speeds/baseline_road_zero_speed.csv # mvn tests run from the /web folder
     - name: bike
       vehicle: bike
       weighting: fastest
@@ -54,6 +59,7 @@ graphhopper:
     - profile: car
     - profile: car_freeway
     - profile: car_custom_fast_thurton_drive
+    - profile: car_custom_closed_baseline_road
     - profile: bike
     - profile: foot
     - profile: truck
