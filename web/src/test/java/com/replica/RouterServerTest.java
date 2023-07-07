@@ -90,9 +90,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             createStreetRequest("small_truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
 
     private static final String FAST_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
+    private static final String CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME = "car_custom_closed_baseline_road";
     private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
     private static final ImmutableSet<String> CAR_PROFILES =
-            ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, FAST_THURTON_DRIVE_CAR_PROFILE_NAME);
+            ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, FAST_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME);
 
     private static router.RouterGrpc.RouterBlockingStub routerStub = null;
 
@@ -458,5 +459,31 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         // the custom speeds profile sets the Thurton Drive speed very high, so the travel time using this profile
         // should be less than the default
         assertTrue(customSpeedsPath.getDurationMillis() < defaultSpeedsPath.getDurationMillis());
+    }
+
+    // tests road closure simulation via setting a custom speed for an OSM way to 0
+    @Test
+    public void testAutoQueryZeroCustomSpeeds() {
+        // two nearby points in Roseville along Baseline Road, before and after the portion with zero custom speed (OSM way ID 76254223)
+        double[] origin = {38.75184544401385, -121.33725463050372};
+        double[] dest = {38.75181929375432, -121.30902559426471};
+
+        Predicate<Long> onlyOnePathPredicate = pathCount -> pathCount == 1L;
+
+        final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(
+                createStreetRequest(CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, false, origin, dest));
+        checkStreetBasedResponse(customSpeedsResponse, ImmutableSet.of(CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME), onlyOnePathPredicate);
+
+        final RouterOuterClass.StreetRouteReply defaultSpeedsResponse = routerStub.routeStreetMode(
+                createStreetRequest(DEFAULT_CAR_PROFILE_NAME, false, origin, dest));
+        checkStreetBasedResponse(defaultSpeedsResponse, ImmutableSet.of(DEFAULT_CAR_PROFILE_NAME), onlyOnePathPredicate);
+
+        RouterOuterClass.StreetPath customSpeedsPath = Iterables.getOnlyElement(customSpeedsResponse.getPathsList());
+        RouterOuterClass.StreetPath defaultSpeedsPath = Iterables.getOnlyElement(defaultSpeedsResponse.getPathsList());
+
+        // the road closure profile should take a roundabout route due to the closure, so its distance and travel time
+        // should be greater than the default
+        assertTrue(customSpeedsPath.getDistanceMeters() > defaultSpeedsPath.getDistanceMeters());
+        assertTrue(customSpeedsPath.getDurationMillis() > defaultSpeedsPath.getDurationMillis());
     }
 }
