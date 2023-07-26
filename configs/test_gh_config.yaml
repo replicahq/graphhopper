@@ -6,8 +6,7 @@ graphhopper:
   gtfs.file: {{ TEST_GTFS }}
 
   gtfs.trip_based: true
-  #gtfs.schedule_day: 2023-04-05,2023-05-10
-  gtfs.schedule_day: 2023-07-04
+  gtfs.schedule_day: 2019-10-13
   prepare.min_network_size: 800
 
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
