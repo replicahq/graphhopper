@@ -46,7 +46,6 @@ import static com.graphhopper.util.Helper.nf;
  */
 public class CustomWaySegmentParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomWaySegmentParser.class);
-
     private static final Set<String> INCLUDE_IF_NODE_TAGS = new HashSet<>(Arrays.asList("barrier", "highway", "railway", "crossing", "ford"));
 
     private ElevationProvider elevationProvider = ElevationProvider.NOOP;
