@@ -25,10 +25,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.GraphHopperConfig;
-import com.graphhopper.gtfs.GraphHopperGtfs;
-import com.graphhopper.gtfs.PtRouter;
-import com.graphhopper.gtfs.PtRouterImpl;
-import com.graphhopper.gtfs.RealtimeFeed;
+import com.graphhopper.gtfs.*;
 import com.graphhopper.http.GraphHopperManaged;
 import com.graphhopper.jackson.Jackson;
 import com.timgroup.statsd.NonBlockingStatsDClientBuilder;
@@ -62,7 +59,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class RouterServer {
@@ -108,7 +104,7 @@ public class RouterServer {
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         PtRouter ptRouter = null;
         if (graphHopper instanceof GraphHopperGtfs) {
-            ptRouter = new PtRouterImpl(graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getBaseGraph(), graphHopper.getEncodingManager(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(), graphHopper.getPathDetailsBuilderFactory());
+            ptRouter = new PtRouterTripBasedImpl(graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getBaseGraph(), graphHopper.getEncodingManager(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(), graphHopper.getPathDetailsBuilderFactory());
         }
 
         // Load GTFS link mapping and GTFS info maps for use in building responses
