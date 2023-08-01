@@ -76,7 +76,7 @@ public class GraphHopperManaged implements Managed {
     }
 
     // MUST UPDATE EVERY TIME A "GRAPHHOPPER CORE UPDATE" OCCURS
-    // Copied directly from GraphHopperManaged.java on commit b69c3438e4c94b1ca29d70dd5ef314798290140c
+    // Copied directly from GraphHopperManaged.java on commit c771443d498c9959044a4cb8fa802705f318143e
     public static List<Profile> resolveCustomModelFiles(String customModelFolder, List<Profile> profiles) {
         ObjectMapper jsonOM = Jackson.newObjectMapper();
         List<Profile> newProfiles = new ArrayList<>();
