@@ -61,8 +61,11 @@ class LeafletComponent extends React.Component {
       iconSize: 10
     }));
     let bbox = this.props.info.bbox;
+    if (this.props.from != null && this.props.to != null) {
+        bbox = [this.props.from.lat, this.props.from.lng, this.props.to.lat, this.props.to.lng]
+    }
     console.log(bbox)
-    this.map.fitBounds(Leaflet.latLngBounds(Leaflet.latLng(bbox[1], bbox[0]), Leaflet.latLng(bbox[3], bbox[2])));
+    this.map.fitBounds(Leaflet.latLngBounds(Leaflet.latLng(bbox[1], bbox[0]), Leaflet.latLng(bbox[3], bbox[2])), {padding: [50, 50]});
     this.map.on('click', e => this.props.onSubmit((prevState) => {
       if (prevState.from === null) return {from: Point.createFromArray([e.latlng.lat, e.latlng.lng])};
       else if (prevState.to === null) return {to: Point.createFromArray([e.latlng.lat, e.latlng.lng])};
