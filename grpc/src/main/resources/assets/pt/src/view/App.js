@@ -52,14 +52,21 @@ export default class App extends React.Component {
     componentDidMount() {
         var router = new Router.RouterClient('/api');
         var component = this;
+
+        // Set bounds of bbox based on start/end of current route,
+        // or result of info() endpoint if no route is currently requested
         router.info(new Router.InfoRequest(), null, function(err, response) {
             if (err) {
-                console.log("Error in Webrequest. Code: " + err.code)
+                console.log("Error in Webrequest. Code: " + err.code);
+            } else if (component.state.from != null && component.state.to != null) {
+                component.setState({info: {
+                    bbox: [component.state.from.long, component.state.from.lat, component.state.to.long, component.state.to.lat]
+                }});
             } else {
-                console.log(response.toObject())
+                console.log(response.toObject());
                 component.setState({info: {
                     bbox: response.getBboxList()
-                }})
+                }});
             }
         });
     }
