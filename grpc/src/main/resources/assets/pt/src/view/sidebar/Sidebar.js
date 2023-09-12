@@ -45,7 +45,7 @@ export default (({
       }),
       React.createElement("div", {
         className: "searchInput"
-      }, React.createElement("span", null, `${routes.queryTimeSeconds != null ? `Query Time: ${routes.queryTimeSeconds}` : ""}`)),
+      }, React.createElement("span", null, `${routes.queryTimeSeconds != null ? `Query Time: ${routes.queryTimeSeconds} seconds` : ""}`)),
       getSidebarContent(routes)
   );
 });
