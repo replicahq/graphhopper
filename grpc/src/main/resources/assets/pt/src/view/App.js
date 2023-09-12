@@ -114,6 +114,7 @@ export default class App extends React.Component {
 
                     var component = this;
                     var router = new Router.RouterClient('/api');
+                    const startTime = Date.now();
                     router.routePt(ptRouteRequest, null, function(err, response) {
                         if (err) {
                             console.log(err);
@@ -130,13 +131,15 @@ export default class App extends React.Component {
                                 console.log(response.toObject());
                                 const paths = response.getPathsList().map(path => new Path(path));
                                 const selectedPath = component._selectPathOnReceive(paths);
+                                const queryTimeSeconds = (Date.now() - startTime) * 1.0 / 1000;
                                 return {
                                     routes: {
                                         query: query,
                                         paths: paths,
                                         isLastQuerySuccess: true,
                                         isFetching: false,
-                                        selectedRouteIndex: selectedPath
+                                        selectedRouteIndex: selectedPath,
+                                        queryTimeSeconds: queryTimeSeconds
                                     }
                                 };
                             });

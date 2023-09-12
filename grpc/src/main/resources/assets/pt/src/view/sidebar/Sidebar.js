@@ -36,11 +36,18 @@ export default (({
   }
 
   return React.createElement("div", {
-    className: "sidebar"
-  }, React.createElement(Logo, null), React.createElement(SearchInput, {
-    search: search,
-    onSearchChange: onSearchChange
-  }), getSidebarContent(routes));
+        className: "sidebar"
+      },
+      React.createElement(Logo, null),
+      React.createElement(SearchInput, {
+        search: search,
+        onSearchChange: onSearchChange
+      }),
+      React.createElement("div", {
+        className: "searchInput"
+      }, React.createElement("span", null, `${routes.queryTimeSeconds != null ? `Query Time: ${routes.queryTimeSeconds}` : ""}`)),
+      getSidebarContent(routes)
+  );
 });
 
 const Logo = () => {
