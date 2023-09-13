@@ -126,12 +126,12 @@ export default class App extends React.Component {
                                 }
                             });
                         } else {
+                            const queryTimeSeconds = (Date.now() - startTime) * 1.0 / 1000;
                             component.setState(prevState => {
                                 if (CreateQuery(new URL("/route", window.location), prevState) !== query) return {}; // This reply is not what we want to know anymore
                                 console.log(response.toObject());
                                 const paths = response.getPathsList().map(path => new Path(path));
                                 const selectedPath = component._selectPathOnReceive(paths);
-                                const queryTimeSeconds = (Date.now() - startTime) * 1.0 / 1000;
                                 return {
                                     routes: {
                                         query: query,
