@@ -114,6 +114,7 @@ export default class App extends React.Component {
 
                     var component = this;
                     var router = new Router.RouterClient('/api');
+                    const startTime = Date.now();
                     router.routePt(ptRouteRequest, null, function(err, response) {
                         if (err) {
                             console.log(err);
@@ -125,6 +126,7 @@ export default class App extends React.Component {
                                 }
                             });
                         } else {
+                            const queryTimeSeconds = (Date.now() - startTime) * 1.0 / 1000;
                             component.setState(prevState => {
                                 if (CreateQuery(new URL("/route", window.location), prevState) !== query) return {}; // This reply is not what we want to know anymore
                                 console.log(response.toObject());
@@ -136,7 +138,8 @@ export default class App extends React.Component {
                                         paths: paths,
                                         isLastQuerySuccess: true,
                                         isFetching: false,
-                                        selectedRouteIndex: selectedPath
+                                        selectedRouteIndex: selectedPath,
+                                        queryTimeSeconds: queryTimeSeconds
                                     }
                                 };
                             });
