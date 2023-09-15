@@ -52,16 +52,25 @@ export default class App extends React.Component {
     componentDidMount() {
         var router = new Router.RouterClient('/api');
         var component = this;
-        router.info(new Router.InfoRequest(), null, function(err, response) {
-            if (err) {
-                console.log("Error in Webrequest. Code: " + err.code)
-            } else {
-                console.log(response.toObject())
-                component.setState({info: {
-                    bbox: response.getBboxList()
-                }})
-            }
-        });
+
+        // Set bounds of bbox based on start/end of current route,
+        // or result of info() endpoint if no route is currently requested
+        if (component.state.from != null && component.state.to != null) {
+            component.setState({info: {
+                bbox: [component.state.from.long, component.state.from.lat, component.state.to.long, component.state.to.lat]
+            }});
+        } else {
+            router.info(new Router.InfoRequest(), null, function(err, response) {
+                if (err) {
+                    console.log("Error in Webrequest. Code: " + err.code);
+                } else {
+                    console.log(response.toObject());
+                    component.setState({info: {
+                        bbox: response.getBboxList()
+                    }});
+                }
+            });
+        }
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -105,6 +114,7 @@ export default class App extends React.Component {
 
                     var component = this;
                     var router = new Router.RouterClient('/api');
+                    const startTime = Date.now();
                     router.routePt(ptRouteRequest, null, function(err, response) {
                         if (err) {
                             console.log(err);
@@ -116,6 +126,7 @@ export default class App extends React.Component {
                                 }
                             });
                         } else {
+                            const queryTimeSeconds = (Date.now() - startTime) * 1.0 / 1000;
                             component.setState(prevState => {
                                 if (CreateQuery(new URL("/route", window.location), prevState) !== query) return {}; // This reply is not what we want to know anymore
                                 console.log(response.toObject());
@@ -127,7 +138,8 @@ export default class App extends React.Component {
                                         paths: paths,
                                         isLastQuerySuccess: true,
                                         isFetching: false,
-                                        selectedRouteIndex: selectedPath
+                                        selectedRouteIndex: selectedPath,
+                                        queryTimeSeconds: queryTimeSeconds
                                     }
                                 };
                             });
