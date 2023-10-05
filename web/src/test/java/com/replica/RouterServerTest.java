@@ -185,7 +185,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
     @Test
     public void testInterFeedPublicTransitQuery() {
-        System.out.println(PT_REQUEST_DIFF_FEEDS);
         final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST_DIFF_FEEDS);
 
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
