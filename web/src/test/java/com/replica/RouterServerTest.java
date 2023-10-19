@@ -100,10 +100,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         PtRouter ptRouter = null;
         if (graphHopper instanceof GraphHopperGtfs) {
-            ptRouter = new PtRouterTripBasedImpl(graphHopper, graphHopperConfiguration,
+            ptRouter = new PtRouterTripBasedImpl(graphHopperConfiguration,
                     graphHopper.getTranslationMap(), graphHopper.getBaseGraph(),
                     graphHopper.getEncodingManager(), graphHopper.getLocationIndex(),
-                    ((GraphHopperGtfs) graphHopper).getGtfsStorage(),
+                    ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(),
                     graphHopper.getPathDetailsBuilderFactory());
         }
 

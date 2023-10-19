@@ -104,7 +104,7 @@ public class RouterServer {
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         PtRouter ptRouter = null;
         if (graphHopper instanceof GraphHopperGtfs) {
-            ptRouter = new PtRouterTripBasedImpl(graphHopper, graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getBaseGraph(), graphHopper.getEncodingManager(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), graphHopper.getPathDetailsBuilderFactory());
+            ptRouter = new PtRouterTripBasedImpl(graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getBaseGraph(), graphHopper.getEncodingManager(), graphHopper.getLocationIndex(), ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(), graphHopper.getPathDetailsBuilderFactory());
         }
 
         // Load GTFS link mapping and GTFS info maps for use in building responses
