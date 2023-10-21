@@ -67,6 +67,7 @@ ARG GOOGLE_CREDENTIALS_FILE
 WORKDIR /graphhopper
 COPY . .
 RUN export GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_CREDENTIALS_FILE
+RUN gcloud auth activate-service-account --key-file=$GOOGLE_CREDENTIALS_FILE
 RUN rm -r grpc && rm ./configs/test_gh_config.yaml
 COPY --from=node-build ./graphhopper/grpc ./grpc
 COPY --from=test-build ./graphhopper/web/test-data ./web/test-data
