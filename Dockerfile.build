@@ -62,9 +62,11 @@ FROM maven:3.6.3-adoptopenjdk-14 as maven-build
 ARG GRAPHHOPPER_TOKEN
 ARG GIT_USER_ID
 ARG GIT_PERSONAL_ACCESS
+ARG GOOGLE_CREDENTIALS_FILE
 
 WORKDIR /graphhopper
 COPY . .
+RUN export GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_CREDENTIALS_FILE
 RUN rm -r grpc && rm ./configs/test_gh_config.yaml
 COPY --from=node-build ./graphhopper/grpc ./grpc
 COPY --from=test-build ./graphhopper/web/test-data ./web/test-data
