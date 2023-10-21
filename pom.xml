@@ -144,8 +144,8 @@
         </repository>
         <repository>
             <id>github-core</id>
-            <name>GraphHopper Core Packages</name>
-            <url>https://maven.pkg.github.com/graphhopper/graphhopper</url>
+            <name>GH core packages</name>
+            <url>gs://model-maven-repo/snapshot</url>
         </repository>
     </repositories>
 
