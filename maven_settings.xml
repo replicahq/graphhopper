@@ -29,11 +29,6 @@
 
     <servers>
         <server>
-            <id>github-core</id>
-            <username>${env.GIT_USER_ID}</username>
-            <password>${env.GIT_PERSONAL_ACCESS}</password>
-        </server>
-        <server>
             <id>github-mm</id>
             <username>${env.GIT_USER_ID}</username>
             <password>${env.GIT_PERSONAL_ACCESS}</password>
