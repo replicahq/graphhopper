@@ -16,7 +16,7 @@
                 <repository>
                     <id>github-core</id>
                     <name>GH core packages</name>
-                    <url>https://maven.pkg.github.com/graphhopper/graphhopper</url>
+                    <url>gs://model-maven-repo/snapshot</url>
                 </repository>
                 <repository>
                     <id>github-mm</id>
