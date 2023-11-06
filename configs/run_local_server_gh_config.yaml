@@ -4,13 +4,17 @@
 graphhopper:
   datareader.file: web/test-data/micro_nor_cal.osm.pbf
   gtfs.file: web/test-data/gtfs/f-9qc-fairfield~ca~us.zip,web/test-data/gtfs/rosevill.zip,web/test-data/gtfs/srtd.zip,web/test-data/gtfs/vacaville.zip
+
+  gtfs.trip_based: true
+  gtfs.schedule_day: 2019-10-13
+
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper
-  routing.max_visited_nodes: 1500000
   graph.vehicles: car,bike,foot,truck,small_truck
   graph.encoded_values: road_class,road_class_link
   prepare.ch.threads: 16
   import.osm.ignored_highways:
+  routing.max_visited_nodes: 1500000
 
   # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
   # prepare.ch.edge_based: edge_and_node

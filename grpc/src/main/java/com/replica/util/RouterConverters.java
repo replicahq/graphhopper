@@ -89,7 +89,7 @@ public final class RouterConverters {
         List<Trip.Stop> updatedStops = Lists.newArrayList();
         for (Trip.Stop stop : leg.stops) {
             String updatedStopId = gtfsFeedIdMapping.get(leg.feed_id) + ":" + stop.stop_id;
-            updatedStops.add(new Trip.Stop(updatedStopId, stop.stop_name, stop.geometry, stop.arrivalTime,
+            updatedStops.add(new Trip.Stop(updatedStopId, stop.stop_sequence, stop.stop_name, stop.geometry, stop.arrivalTime,
                     stop.plannedArrivalTime, stop.predictedArrivalTime, stop.arrivalCancelled, stop.departureTime,
                     stop.plannedDepartureTime, stop.predictedDepartureTime, stop.departureCancelled));
         }
@@ -122,7 +122,7 @@ public final class RouterConverters {
                     .setRouteShortName(ptLeg.routeShortName)
                     .setRouteLongName(ptLeg.routeLongName)
                     .setRouteType(ptLeg.routeType)
-                    .setDirection(ptLeg.trip_headsign)
+                    .setDirection(ptLeg.trip_headsign == null ? "unknown" : ptLeg.trip_headsign)
                     .addAllStops(ptLeg.stops.stream().map(stop -> Stop.newBuilder()
                             .setStopId(stop.stop_id)
                             .setStopName(stop.stop_name)
