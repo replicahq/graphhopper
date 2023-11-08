@@ -6,7 +6,7 @@ graphhopper:
   gtfs.file: {{ TEST_GTFS }}
 
   gtfs.trip_based: true
-  gtfs.schedule_day: 2019-10-13
+  gtfs.schedule_day: 2019-10-15
 
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper

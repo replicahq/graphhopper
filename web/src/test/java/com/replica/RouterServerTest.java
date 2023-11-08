@@ -55,16 +55,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(DropwizardExtensionsSupport.class)
 @ExtendWith({ReplicaGraphHopperTestExtention.class})
 public class RouterServerTest extends ReplicaGraphHopperTest {
-    // Departure time + ODs are chosen for micro_nor_cal test area, with a validity start date of
-    // 2019-10-13, and a bbox of -122.41229018000416,-120.49584285533076,37.75738096439945,39.52415953258036
+    // Departure time + ODs are chosen for micro_nor_cal test area, with a valid routing date of
+    // 2019-10-15, and a bbox of -122.41229018000416,-120.49584285533076,37.75738096439945,39.52415953258036
 
     private static final Timestamp EARLIEST_DEPARTURE_TIME =
-            Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-13T13:30:00Z").toEpochMilli() / 1000).build();
+            Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-15T13:30:00Z").toEpochMilli() / 1000).build();
     private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467,-121.29023848101498}; // Roseville area
     private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281,-121.48746937746185}; // Sacramento area
-    private static final double[] REQUEST_ORIGIN_3 = {38.508810062393245,-121.5085223084316}; // South of Sacramento area
     private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914,-121.43714698730038}; // Sacramento area
-    private static final double[] REQUEST_DESTINATION_2 = {38.62099864518184,-121.51902571320535}; // North of Sacramento area
+    private static final double[] REQUEST_DESTINATION_2 = {38.508810062393245,-121.5085223084316}; // South of Sacramento area
 
     // Should force a transfer between routes from 2 distinct feeds
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_DIFF_FEEDS = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
@@ -73,7 +72,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     // Tests park-and-ride routing, with custom access/egress modes
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, "car", "foot");
     // Tests park-and-ride routing for a longer route (with a transfer)
-    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE_W_TRANSFER = createPtRequest(REQUEST_ORIGIN_3, REQUEST_DESTINATION_2, "car", "foot");
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE_W_TRANSFER = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_2, "car", "foot");
 
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST =
             createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
@@ -194,7 +193,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(8, 201, 3, 184, 15)
+                Lists.newArrayList(34, 142, 1, 194, 15)
         );
     }
 
@@ -209,7 +208,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(19, 59, 3, 164, 15)
+                Lists.newArrayList(5, 28, 1, 202, 15)
         );
     }
 
@@ -224,7 +223,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 1, 2,
                 Lists.newArrayList("ACCESS", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(92, 154, 27)
+                Lists.newArrayList(118, 69, 27)
         );
     }
 
@@ -240,7 +239,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(60, 161, 2, 19, 18)
+                Lists.newArrayList(64, 110, 9, 212, 3)
         );
     }
 
