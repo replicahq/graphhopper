@@ -14,7 +14,6 @@ graphhopper:
   graph.encoded_values: road_class,road_class_link
   prepare.ch.threads: 16
   import.osm.ignored_highways:
-  routing.max_visited_nodes: 1500000
 
   # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
   # prepare.ch.edge_based: edge_and_node
