@@ -5,6 +5,10 @@ graphhopper:
   validation:
   datareader.file:
   gtfs.file:
+
+  gtfs.trip_based: true
+  gtfs.schedule_day: {{ GTFS_SCHEDULE_DAYS }}
+
   graph.location: transit_data/graphhopper
   routing.max_visited_nodes: 1500000
   graph.vehicles: car,foot
