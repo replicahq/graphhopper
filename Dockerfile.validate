@@ -10,4 +10,4 @@ RUN java -Xmx58g -Ddw.graphhopper.datareader.file=full_usa.osm.pbf \
 
 # Assumes that folder containing gtfs files is mounted as volume at /gtfs/, and that a string
 # representing the valid GTFS routing days is passed as an arg during `docker run`
-ENTRYPOINT ["./run_gtfs_validation.sh"]
+ENTRYPOINT ["/run_gtfs_validation.sh"]
