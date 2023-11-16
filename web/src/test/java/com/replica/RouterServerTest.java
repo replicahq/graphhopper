@@ -63,7 +63,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467,-121.29023848101498}; // Roseville area
     private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281,-121.48746937746185}; // Sacramento area
     private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914,-121.43714698730038}; // Sacramento area
-    private static final double[] REQUEST_DESTINATION_2 = {38.487103576166376,-121.50483129546048}; // South of Sacramento
+    private static final double[] REQUEST_DESTINATION_2 = {38.69871256445126,-121.27320348867218}; // South of Roseville
 
     // Should force a transfer between routes from 2 distinct feeds
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_DIFF_FEEDS = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
@@ -239,7 +239,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(64, 110, 9, 222, 40)
+                Lists.newArrayList(26, 61, 5, 69, 3)
         );
     }
 
