@@ -450,7 +450,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         for (Map.Entry<String, String> profileEntry : CUSTOM_THURTON_DRIVE_PROFILE_TO_DEFAULT_PROFILE.entrySet()) {
             String customProfile = profileEntry.getKey();
             String defaultProfile = profileEntry.getValue();
-            System.out.println("Querying profiles " + customProfile + " and " + defaultProfile);
 
             final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(
                     createStreetRequest(customProfile, false, origin, dest));
