@@ -73,6 +73,8 @@ RUN wget https://www.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3
 RUN tar xf /tmp/apache-maven-*.tar.gz -C /opt
 RUN update-alternatives --install /usr/bin/mvn mvn /opt/apache-maven-3.9.5/bin/mvn 363
 
+RUN mvn -v
+
 RUN rm -r grpc && rm ./configs/test_gh_config.yaml
 COPY --from=node-build ./graphhopper/grpc ./grpc
 COPY --from=test-build ./graphhopper/web/test-data ./web/test-data
