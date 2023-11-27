@@ -57,7 +57,7 @@ RUN ./setup_tests.sh
 
 
 # Build java code with Maven
-FROM sapmachine:17.0.9-ubuntu-jammy as maven-build
+FROM maven:3.8.5-openjdk-17 as maven-build
 
 ARG GRAPHHOPPER_TOKEN
 ARG GIT_USER_ID
@@ -65,14 +65,6 @@ ARG GIT_PERSONAL_ACCESS
 
 WORKDIR /graphhopper
 COPY . .
-
-# Install maven manually, to avoid issue with incorrect guice dependency being used (clashing with java 17)
-RUN apt-get update
-RUN apt-get -y install wget
-RUN wget https://www.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz -P /tmp
-RUN tar xf /tmp/apache-maven-*.tar.gz -C /opt
-RUN update-alternatives --install /usr/bin/mvn mvn /opt/apache-maven-3.9.5/bin/mvn 363
-
 RUN rm -r grpc && rm ./configs/test_gh_config.yaml
 COPY --from=node-build ./graphhopper/grpc ./grpc
 COPY --from=test-build ./graphhopper/web/test-data ./web/test-data
