@@ -47,12 +47,22 @@ graphhopper:
     - name: foot
       vehicle: foot
       weighting: fastest
-    - name: truck
+    - name: truck_default # needed for comparison against Thurton Drive custom speeds profile
       vehicle: truck
       weighting: fastest
-    - name: small_truck
+    - name: truck_custom_fast_thurton_drive
+      vehicle: truck_custom_fast_thurton_drive
+      weighting: fastest
+      # sets a very high speed for Thurton Drive in Roseville (OSM way id 10485465)
+      custom_speed_file: test-data/custom_speeds/custom_fast_thurton_drive_speed.csv # mvn tests run from the /web folder
+    - name: small_truck_default # needed for comparison against Thurton Drive custom speeds profile
       vehicle: small_truck
       weighting: fastest
+    - name: small_truck_custom_fast_thurton_drive
+      vehicle: small_truck_custom_fast_thurton_drive
+      weighting: fastest
+      # sets a very high speed for Thurton Drive in Roseville (OSM way id 10485465)
+      custom_speed_file: test-data/custom_speeds/custom_fast_thurton_drive_speed.csv # mvn tests run from the /web folder
 
   profiles_ch:
     - profile: car_default
@@ -62,8 +72,10 @@ graphhopper:
     - profile: car_custom_closed_baseline_road
     - profile: bike
     - profile: foot
-    - profile: truck
-    - profile: small_truck
+    - profile: truck_default
+    - profile: truck_custom_fast_thurton_drive
+    - profile: small_truck_default
+    - profile: small_truck_custom_fast_thurton_drive
 
 server:
   min_threads: 4

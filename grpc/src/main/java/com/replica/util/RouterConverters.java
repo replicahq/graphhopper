@@ -6,6 +6,7 @@ import com.google.common.collect.Sets;
 import com.google.protobuf.Timestamp;
 import com.graphhopper.GHRequest;
 import com.graphhopper.ResponsePath;
+import com.graphhopper.RouterConstants;
 import com.graphhopper.Trip;
 import com.graphhopper.gtfs.Request;
 import com.graphhopper.jackson.Jackson;
