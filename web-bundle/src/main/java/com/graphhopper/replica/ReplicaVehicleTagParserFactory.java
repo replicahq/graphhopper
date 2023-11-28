@@ -36,8 +36,9 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
     private final ImmutableMap<String, CustomSpeedsVehicle> customSpeedsVehiclesByName;
 
     /**
-     * @param vehicleNameToCustomSpeeds map of vehicle name to mapping from OSM way id to the custom speed to use for
-     *                                  that way, in kph. vehicles without custom speeds may be omitted from the map.
+     * @param customSpeedsVehiclesByName map of custom vehicle name to CustomSpeedsVehicle object containing the custom
+     *                                   speeds mapping and the base vehicle type. the speeds mapping must be expressed
+     *                                   in kph. vehicles without custom speeds should be omitted from the map.
      */
     public ReplicaVehicleTagParserFactory(ImmutableMap<String, CustomSpeedsVehicle> customSpeedsVehiclesByName) {
         this.customSpeedsVehiclesByName = customSpeedsVehiclesByName;
