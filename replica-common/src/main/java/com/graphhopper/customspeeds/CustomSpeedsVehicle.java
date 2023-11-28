@@ -7,6 +7,7 @@ import java.util.EnumSet;
 import java.util.Objects;
 
 public class CustomSpeedsVehicle {
+    // TODO support custom speeds for bikes and pedestrians (RAD-6445, RAD-6446)
     public enum VehicleType {
         CAR,
         TRUCK,
