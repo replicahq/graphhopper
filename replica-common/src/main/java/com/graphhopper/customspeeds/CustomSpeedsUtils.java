@@ -1,19 +1,19 @@
 package com.graphhopper.customspeeds;
 
 import com.google.common.collect.ImmutableMap;
+import com.graphhopper.RouterConstants;
 import com.graphhopper.config.Profile;
+import com.graphhopper.reader.ReaderWay;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.checkerframework.checker.units.qual.C;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class CustomSpeedsUtils {
 
@@ -26,19 +26,21 @@ public class CustomSpeedsUtils {
      * custom speed file across all profiles.
      *
      * @param profiles list of profiles for which the custom speed mapping should be retrieved
-     * @return map of vehicle name to mapping from OSM way id to the custom speed to use for that way, in kph. Vehicles
-     * without custom speeds are omitted from the map.
+     * @return map of custom vehicle name to CustomSpeedsVehicle object containing the custom speeds mapping and the base
+     * vehicle type. The speeds mapping associates each customized OSM way id to the speed to use for that way, in kph.
+     * Vehicles without custom speeds are omitted from the map.
      *
-     * @throws IllegalArgumentException if any profiles associate the same vehicle with different custom speed files
+     * @throws IllegalArgumentException if any profiles associate the same vehicle with different custom speed files, or
+     * if the base vehicle type for any custom speeds vehicles could not be determined
      * @throws RuntimeException if any custom speed files could not be found or are not properly formatted
      */
-    public static ImmutableMap<String, ImmutableMap<Long, Double>> getVehicleNameToCustomSpeeds(List<Profile> profiles) {
+    public static ImmutableMap<String, CustomSpeedsVehicle> getCustomSpeedVehiclesByName(List<Profile> profiles) {
         Map<String, File> vehicleNameToCustomSpeedFile = getVehicleNameToCustomSpeedFile(profiles);
         return vehicleNameToCustomSpeedFile.entrySet()
                 .stream()
                 .collect(ImmutableMap.toImmutableMap(
                         Map.Entry::getKey,
-                        entry -> CustomSpeedsUtils.parseOsmWayIdToMaxSpeed(entry.getValue())));
+                        entry -> CustomSpeedsVehicle.create(entry.getKey(), CustomSpeedsUtils.parseOsmWayIdToMaxSpeed(entry.getValue()))));
     }
 
     private static Map<String, File> getVehicleNameToCustomSpeedFile(List<Profile> profiles) {
@@ -84,5 +86,17 @@ public class CustomSpeedsUtils {
         }
 
         return osmWayIdToMaxSpeed.build();
+    }
+
+    public static Optional<Double> getCustomMaxSpeed(ReaderWay way, ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed) {
+        // n.b. CarAverageSpeedParser sets max speed to be 90% of the OSM's max speed for the way, but we don't apply the 90%
+        // discount for the custom speeds we've been explicitly given
+        return Optional.ofNullable(osmWayIdToCustomMaxSpeed.get(way.getId()));
+    }
+
+    public static Optional<Double> getCustomBadSurfaceSpeed(ReaderWay way, ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed) {
+        // if we've been explicitly given a custom speed to use for the way, we should not apply any additional logic
+        // for bad road surfaces
+        return CustomSpeedsUtils.getCustomMaxSpeed(way, osmWayIdToCustomMaxSpeed);
     }
 }

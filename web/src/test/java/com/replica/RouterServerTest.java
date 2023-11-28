@@ -17,10 +17,7 @@
  */
 package com.replica;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import com.google.common.collect.*;
 import com.google.protobuf.Timestamp;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.gtfs.*;
@@ -74,6 +71,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     // Tests park-and-ride routing for a longer route (with a transfer)
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE_W_TRANSFER = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_2, "car", "foot");
 
+    private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
+    private static final String DEFAULT_TRUCK_PROFILE_NAME = "truck_default";
+    private static final String DEFAULT_SMALL_TRUCK_PROFILE_NAME = "small_truck_default";
+
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST =
             createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST_WITH_ALTERNATIVES =
@@ -81,15 +82,16 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final RouterOuterClass.StreetRouteRequest WALK_REQUEST =
             createStreetRequest("foot", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     private static final RouterOuterClass.StreetRouteRequest TRUCK_REQUEST =
-            createStreetRequest("truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
+            createStreetRequest(DEFAULT_TRUCK_PROFILE_NAME, false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     private static final RouterOuterClass.StreetRouteRequest SMALL_TRUCK_REQUEST =
-            createStreetRequest("small_truck", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
+            createStreetRequest(DEFAULT_SMALL_TRUCK_PROFILE_NAME, false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
 
-    private static final String FAST_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
+    private static final String CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
     private static final String CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME = "car_custom_closed_baseline_road";
-    private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
     private static final ImmutableSet<String> CAR_PROFILES =
-            ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, FAST_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME);
+            ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME);
+
+    private static final ImmutableMap<String, String> CUSTOM_THURTON_DRIVE_PROFILE_TO_DEFAULT_PROFILE = ImmutableMap.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, "truck_custom_fast_thurton_drive", DEFAULT_TRUCK_PROFILE_NAME, "small_truck_custom_fast_thurton_drive", DEFAULT_SMALL_TRUCK_PROFILE_NAME);
 
     private static router.RouterGrpc.RouterBlockingStub routerStub = null;
 
@@ -333,11 +335,11 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount == 1L;
 
         final RouterOuterClass.StreetRouteReply truckResponse = routerStub.routeStreetMode(TRUCK_REQUEST);
-        Set<String> expectedTruckProfiles = ImmutableSet.of("truck");
+        Set<String> expectedTruckProfiles = ImmutableSet.of(DEFAULT_TRUCK_PROFILE_NAME);
         checkStreetBasedResponse(truckResponse, expectedTruckProfiles, perProfilePathCountPredicate);
 
         final RouterOuterClass.StreetRouteReply smallTruckResponse = routerStub.routeStreetMode(SMALL_TRUCK_REQUEST);
-        expectedTruckProfiles = ImmutableSet.of("small_truck");
+        expectedTruckProfiles = ImmutableSet.of(DEFAULT_SMALL_TRUCK_PROFILE_NAME);
         checkStreetBasedResponse(smallTruckResponse, expectedTruckProfiles, perProfilePathCountPredicate);
 
         // Check truck and small_truck return slightly different results
@@ -441,20 +443,25 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
         Predicate<Long> onlyOnePathPredicate = pathCount -> pathCount == 1L;
 
-        final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(
-                createStreetRequest(FAST_THURTON_DRIVE_CAR_PROFILE_NAME, false, origin, dest));
-        checkStreetBasedResponse(customSpeedsResponse, ImmutableSet.of(FAST_THURTON_DRIVE_CAR_PROFILE_NAME), onlyOnePathPredicate);
+        for (Map.Entry<String, String> profileEntry : CUSTOM_THURTON_DRIVE_PROFILE_TO_DEFAULT_PROFILE.entrySet()) {
+            String customProfile = profileEntry.getKey();
+            String defaultProfile = profileEntry.getValue();
 
-        final RouterOuterClass.StreetRouteReply defaultSpeedsResponse = routerStub.routeStreetMode(
-                createStreetRequest(DEFAULT_CAR_PROFILE_NAME, false, origin, dest));
-        checkStreetBasedResponse(defaultSpeedsResponse, ImmutableSet.of(DEFAULT_CAR_PROFILE_NAME), onlyOnePathPredicate);
+            final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(
+                    createStreetRequest(customProfile, false, origin, dest));
+            checkStreetBasedResponse(customSpeedsResponse, ImmutableSet.of(customProfile), onlyOnePathPredicate);
 
-        RouterOuterClass.StreetPath customSpeedsPath = Iterables.getOnlyElement(customSpeedsResponse.getPathsList());
-        RouterOuterClass.StreetPath defaultSpeedsPath = Iterables.getOnlyElement(defaultSpeedsResponse.getPathsList());
+            final RouterOuterClass.StreetRouteReply defaultSpeedsResponse = routerStub.routeStreetMode(
+                    createStreetRequest(defaultProfile, false, origin, dest));
+            checkStreetBasedResponse(defaultSpeedsResponse, ImmutableSet.of(defaultProfile), onlyOnePathPredicate);
 
-        // the custom speeds profile sets the Thurton Drive speed very high, so the travel time using this profile
-        // should be less than the default
-        assertTrue(customSpeedsPath.getDurationMillis() < defaultSpeedsPath.getDurationMillis());
+            RouterOuterClass.StreetPath customSpeedsPath = Iterables.getOnlyElement(customSpeedsResponse.getPathsList());
+            RouterOuterClass.StreetPath defaultSpeedsPath = Iterables.getOnlyElement(defaultSpeedsResponse.getPathsList());
+
+            // the custom speeds profile sets the Thurton Drive speed very high, so the travel time using this profile
+            // should be less than the default
+            assertTrue(customSpeedsPath.getDurationMillis() < defaultSpeedsPath.getDurationMillis());
+        }
     }
 
     // tests road closure simulation via setting a custom speed for an OSM way to 0
