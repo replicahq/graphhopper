@@ -29,7 +29,7 @@ public class ReplicaVehicleEncodedValuesFactory extends DefaultVehicleEncodedVal
             baseCustomSpeedsVehicleType = customSpeedsVehiclesByName.get(vehicleName).baseVehicleType;
         }
 
-        if (vehicleName.equals("car") || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.CAR) {
+        if (vehicleName.equals(RouterConstants.CAR_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.CAR) {
             return VehicleEncodedValues.car(configuration);
         } else if (vehicleName.equals(RouterConstants.TRUCK_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.TRUCK) {
             return TruckFlagEncoder.createTruck(vehicleName);

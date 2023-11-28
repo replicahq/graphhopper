@@ -58,13 +58,15 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
             configuration.putObject("name", vehicleName);
         }
 
-
-        if (vehicleName.equals("car") || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.CAR) {
+        if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.CAR) {
             return new VehicleTagParsers(
                     new CarAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
                     new ReplicaCustomSpeedsCarTagParser(lookup, configuration, osmWayIdToCustomSpeed),
                     null);
 
+        } else if (vehicleName.equals(RouterConstants.CAR_VEHICLE_NAME) ) {
+            // do nothing and carry through to superclass implementation. we could use pass an empty custom speeds mapping
+            // to ReplicaCustomSpeedsCarTagParser, but it's safer to use the default GraphHopper behavior directly
         } else if (vehicleName.equals(RouterConstants.TRUCK_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.TRUCK) {
             configuration.putObject("block_fords", false);
             if (!configuration.has("name"))

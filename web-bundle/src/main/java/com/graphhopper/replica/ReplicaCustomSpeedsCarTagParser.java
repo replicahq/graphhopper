@@ -11,7 +11,6 @@ import com.graphhopper.util.PMap;
 import java.util.Objects;
 
 public class ReplicaCustomSpeedsCarTagParser extends CarAverageSpeedParser {
-    // empty if no custom speeds were provided
     private final ImmutableMap<Long, Double> osmWayIdToMaxSpeed;
 
     public ReplicaCustomSpeedsCarTagParser(EncodedValueLookup lookup, PMap configuration, ImmutableMap<Long, Double> osmWayIdToMaxSpeed) {
