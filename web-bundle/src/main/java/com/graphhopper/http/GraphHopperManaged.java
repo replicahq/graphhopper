@@ -77,7 +77,7 @@ public class GraphHopperManaged implements Managed {
     }
 
     // MUST UPDATE EVERY TIME A "GRAPHHOPPER CORE UPDATE" OCCURS
-    // Copied directly from GraphHopperManaged.java on commit 547215973b5b66d082a6adb184f48ae71f790c9d
+    // Copied directly from GraphHopperManaged.java on commit 99682c42c3df04226349421c82c44fa0474eedb4
     public static List<Profile> resolveCustomModelFiles(String customModelFolder, List<Profile> profiles) {
         ObjectMapper jsonOM = Jackson.newObjectMapper();
         List<Profile> newProfiles = new ArrayList<>();
@@ -86,7 +86,7 @@ public class GraphHopperManaged implements Managed {
                 newProfiles.add(profile);
                 continue;
             }
-            Object cm = profile.getHints().getObject("custom_model", null);
+            Object cm = profile.getHints().getObject(CustomModel.KEY, null);
             CustomModel customModel;
             if (cm != null) {
                 if (!profile.getHints().getObject("custom_model_files", Collections.emptyList()).isEmpty())

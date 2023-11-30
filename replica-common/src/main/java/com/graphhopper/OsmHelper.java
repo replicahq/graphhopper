@@ -25,12 +25,12 @@ public class OsmHelper {
 
     public long getRealNodeIdFromArtificial(long artificialNodeId) {
         long pointer = 8L * artificialNodeId;
-        return bitUtil.combineIntsToLong(artificialIdToOsmNodeIdMapping.getInt(pointer), artificialIdToOsmNodeIdMapping.getInt(pointer + 4L));
+        return bitUtil.toLong(artificialIdToOsmNodeIdMapping.getInt(pointer), artificialIdToOsmNodeIdMapping.getInt(pointer + 4L));
     }
 
     public long getOSMNode(long internalNodeId) {
         long pointer = 8L * internalNodeId;
-        return bitUtil.combineIntsToLong(nodeMapping.getInt(pointer), nodeMapping.getInt(pointer + 4L));
+        return bitUtil.toLong(nodeMapping.getInt(pointer), nodeMapping.getInt(pointer + 4L));
     }
 
     public int getSegmentIndexForGhEdge(int ghEdgeId) {

@@ -12,12 +12,14 @@ import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderNode;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
-import com.graphhopper.reader.dem.EdgeElevationSmoothing;
+import com.graphhopper.reader.dem.EdgeElevationSmoothingMovingAverage;
+import com.graphhopper.reader.dem.EdgeElevationSmoothingRamer;
 import com.graphhopper.reader.dem.EdgeSampling;
 import com.graphhopper.reader.dem.ElevationProvider;
 import com.graphhopper.routing.OSMReaderConfig;
 import com.graphhopper.routing.ev.Country;
 import com.graphhopper.routing.ev.EdgeIntAccess;
+import com.graphhopper.routing.ev.State;
 import com.graphhopper.routing.util.AreaIndex;
 import com.graphhopper.routing.util.CustomArea;
 import com.graphhopper.routing.util.OSMParsers;
@@ -43,6 +45,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.graphhopper.search.KVStorage.KeyValue.*;
+import static com.graphhopper.util.GHUtility.OSM_WARNING_LOGGER;
 import static com.graphhopper.util.Helper.nf;
 import static java.util.Collections.emptyList;
 
@@ -259,21 +262,35 @@ public class CustomOsmReader {
 
         // special handling for countries: since they are built-in with GraphHopper they are always fed to the EncodingManager
         Country country = Country.MISSING;
-        CustomArea prevCustomArea = null;
+        State state = State.MISSING;
+        double countryArea = Double.POSITIVE_INFINITY;
         for (CustomArea customArea : customAreas) {
+            // ignore areas that aren't countries
             if (customArea.getProperties() == null) continue;
-            Object alpha3 = customArea.getProperties().get(Country.ISO_ALPHA3);
-            if (alpha3 == null)
+            String alpha2WithSubdivision = (String) customArea.getProperties().get(State.ISO_3166_2);
+            if (alpha2WithSubdivision == null)
                 continue;
 
-            // multiple countries are available -> pick the smaller one, see #2663
-            if (prevCustomArea != null && prevCustomArea.getArea() < customArea.getArea())
-                break;
+            // the country string must be either something like US-CA (including subdivision) or just DE
+            String[] strs = alpha2WithSubdivision.split("-");
+            if (strs.length == 0 || strs.length > 2)
+                throw new IllegalStateException("Invalid alpha2: " + alpha2WithSubdivision);
+            Country c = Country.find(strs[0]);
+            if (c == null)
+                throw new IllegalStateException("Unknown country: " + strs[0]);
 
-            prevCustomArea = customArea;
-            country = Country.valueOf((String) alpha3);
+            if (
+                // countries with subdivision overrule those without subdivision as well as bigger ones with subdivision
+                    strs.length == 2 && (state == State.MISSING || customArea.getArea() < countryArea)
+                            // countries without subdivision only overrule bigger ones without subdivision
+                            || strs.length == 1 && (state == State.MISSING && customArea.getArea() < countryArea)) {
+                country = c;
+                state = State.find(alpha2WithSubdivision);
+                countryArea = customArea.getArea();
+            }
         }
         way.setTag("country", country);
+        way.setTag("country_state", state);
 
         if (countryRuleFactory != null) {
             CountryRule countryRule = countryRuleFactory.getCountryRule(country);
@@ -295,7 +312,7 @@ public class CustomOsmReader {
      * @param nodeTags  node tags of this segment if it is an artificial edge, empty otherwise
      */
     protected void addEdge(int fromIndex, int toIndex, PointList pointList, ReaderWay way, List<Map<String, Object>> nodeTags, int segmentIndex) {
-// sanity checks
+        // sanity checks
         if (fromIndex < 0 || toIndex < 0)
             throw new AssertionError("to or from index is invalid for this edge " + fromIndex + "->" + toIndex + ", points:" + pointList);
         if (pointList.getDimension() != nodeAccess.getDimension())
@@ -315,9 +332,11 @@ public class CustomOsmReader {
 
             // smooth the elevation before calculating the distance because the distance will be incorrect if calculated afterwards
             if (config.getElevationSmoothing().equals("ramer"))
-                EdgeElevationSmoothing.smoothRamer(pointList, config.getElevationSmoothingRamerMax());
+                EdgeElevationSmoothingRamer.smooth(pointList, config.getElevationSmoothingRamerMax());
             else if (config.getElevationSmoothing().equals("moving_average"))
-                EdgeElevationSmoothing.smoothMovingAverage(pointList);
+                EdgeElevationSmoothingMovingAverage.smooth(pointList, config.getSmoothElevationAverageWindowSize());
+            else if (!config.getElevationSmoothing().isEmpty())
+                throw new AssertionError("Unsupported elevation smoothing algorithm: '" + config.getElevationSmoothing() + "'");
         }
 
         if (config.getMaxWayPointDistance() > 0 && pointList.size() > 2)
@@ -430,7 +449,6 @@ public class CustomOsmReader {
         }
         way.setTag("key_values", list);
 
-
         if (!isCalculateWayDistance(way))
             return;
 
@@ -450,14 +468,14 @@ public class CustomOsmReader {
         if (durationTag == null) {
             // no duration tag -> we cannot derive speed. happens very frequently for short ferries, but also for some long ones, see: #2532
             if (isFerry(way) && distance > 500_000)
-                LOGGER.warn("Long ferry OSM way without duration tag: " + way.getId() + ", distance: " + Math.round(distance / 1000.0) + " km");
+                OSM_WARNING_LOGGER.warn("Long ferry OSM way without duration tag: " + way.getId() + ", distance: " + Math.round(distance / 1000.0) + " km");
             return;
         }
         long durationInSeconds;
         try {
             durationInSeconds = OSMReaderUtility.parseDuration(durationTag);
         } catch (Exception e) {
-            LOGGER.warn("Could not parse duration tag '" + durationTag + "' in OSM way: " + way.getId());
+            OSM_WARNING_LOGGER.warn("Could not parse duration tag '" + durationTag + "' in OSM way: " + way.getId());
             return;
         }
 
@@ -465,7 +483,7 @@ public class CustomOsmReader {
         if (speedInKmPerHour < 0.1d) {
             // Often there are mapping errors like duration=30:00 (30h) instead of duration=00:30 (30min). In this case we
             // ignore the duration tag. If no such cases show up anymore, because they were fixed, maybe raise the limit to find some more.
-            LOGGER.warn("Unrealistic low speed calculated from duration. Maybe the duration is too long, or it is applied to a way that only represents a part of the connection? OSM way: "
+            OSM_WARNING_LOGGER.warn("Unrealistic low speed calculated from duration. Maybe the duration is too long, or it is applied to a way that only represents a part of the connection? OSM way: "
                     + way.getId() + ". duration=" + durationTag + " (= " + Math.round(durationInSeconds / 60.0) +
                     " minutes), distance=" + distance + " m");
             return;
@@ -603,7 +621,7 @@ public class CustomOsmReader {
         if (!e.isWithoutWarning()) {
             restrictionRelation.getTags().remove("graphhopper:via_node");
             List<String> members = restrictionRelation.getMembers().stream().map(m -> m.getRole() + " " + m.getType().toString().toLowerCase() + " " + m.getRef()).collect(Collectors.toList());
-            LOGGER.warn("Restriction relation " + restrictionRelation.getId() + " " + e.getMessage() + ". tags: " + restrictionRelation.getTags() + ", members: " + members + ". Relation ignored.");
+            OSM_WARNING_LOGGER.warn("Restriction relation " + restrictionRelation.getId() + " " + e.getMessage() + ". tags: " + restrictionRelation.getTags() + ", members: " + members + ". Relation ignored.");
         }
     }
 
