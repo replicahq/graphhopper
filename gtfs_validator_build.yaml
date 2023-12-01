@@ -4,4 +4,4 @@ steps:
     args: ['build', '-f', 'Dockerfile.validate', '-t', '${_IMAGE_TAG}', '--build-arg', 'BASE_IMAGE=${_BASE_IMAGE}', '.']
 images: ['${_IMAGE_TAG}']
 options:
-  machineType: 'N1_HIGHCPU_32'
+  machineType: 'E2_HIGHCPU_32'
