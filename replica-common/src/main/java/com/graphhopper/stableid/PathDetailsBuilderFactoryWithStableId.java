@@ -25,6 +25,7 @@ import com.graphhopper.util.details.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.graphhopper.stableid.StableIdPathDetailsBuilder.STABLE_EDGE_IDS_PATH_DETAIL;
 import static com.graphhopper.util.Parameters.Details.*;
 
 public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFactory {
@@ -56,7 +57,7 @@ public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFac
         if (requestedPathDetails.contains(EDGE_KEY))
             builders.add(new EdgeKeyDetails());
 
-        if (requestedPathDetails.contains("stable_edge_ids")) {
+        if (requestedPathDetails.contains(STABLE_EDGE_IDS_PATH_DETAIL)) {
             builders.add(new StableIdPathDetailsBuilder(evl));
         }
 

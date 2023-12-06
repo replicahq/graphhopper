@@ -24,12 +24,13 @@ import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.details.AbstractPathDetailsBuilder;
 
 public class StableIdPathDetailsBuilder extends AbstractPathDetailsBuilder {
+    public static final String STABLE_EDGE_IDS_PATH_DETAIL = "stable_edge_ids";
     private final StableIdEncodedValues originalDirectionFlagEncoder;
     private int prevEdgeId = -1;
     private String currentValue;
 
     public StableIdPathDetailsBuilder(EncodedValueLookup originalDirectionFlagEncoder) {
-        super("stable_edge_ids");
+        super(STABLE_EDGE_IDS_PATH_DETAIL);
         this.originalDirectionFlagEncoder = StableIdEncodedValues.fromEncodingManager((EncodingManager) originalDirectionFlagEncoder);
         currentValue = "";
     }

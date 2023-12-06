@@ -15,4 +15,7 @@ public final class RouterConstants {
     public static final String SMALL_TRUCK_VEHICLE_NAME = "small_truck";
 
     public static final Set<Integer> STREET_BASED_ROUTE_TYPES = Sets.newHashSet(0, 3, 5);
+
+    public static final String OSM_ID_ENCODED_VALUE = "osmid";
+    public static final String OSM_ID_PATH_DETAIL = OSM_ID_ENCODED_VALUE;
 }
