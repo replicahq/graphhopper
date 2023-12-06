@@ -16,6 +16,7 @@ package com.graphhopper.stableid;/*
  *  limitations under the License.
  */
 
+import com.graphhopper.ReplicaPathDetails;
 import com.graphhopper.routing.Path;
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.weighting.Weighting;
@@ -25,7 +26,6 @@ import com.graphhopper.util.details.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.graphhopper.stableid.StableIdPathDetailsBuilder.STABLE_EDGE_IDS_PATH_DETAIL;
 import static com.graphhopper.util.Parameters.Details.*;
 
 public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFactory {
@@ -57,7 +57,7 @@ public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFac
         if (requestedPathDetails.contains(EDGE_KEY))
             builders.add(new EdgeKeyDetails());
 
-        if (requestedPathDetails.contains(STABLE_EDGE_IDS_PATH_DETAIL)) {
+        if (requestedPathDetails.contains(ReplicaPathDetails.STABLE_EDGE_IDS)) {
             builders.add(new StableIdPathDetailsBuilder(evl));
         }
 

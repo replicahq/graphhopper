@@ -20,6 +20,7 @@ package com.replica;
 import com.google.common.collect.*;
 import com.google.protobuf.Timestamp;
 import com.graphhopper.GraphHopper;
+import com.graphhopper.ReplicaPathDetails;
 import com.graphhopper.RouterConstants;
 import com.graphhopper.gtfs.*;
 import com.graphhopper.stableid.StableIdPathDetailsBuilder;
@@ -407,10 +408,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             // there (with higher fidelity, since the path details contain the mapping to GH edges). the top-level and
             // path details values should match
             if (!pathDetailsByName.isEmpty()) {
-                assertTrue(pathDetailsByName.containsKey(Parameters.Details.AVERAGE_SPEED));
-                assertTrue(pathDetailsByName.containsKey(RouterConstants.OSM_ID_PATH_DETAIL));
-                List<RouterOuterClass.StreetPathDetailValue> stableEdgeIdPathDetails = pathDetailsByName.get(StableIdPathDetailsBuilder.STABLE_EDGE_IDS_PATH_DETAIL);
-                List<RouterOuterClass.StreetPathDetailValue> timePathDetails = pathDetailsByName.get(Parameters.Details.TIME);
+                assertTrue(pathDetailsByName.containsKey(ReplicaPathDetails.SPEED));
+                assertTrue(pathDetailsByName.containsKey(ReplicaPathDetails.OSM_ID));
+                List<RouterOuterClass.StreetPathDetailValue> stableEdgeIdPathDetails = pathDetailsByName.get(ReplicaPathDetails.STABLE_EDGE_IDS);
+                List<RouterOuterClass.StreetPathDetailValue> timePathDetails = pathDetailsByName.get(ReplicaPathDetails.TIME);
 
                 // the time and stable edge id details should align with the top-level fields and with each other
                 assertEquals(stableEdgeIdPathDetails.size(), timePathDetails.size());
@@ -498,28 +499,28 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             String defaultProfile = profileEntry.getValue();
 
             final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(
-                    createStreetRequest(customProfile, false, origin, dest, true));
+                    createStreetRequest(customProfile, false, origin, dest));
             checkStreetBasedResponse(customSpeedsResponse, ImmutableSet.of(customProfile), onlyOnePathPredicate);
 
             final RouterOuterClass.StreetRouteReply defaultSpeedsResponse = routerStub.routeStreetMode(
-                    createStreetRequest(defaultProfile, false, origin, dest, true));
+                    createStreetRequest(defaultProfile, false, origin, dest));
             checkStreetBasedResponse(defaultSpeedsResponse, ImmutableSet.of(defaultProfile), onlyOnePathPredicate);
 
             RouterOuterClass.StreetPath customSpeedsPath = Iterables.getOnlyElement(customSpeedsResponse.getPathsList());
             RouterOuterClass.StreetPath defaultSpeedsPath = Iterables.getOnlyElement(defaultSpeedsResponse.getPathsList());
 
-            double customSpeed = Double.parseDouble(getOnlyPathDetailValue(Parameters.Details.AVERAGE_SPEED, customSpeedsPath));
+            double customSpeed = Double.parseDouble(getOnlyPathDetailValue(ReplicaPathDetails.SPEED, customSpeedsPath));
             assertEquals(THURTON_DRIVE_CUSTOM_SPEED, customSpeed);
 
-            double defaultSpeed = Double.parseDouble(getOnlyPathDetailValue(Parameters.Details.AVERAGE_SPEED, defaultSpeedsPath));
-            assertTrue(defaultSpeed < customSpeed);
+            double defaultSpeed = Double.parseDouble(getOnlyPathDetailValue(ReplicaPathDetails.SPEED, defaultSpeedsPath));
             // the custom speeds profile sets the Thurton Drive speed very high, so the travel time using this profile
             // should be less than the default
+            assertTrue(defaultSpeed < customSpeed);
             assertTrue(customSpeedsPath.getDurationMillis() < defaultSpeedsPath.getDurationMillis());
 
             // both paths should only involve the Thurton drive OSM way
             for (RouterOuterClass.StreetPath path : Arrays.asList(customSpeedsPath, defaultSpeedsPath)) {
-                int osmId = Integer.parseInt(getOnlyPathDetailValue(RouterConstants.OSM_ID_PATH_DETAIL, path));
+                int osmId = Integer.parseInt(getOnlyPathDetailValue(ReplicaPathDetails.OSM_ID, path));
                 assertEquals(THURTON_DRIVE_OSM_ID, osmId);
             }
         }
@@ -557,7 +558,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     }
 
     @Test
-    public void testPathDetailsReturnedWhenRequested() {
+    public void testPathDetailsReturnedOnlyWhenRequested() {
         final RouterOuterClass.StreetRouteReply responseWithoutDetails = routerStub.routeStreetMode(createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false));
         assertTrue(responseWithoutDetails.getPathsList().stream().allMatch(path -> path.getPathDetailsCount() == 0));
 
@@ -566,6 +567,12 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .map(RouterServerTest::getPathDetailsByName)
                 .map(Map::keySet)
                 .allMatch(details -> details.containsAll(List.of(
-                        StableIdPathDetailsBuilder.STABLE_EDGE_IDS_PATH_DETAIL, Parameters.Details.TIME, RouterConstants.OSM_ID_PATH_DETAIL, Parameters.Details.AVERAGE_SPEED))));
+                        ReplicaPathDetails.STABLE_EDGE_IDS, ReplicaPathDetails.TIME, ReplicaPathDetails.OSM_ID, ReplicaPathDetails.SPEED))));
+
+        // top-level stable edge id and time fields should always be returned
+        for (RouterOuterClass.StreetRouteReply streetRouteReply : List.of(responseWithDetails, responseWithDetails)) {
+            assertTrue(streetRouteReply.getPathsList().stream().allMatch(path -> path.getStableEdgeIdsCount() > 0));
+            assertTrue(streetRouteReply.getPathsList().stream().allMatch(path -> path.getEdgeDurationsMillisCount() > 0));
+        }
     }
 }

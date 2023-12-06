@@ -5,10 +5,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.protobuf.Timestamp;
-import com.graphhopper.GHRequest;
-import com.graphhopper.ResponsePath;
-import com.graphhopper.RouterConstants;
-import com.graphhopper.Trip;
+import com.graphhopper.*;
 import com.graphhopper.gtfs.Request;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.util.CustomModel;
@@ -28,7 +25,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.graphhopper.stableid.StableIdPathDetailsBuilder.STABLE_EDGE_IDS_PATH_DETAIL;
 import static com.graphhopper.util.Parameters.Routing.INSTRUCTIONS;
 import static java.util.stream.Collectors.toList;
 
@@ -161,7 +157,7 @@ public final class RouterConverters {
                         .collect(Collectors.toList()));
         ghRequest.setProfile(request.getProfile());
         ghRequest.setLocale(Locale.US);
-        ghRequest.setPathDetails(getRequestedPathDetails(request.getReturnFullPathDetails()));
+        ghRequest.setPathDetails(getRequestedStreetPathDetails(request.getReturnFullPathDetails()));
 
         PMap hints = new PMap();
         hints.putObject(INSTRUCTIONS, false);
@@ -182,7 +178,7 @@ public final class RouterConverters {
                         .collect(Collectors.toList()));
         ghRequest.setProfile(request.getProfile());
         ghRequest.setLocale(Locale.US);
-        ghRequest.setPathDetails(getRequestedPathDetails(request.getReturnFullPathDetails()));
+        ghRequest.setPathDetails(getRequestedStreetPathDetails(request.getReturnFullPathDetails()));
 
         PMap hints = new PMap();
         CustomModel customModel;
@@ -208,12 +204,12 @@ public final class RouterConverters {
         return ghRequest;
     }
 
-    private static List<String> getRequestedPathDetails(boolean returnFullPathDetails) {
+    private static List<String> getRequestedStreetPathDetails(boolean returnFullPathDetails) {
         return returnFullPathDetails ?
-                ImmutableList.of(STABLE_EDGE_IDS_PATH_DETAIL, Parameters.Details.TIME, Parameters.Details.AVERAGE_SPEED, RouterConstants.OSM_ID_PATH_DETAIL) :
+                ImmutableList.of(ReplicaPathDetails.STABLE_EDGE_IDS, ReplicaPathDetails.TIME, ReplicaPathDetails.SPEED, ReplicaPathDetails.OSM_ID) :
                 // if we're not returning the full path details to the client, we only need to request the stable edge
                 // ids and time details (to populate stableEdgeIds and edgeDurationMillis in the response)
-                ImmutableList.of(STABLE_EDGE_IDS_PATH_DETAIL, Parameters.Details.TIME);
+                ImmutableList.of(ReplicaPathDetails.STABLE_EDGE_IDS, ReplicaPathDetails.TIME);
     }
 
     public static Request toGHPtRequest(PtRouteRequest request) {
@@ -227,7 +223,7 @@ public final class RouterConverters {
         ghPtRequest.setLimitSolutions(request.getLimitSolutions());
         ghPtRequest.setLocale(Locale.US);
         ghPtRequest.setArriveBy(false);
-        ghPtRequest.setPathDetails(Lists.newArrayList(STABLE_EDGE_IDS_PATH_DETAIL));
+        ghPtRequest.setPathDetails(Lists.newArrayList(ReplicaPathDetails.STABLE_EDGE_IDS));
         ghPtRequest.setProfileQuery(true);
         ghPtRequest.setMaxProfileDuration(Duration.ofMinutes(request.getMaxProfileDuration()));
         ghPtRequest.setLimitStreetTime(Duration.ofSeconds(request.getLimitStreetTimeSeconds()));
@@ -256,11 +252,11 @@ public final class RouterConverters {
     }
 
     public static StreetPath toStreetPath(ResponsePath responsePath, String profile, boolean returnFullPathDetails) {
-        List<String> pathStableEdgeIds = responsePath.getPathDetails().get(STABLE_EDGE_IDS_PATH_DETAIL).stream()
+        List<String> pathStableEdgeIds = responsePath.getPathDetails().get(ReplicaPathDetails.STABLE_EDGE_IDS).stream()
                 .map(pathDetail -> (String) pathDetail.getValue())
                 .collect(Collectors.toList());
 
-        List<Long> edgeTimes = responsePath.getPathDetails().get(Parameters.Details.TIME).stream()
+        List<Long> edgeTimes = responsePath.getPathDetails().get(ReplicaPathDetails.TIME).stream()
                 .map(pathDetail -> (Long) pathDetail.getValue())
                 .collect(Collectors.toList());
 
@@ -311,7 +307,7 @@ public final class RouterConverters {
     }
 
     private static List<String> fetchStreetLegStableIds(Trip.WalkLeg leg) {
-        return leg.details.get(STABLE_EDGE_IDS_PATH_DETAIL).stream()
+        return leg.details.get(ReplicaPathDetails.STABLE_EDGE_IDS).stream()
                 .map(idPathDetail -> (String) idPathDetail.getValue())
                 .collect(toList());
     }
