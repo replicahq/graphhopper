@@ -98,7 +98,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
                 if (!ghResponse.hasErrors()) {
                     anyPathsFound = true;
                     ghResponse.getAll().stream()
-                            .map(responsePath -> RouterConverters.toStreetPath(responsePath, profile))
+                            .map(responsePath -> RouterConverters.toStreetPath(responsePath, profile, request.getReturnFullPathDetails()))
                             .forEach(replyBuilder::addPaths);
                 }
             } catch (Exception e) {
@@ -175,7 +175,7 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
             } else {
                 StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
                 ghResponse.getAll().stream()
-                        .map(responsePath -> RouterConverters.toStreetPath(responsePath, request.getProfile()))
+                        .map(responsePath -> RouterConverters.toStreetPath(responsePath, request.getProfile(), request.getReturnFullPathDetails()))
                         .forEach(replyBuilder::addPaths);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;

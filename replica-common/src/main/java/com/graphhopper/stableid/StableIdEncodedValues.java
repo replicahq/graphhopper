@@ -5,6 +5,7 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Longs;
 import com.graphhopper.OsmHelper;
+import com.graphhopper.RouterConstants;
 import com.graphhopper.routing.ev.IntEncodedValue;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.util.EdgeIteratorState;
@@ -18,7 +19,7 @@ public class StableIdEncodedValues {
 
     private StableIdEncodedValues(EncodingManager encodingManager, OsmHelper osmHelper) {
         this.osmHelper = osmHelper;
-        this.osmWayIdEnc = encodingManager.getIntEncodedValue("osmid");
+        this.osmWayIdEnc = encodingManager.getIntEncodedValue(RouterConstants.OSM_ID_ENCODED_VALUE);
 
         for (int i=0; i<8; i++) {
             stableIdEnc[i] = encodingManager.getIntEncodedValue("stable_id_byte_"+i);

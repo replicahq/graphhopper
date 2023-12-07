@@ -138,6 +138,7 @@ $(document).ready(function (e) {
        customRouteRequest.setAlternateRouteMaxPaths($('#alt_route_max_paths').val());
        customRouteRequest.setAlternateRouteMaxWeightFactor($('#alt_route_max_weight_factor').val());
        customRouteRequest.setAlternateRouteMaxShareFactor($('#alt_route_max_share_factor').val());
+       customRouteRequest.setReturnFullPathDetails(true);
        console.log(customRouteRequest.toObject());
 
         var router = new Router.RouterClient('/api');
@@ -979,6 +980,7 @@ function routeLatLng(request, doQuery) {
     streetRouteRequest.setAlternateRouteMaxPaths($('#alt_route_max_paths').val());
     streetRouteRequest.setAlternateRouteMaxWeightFactor($('#alt_route_max_weight_factor').val());
     streetRouteRequest.setAlternateRouteMaxShareFactor($('#alt_route_max_share_factor').val());
+    streetRouteRequest.setReturnFullPathDetails(true);
     console.log(streetRouteRequest.toObject());
 
     var router = new Router.RouterClient('/api');
