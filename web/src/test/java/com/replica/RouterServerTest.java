@@ -526,6 +526,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         }
     }
 
+    // requires streetPath to only have one value for the given detailName
     private static String getOnlyPathDetailValue(String detailName, RouterOuterClass.StreetPath streetPath) {
         Map<String, List<RouterOuterClass.StreetPathDetailValue>> customPathDetailsByName = getPathDetailsByName(streetPath);
         return Iterables.getOnlyElement(customPathDetailsByName.get(detailName)).getValue();
