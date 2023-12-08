@@ -1,17 +1,33 @@
 package com.graphhopper.customspeeds;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.graphhopper.RouterConstants;
+import com.graphhopper.http.TruckAverageSpeedParser;
+import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.EnumSet;
-import java.util.Objects;
+import java.util.*;
 
 public class CustomSpeedsVehicle {
+    private static final Logger logger = LoggerFactory.getLogger(CustomSpeedsVehicle.class);
+
     // TODO support custom speeds for bikes and pedestrians (RAD-6445, RAD-6446)
     public enum VehicleType {
-        CAR,
-        TRUCK,
-        SMALL_TRUCK,
+        CAR(CarAverageSpeedParser.CAR_MAX_SPEED),
+        TRUCK(TruckAverageSpeedParser.EE_TRUCK_MAX_SPEED),
+        SMALL_TRUCK(TruckAverageSpeedParser.EE_TRUCK_MAX_SPEED);
+
+        private double maxValidSpeed;
+
+        VehicleType(double maxValidSpeed) {
+            this.maxValidSpeed = maxValidSpeed;
+        }
+
+        public double getMaxValidSpeed() {
+            return this.maxValidSpeed;
+        }
     }
 
     public final VehicleType baseVehicleType;
@@ -25,6 +41,18 @@ public class CustomSpeedsVehicle {
     }
 
     public static CustomSpeedsVehicle create(String customVehicleName, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
+        VehicleType baseVehicleType = CustomSpeedsVehicle.getBaseVehicleType(customVehicleName);
+
+        Map<Long, Double> invalidSpeeds = Maps.filterValues(osmWayIdToCustomSpeed,
+                speed -> speed < 0 || speed > baseVehicleType.getMaxValidSpeed());
+        if (!invalidSpeeds.isEmpty()) {
+            logger.error("Full mapping of invalid speeds: {}", invalidSpeeds);
+            String message = String.format(
+                    "Invalid speeds for vehicle %s. Custom speeds for base vehicle must be between 0 and %f. See logging for full mapping of invalid speeds",
+                    customVehicleName, baseVehicleType.getMaxValidSpeed());
+            throw new IllegalArgumentException(message);
+        }
+
         return new CustomSpeedsVehicle(customVehicleName, CustomSpeedsVehicle.getBaseVehicleType(customVehicleName), osmWayIdToCustomSpeed);
     }
 

@@ -1,13 +1,11 @@
 package com.graphhopper.customspeeds;
 
 import com.google.common.collect.ImmutableMap;
-import com.graphhopper.RouterConstants;
 import com.graphhopper.config.Profile;
 import com.graphhopper.reader.ReaderWay;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.checkerframework.checker.units.qual.C;
 
 import java.io.File;
 import java.io.FileReader;
