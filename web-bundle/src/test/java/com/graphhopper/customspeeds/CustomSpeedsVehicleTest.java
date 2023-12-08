@@ -16,7 +16,7 @@ public class CustomSpeedsVehicleTest {
         assertThrows(IllegalArgumentException.class, () -> CustomSpeedsVehicle.create("small_truck_invalid", invalidSmallTruckCustomSpeeds));
 
         ImmutableMap<Long, Double> invalidTruckCustomSpeeds = ImmutableMap.of(1L, 100.0, 2L, 0.0);
-        assertThrows(IllegalArgumentException.class, () -> CustomSpeedsVehicle.create("truck_invalid", invalidSmallTruckCustomSpeeds));
+        assertThrows(IllegalArgumentException.class, () -> CustomSpeedsVehicle.create("truck_invalid", invalidTruckCustomSpeeds));
 
         // validation should be vehicle-specific. speed is too high for trucks, but valid for cars
         ImmutableMap<Long, Double> validCarCustomSpeeds = invalidTruckCustomSpeeds;
