@@ -17,7 +17,7 @@ public class CustomSpeedsVehicle {
     public enum VehicleType {
         CAR(CarAverageSpeedParser.CAR_MAX_SPEED),
         TRUCK(TruckAverageSpeedParser.EE_TRUCK_MAX_SPEED),
-        SMALL_TRUCK(TruckAverageSpeedParser.EE_TRUCK_MAX_SPEED);
+        SMALL_TRUCK(TruckAverageSpeedParser.EE_SMALL_TRUCK_MAX_SPEED);
 
         private double maxValidSpeed;
 
