@@ -97,7 +97,7 @@ while IFS=, read -r person_id lat lng lat_work lng_work tract tract_work ; do
 grpcurl -d @ -plaintext localhost:50051 router.Router/RoutePt  > "$TMPDIR"/pt_response.json <<EOM
 {
 "points":[{"lat":"$lat","lon":"$lng"},{"lat":"$lat_work","lon":"$lng_work"}],
-"earliest_departure_time":"2019-10-13T18:25:00Z",
+"earliest_departure_time":"2019-10-15T18:25:00Z",
 "limit_solutions":4,
 "max_profile_duration":10,
 "beta_walk_time":1.5,

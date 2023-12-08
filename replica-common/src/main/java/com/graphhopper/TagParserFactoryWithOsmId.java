@@ -10,8 +10,8 @@ public class TagParserFactoryWithOsmId extends DefaultTagParserFactory {
 
     @Override
     public TagParser create(EncodedValueLookup lookup, String name, PMap properties) {
-        if (name.equals("osmid")) {
-            return new OsmIdTagParser(lookup.getIntEncodedValue("osmid"));
+        if (name.equals(RouterConstants.OSM_ID_ENCODED_VALUE)) {
+            return new OsmIdTagParser(lookup.getIntEncodedValue(RouterConstants.OSM_ID_ENCODED_VALUE));
         } else if (name.startsWith("stable_id") || name.startsWith("reverse_stable_id")) {
             // We compute those values outside of GraphHopper's loop
             return new NoOpTagParser();

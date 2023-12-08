@@ -16,6 +16,7 @@ package com.graphhopper.stableid;/*
  *  limitations under the License.
  */
 
+import com.graphhopper.ReplicaPathDetails;
 import com.graphhopper.routing.Path;
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.weighting.Weighting;
@@ -56,7 +57,7 @@ public class PathDetailsBuilderFactoryWithStableId extends PathDetailsBuilderFac
         if (requestedPathDetails.contains(EDGE_KEY))
             builders.add(new EdgeKeyDetails());
 
-        if (requestedPathDetails.contains("stable_edge_ids")) {
+        if (requestedPathDetails.contains(ReplicaPathDetails.STABLE_EDGE_IDS)) {
             builders.add(new StableIdPathDetailsBuilder(evl));
         }
 

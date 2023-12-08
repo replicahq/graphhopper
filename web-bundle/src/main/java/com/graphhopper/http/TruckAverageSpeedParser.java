@@ -10,6 +10,8 @@
  */
 package com.graphhopper.http;
 
+import com.google.common.collect.ImmutableMap;
+import com.graphhopper.customspeeds.CustomSpeedsUtils;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.ev.DecimalEncodedValue;
 import com.graphhopper.routing.ev.EncodedValueLookup;
@@ -51,15 +53,20 @@ public class TruckAverageSpeedParser extends CarAverageSpeedParser {
     private double excludeMaxSpeed;
     private int axes = 2;
 
-    public TruckAverageSpeedParser(EncodedValueLookup lookup, PMap properties) {
+    // empty if no custom speeds were provided
+    private final ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed;
+
+    public TruckAverageSpeedParser(EncodedValueLookup lookup, PMap properties, ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed) {
         this(
                 lookup.getDecimalEncodedValue(VehicleSpeed.key(properties.getString("name", "car"))),
-                properties
+                properties,
+                osmWayIdToCustomMaxSpeed
         );
     }
 
-    public TruckAverageSpeedParser(DecimalEncodedValue speedEnc, PMap properties) {
+    public TruckAverageSpeedParser(DecimalEncodedValue speedEnc, PMap properties, ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed) {
         super(speedEnc, speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_CAR_MAX_SPEED)));
+        this.osmWayIdToCustomMaxSpeed = osmWayIdToCustomMaxSpeed;
     }
 
     public TruckAverageSpeedParser setHeight(double height) {
@@ -234,11 +241,18 @@ public class TruckAverageSpeedParser extends CarAverageSpeedParser {
 
     @Override
     protected double applyMaxSpeed(ReaderWay way, double speed, boolean bwd) {
-        // pick max speed as it is. reduce it in SpeedModel and not by a constant factor of 0.9 like done in CarFlagEncoder
-        double maxSpeed = getMaxSpeed(way, bwd);
-        if (maxSpeed >= 0) {
-            return Math.max(5, Math.min(maxPossibleSpeed, maxSpeed));
-        }
-        return speed;
+        return CustomSpeedsUtils.getCustomMaxSpeed(way, osmWayIdToCustomMaxSpeed).orElseGet(() -> {
+            // pick max speed as it is. reduce it in SpeedModel and not by a constant factor of 0.9 like done in superclass
+            double maxSpeed = getMaxSpeed(way, bwd);
+            if (maxSpeed >= 0) {
+                return Math.max(5, Math.min(maxPossibleSpeed, maxSpeed));
+            }
+            return speed;
+        });
+    }
+
+    @Override
+    protected double applyBadSurfaceSpeed(ReaderWay way, double speed) {
+        return CustomSpeedsUtils.getCustomBadSurfaceSpeed(way, osmWayIdToCustomMaxSpeed).orElseGet(() -> super.applyBadSurfaceSpeed(way, speed));
     }
 }

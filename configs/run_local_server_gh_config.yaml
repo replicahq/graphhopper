@@ -6,7 +6,7 @@ graphhopper:
   gtfs.file: web/test-data/gtfs/f-9qc-fairfield~ca~us.zip,web/test-data/gtfs/rosevill.zip,web/test-data/gtfs/srtd.zip,web/test-data/gtfs/vacaville.zip
 
   gtfs.trip_based: true
-  gtfs.schedule_day: 2019-10-13
+  gtfs.schedule_day: 2019-10-15
 
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
   graph.location: transit_data/graphhopper

@@ -1,0 +1,39 @@
+# Configuration file for standard GraphHopper routers.
+# 1 profile loaded with default speeds is defined for each vehicle type
+
+graphhopper:
+  validation:
+  datareader.file:
+  gtfs.file:
+
+  gtfs.trip_based: true
+  gtfs.schedule_day: {{ GTFS_SCHEDULE_DAYS }}
+
+  graph.location: transit_data/graphhopper
+  routing.max_visited_nodes: 1500000
+  graph.vehicles: car,foot
+  import.osm.ignored_highways:
+
+  # Profiles specifying vehicle and weightings for each mode type.
+  # Save time by not building contraction hierarchies
+  profiles:
+    - name: car
+      vehicle: car
+      weighting: fastest
+    - name: foot
+      vehicle: foot
+      weighting: fastest
+
+server:
+  min_threads: 4
+  max_threads: 8
+  application_connectors:
+    - type: http
+      port: 8998
+      # for security reasons bind (localhost does not work with k8s svcs)
+      bind_host: 0.0.0.0
+      acceptor_threads: 1
+      selector_threads: 2
+      accept_queue_size: 8
+  request_log:
+    appenders: []

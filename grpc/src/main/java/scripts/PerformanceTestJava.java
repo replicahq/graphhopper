@@ -51,9 +51,9 @@ public class PerformanceTestJava {
         // Grab instance of PT router
         GraphHopper graphHopper = graphHopperManaged.getGraphHopper();
         final PtRouter ptRouter = new PtRouterTripBasedImpl(
-                graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getBaseGraph(),
+                graphHopper, graphHopperConfiguration, graphHopper.getTranslationMap(), graphHopper.getBaseGraph(),
                 graphHopper.getEncodingManager(), graphHopper.getLocationIndex(),
-                ((GraphHopperGtfs) graphHopper).getGtfsStorage(), RealtimeFeed.empty(),
+                ((GraphHopperGtfs) graphHopper).getGtfsStorage(),
                 graphHopper.getPathDetailsBuilderFactory()
         );
 
