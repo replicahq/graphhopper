@@ -41,19 +41,26 @@ public class CustomSpeedsVehicle {
     }
 
     public static CustomSpeedsVehicle create(String customVehicleName, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
-        VehicleType baseVehicleType = CustomSpeedsVehicle.getBaseVehicleType(customVehicleName);
-
-        Map<Long, Double> invalidSpeeds = Maps.filterValues(osmWayIdToCustomSpeed,
-                speed -> speed < 0 || speed > baseVehicleType.getMaxValidSpeed());
-        if (!invalidSpeeds.isEmpty()) {
-            logger.error("Full mapping of invalid speeds: {}", invalidSpeeds);
-            String message = String.format(
-                    "Invalid speeds for vehicle %s. Custom speeds for base vehicle must be between 0 and %f. See logging for full mapping of invalid speeds",
-                    customVehicleName, baseVehicleType.getMaxValidSpeed());
-            throw new IllegalArgumentException(message);
+        if (!validateCustomSpeeds(customVehicleName, osmWayIdToCustomSpeed)) {
+            throw new IllegalArgumentException(String.format("Invalid speeds for vehicle %s. See logging for details", customVehicleName));
         }
 
         return new CustomSpeedsVehicle(customVehicleName, CustomSpeedsVehicle.getBaseVehicleType(customVehicleName), osmWayIdToCustomSpeed);
+    }
+
+    public static boolean validateCustomSpeeds(String customVehicleName, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
+        VehicleType baseVehicleType = CustomSpeedsVehicle.getBaseVehicleType(customVehicleName);
+
+        // wrap filterValues result in a HashMap to turn live, lazy view into a traditional map
+        Map<Long, Double> invalidSpeeds = new HashMap<>(Maps.filterValues(osmWayIdToCustomSpeed,
+                speed -> speed < 0 || speed > baseVehicleType.getMaxValidSpeed()));
+        if (!invalidSpeeds.isEmpty()) {
+            logger.error("Invalid speeds found for vehicle {}. Custom speeds for base vehicle {} must be between 0 and {}. Full mapping of invalid speeds: {}",
+                    customVehicleName, baseVehicleType, baseVehicleType.getMaxValidSpeed(), invalidSpeeds);
+            return false;
+        }
+
+        return true;
     }
 
     private static CustomSpeedsVehicle.VehicleType getBaseVehicleType(String customVehicleName) {
