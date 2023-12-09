@@ -12,7 +12,6 @@ import com.graphhopper.http.GraphHopperServerConfiguration;
 import com.graphhopper.http.cli.ExportNationwideCommand;
 import com.graphhopper.http.cli.GtfsLinkMapperCommand;
 import com.graphhopper.http.cli.ImportCommand;
-import com.graphhopper.jackson.GraphHopperConfigModule;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.util.Helper;
 import io.dropwizard.cli.Cli;
@@ -30,15 +29,15 @@ import java.util.Optional;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-
 public class ReplicaGraphHopperTest {
     private static final Logger logger = LoggerFactory.getLogger(ReplicaGraphHopperTest.class);
     protected static final String GRAPH_FILES_DIR = "transit_data/graphhopper/";
     protected static final String EXPORT_FILES_DIR = "transit_data/export_test/graphhopper/";
     protected static final String TRANSIT_DATA_DIR = "transit_data/";
     protected static final String TEST_REGION_NAME = "mini_nor_cal";
-    protected static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../test_gh_config.yaml";
-    protected static final String TEST_EXPORT_GRAPHHOPPER_CONFIG_PATH = "../test_export_gh_config.yaml";
+    protected static final String TEST_RELEASE_NAME = "graphhopper_test";
+    protected static final String TEST_GRAPHHOPPER_CONFIG_PATH = "../configs/test_gh_config.yaml";
+    protected static final String TEST_EXPORT_GRAPHHOPPER_CONFIG_PATH = "../configs/test_export_gh_config.yaml";
     protected static final List<String> TEST_GTFS_FILE_NAMES = parseTestGtfsFileNames();
 
     protected static Bootstrap<GraphHopperServerConfiguration> bootstrap;
@@ -64,7 +63,6 @@ public class ReplicaGraphHopperTest {
 
     protected static GraphHopperConfig loadGhConfig(String configPath) throws Exception {
         ObjectMapper yaml = Jackson.initObjectMapper(new ObjectMapper(new YAMLFactory()));
-        yaml.registerModule(new GraphHopperConfigModule());
         JsonNode yamlNode = yaml.readTree(new File(configPath));
         return yaml.convertValue(yamlNode.get("graphhopper"), GraphHopperConfig.class);
     }
@@ -75,8 +73,7 @@ public class ReplicaGraphHopperTest {
 
     protected static void loadGraphhopper(String configPath) throws Exception {
         graphHopperConfiguration = loadGhConfig(configPath);
-        ObjectMapper json = Jackson.newObjectMapper();
-        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration, json);
+        graphHopperManaged = new GraphHopperManaged(graphHopperConfiguration);
         graphHopperManaged.start();
     }
 

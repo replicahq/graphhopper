@@ -1,0 +1,39 @@
+{
+  "speed": [
+    {
+      "if": "road_class == TRUNK",
+      "multiply_by": "0.9"
+    },
+    {
+      "if": "road_class == PRIMARY || road_class == SECONDARY || road_class == TERTIARY || road_class == RESIDENTIAL || road_class == SERVICE",
+      "multiply_by": "0.2"
+    },
+    {
+      "if": "road_class == UNCLASSIFIED || road_class == ROAD || road_class == OTHER",
+      "multiply_by": "0.1"
+    },
+    {
+      "if": "road_class_link",
+      "multiply_by": "0.5"
+    }
+  ],
+  "priority": [
+    {
+      "if": "road_class == SERVICE",
+      "multiply_by": "0.9"
+    },
+    {
+      "if": "road_class == PRIMARY || road_class == SECONDARY || road_class == TERTIARY",
+      "multiply_by": "0.8"
+    },
+    {
+      "if": "road_class == RESIDENTIAL",
+      "multiply_by": "0.7"
+    },
+    {
+      "if": "road_class == UNCLASSIFIED || road_class == ROAD || road_class == OTHER",
+      "multiply_by": "0.1"
+    }
+  ],
+  "distance_influence": "70"
+}

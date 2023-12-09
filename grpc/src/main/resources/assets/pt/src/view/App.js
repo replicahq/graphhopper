@@ -33,10 +33,14 @@ export default class App extends React.Component {
             departureDateTime: new moment(),
             limitSolutions: 4,
             maxProfileDuration: 10,
-            betaWalkTime: 1.5,
             limitStreetTimeSeconds: 1440,
             usePareto: false,
-            betaTransfers: 1440000.0,
+            accessMode: "foot",
+            egressMode: "foot",
+            betaAccessTime: 1.5,
+            betaEgressTime: 1.5,
+            betaTransfers: 720000.0,
+            maxVisitedNodes: 1000000,
             routes: {
                 query: null,
                 isFetching: false
@@ -48,16 +52,25 @@ export default class App extends React.Component {
     componentDidMount() {
         var router = new Router.RouterClient('/api');
         var component = this;
-        router.info(new Router.InfoRequest(), null, function(err, response) {
-            if (err) {
-                console.log("Error in Webrequest. Code: " + err.code)
-            } else {
-                console.log(response.toObject())
-                component.setState({info: {
-                    bbox: response.getBboxList()
-                }})
-            }
-        });
+
+        // Set bounds of bbox based on start/end of current route,
+        // or result of info() endpoint if no route is currently requested
+        if (component.state.from != null && component.state.to != null) {
+            component.setState({info: {
+                bbox: [component.state.from.long, component.state.from.lat, component.state.to.long, component.state.to.lat]
+            }});
+        } else {
+            router.info(new Router.InfoRequest(), null, function(err, response) {
+                if (err) {
+                    console.log("Error in Webrequest. Code: " + err.code);
+                } else {
+                    console.log(response.toObject());
+                    component.setState({info: {
+                        bbox: response.getBboxList()
+                    }});
+                }
+            });
+        }
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -68,7 +81,6 @@ export default class App extends React.Component {
                 if (this.state.routes.query !== query) {
                     // What we are currently seeing or fetching is not want we want to see.
                     // So we make a request.
-                    console.log(query);
                     this.setState({
                         routes: {
                             query: query,
@@ -79,7 +91,6 @@ export default class App extends React.Component {
                     var from = new Router.Point();
                     from.setLat(this.state.from.lat);
                     from.setLon(this.state.from.long);
-                    console.log(this.state.from);
                     var to = new Router.Point();
                     to.setLat(this.state.to.lat);
                     to.setLon(this.state.to.long);
@@ -89,12 +100,21 @@ export default class App extends React.Component {
                     ptRouteRequest.setEarliestDepartureTime(timestampFromDate);
                     ptRouteRequest.setLimitSolutions(this.state.limitSolutions);
                     ptRouteRequest.setMaxProfileDuration(this.state.maxProfileDuration);
-                    ptRouteRequest.setBetaWalkTime(this.state.betaWalkTime);
                     ptRouteRequest.setLimitStreetTimeSeconds(this.state.limitStreetTimeSeconds)
                     ptRouteRequest.setUsePareto(this.state.usePareto);
                     ptRouteRequest.setBetaTransfers(this.state.betaTransfers);
+                    ptRouteRequest.setAccessMode(this.state.accessMode);
+                    ptRouteRequest.setEgressMode(this.state.egressMode);
+                    ptRouteRequest.setBetaAccessTime(this.state.betaAccessTime);
+                    ptRouteRequest.setBetaEgressTime(this.state.betaEgressTime);
+                    ptRouteRequest.setMaxVisitedNodes(this.state.maxVisitedNodes);
+
+                    // log request object for debugging
+                    console.log(ptRouteRequest.toObject());
+
                     var component = this;
                     var router = new Router.RouterClient('/api');
+                    const startTime = Date.now();
                     router.routePt(ptRouteRequest, null, function(err, response) {
                         if (err) {
                             console.log(err);
@@ -106,6 +126,7 @@ export default class App extends React.Component {
                                 }
                             });
                         } else {
+                            const queryTimeSeconds = (Date.now() - startTime) * 1.0 / 1000;
                             component.setState(prevState => {
                                 if (CreateQuery(new URL("/route", window.location), prevState) !== query) return {}; // This reply is not what we want to know anymore
                                 console.log(response.toObject());
@@ -117,7 +138,8 @@ export default class App extends React.Component {
                                         paths: paths,
                                         isLastQuerySuccess: true,
                                         isFetching: false,
-                                        selectedRouteIndex: selectedPath
+                                        selectedRouteIndex: selectedPath,
+                                        queryTimeSeconds: queryTimeSeconds
                                     }
                                 };
                             });

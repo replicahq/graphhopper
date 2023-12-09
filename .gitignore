@@ -41,4 +41,3 @@ local.properties
 *.zip
 .DS_Store
 /graph-cache
-package-lock.json

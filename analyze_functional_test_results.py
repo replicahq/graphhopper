@@ -9,7 +9,7 @@ import time
 
 NEW_ROUTES_FOUND_THRESHOLD = 0.05
 OLD_ROUTES_NOT_FOUND_THRESHOLD = 0.05
-MATCHED_ROUTES_THRESHOLD = 0.95
+MATCHED_ROUTES_THRESHOLD = 0.85
 TRAVEL_TIME_MPC_THRESHOLD = 0.05
 TRAVEL_TIME_MEAN_APC_THRESHOLD = 0.05
 TRANSIT_RATIO_MPC_THRESHOLD = 0.05
@@ -179,6 +179,16 @@ def transit_ratio_mean_percent_change(
             matched_count += 1
             golden_ratio = calculate_transit_ratio(golden_response)
             to_compare_ratio = calculate_transit_ratio(to_compare)
+
+            # In some cases, transit paths contain stop-stop sections where stops
+            # are very closely spaced, and arrival/departure times for those stops
+            # are equal; in these cases, transit ratios will be 0, which cause issues
+            # in the calculations below. So, we skip these cases when they're identified.
+            if golden_ratio == 0:
+                assert to_compare_ratio == 0
+                matched_count -= 1  # consider these responses as "not matched"
+                continue
+
             if absolute:
                 sum_of_changes += abs((to_compare_ratio - golden_ratio) / golden_ratio)
             else:

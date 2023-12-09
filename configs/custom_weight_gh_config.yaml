@@ -1,0 +1,46 @@
+# Configuration file for standard GraphHopper routers.
+# 1 profile loaded with default speeds is defined for each vehicle type
+
+graphhopper:
+  datareader.file:
+  graph.location: transit_data/graphhopper
+  routing.max_visited_nodes: 1500000
+  graph.vehicles: car,bike,foot,truck,small_truck
+  import.osm.ignored_highways:
+
+  # Profiles specifying vehicle and weightings for each mode type.
+  profiles:
+    - name: car
+      vehicle: car
+      weighting: custom
+      custom_model_files: []
+    - name: bike
+      vehicle: bike
+      weighting: custom
+      custom_model_files: []
+    - name: foot
+      vehicle: foot
+      weighting: custom
+      custom_model_files: []
+    - name: truck
+      vehicle: truck
+      weighting: custom
+      custom_model_files: []
+    - name: small_truck
+      vehicle: small_truck
+      weighting: custom
+      custom_model_files: []
+
+server:
+  min_threads: 4
+  max_threads: 8
+  application_connectors:
+    - type: http
+      port: 8998
+      # for security reasons bind (localhost does not work with k8s svcs)
+      bind_host: 0.0.0.0
+      acceptor_threads: 1
+      selector_threads: 2
+      accept_queue_size: 8
+  request_log:
+    appenders: []

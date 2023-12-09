@@ -46,20 +46,20 @@ for file in ./web/test-data/gtfs/*.zip; do
 done
 
 echo "Checking test_gh_config.yaml; updating paths to test OSM/GTFS if needed"
-if grep -q TEST_OSM ./test_gh_config.yaml; then
-  sed -i -e "s/{{ TEST_OSM }}/.\/test-data\/micro_nor_cal.osm.pbf/g" ./test_gh_config.yaml
+if grep -q TEST_OSM ./configs/test_gh_config.yaml; then
+  sed -i -e "s/{{ TEST_OSM }}/.\/test-data\/micro_nor_cal.osm.pbf/g" ./configs/test_gh_config.yaml
 fi
 
-if grep -q TEST_GTFS ./test_gh_config.yaml; then
-  if [[ ! -f "./test_gh_config_one_feed.yaml" ]]; then
+if grep -q TEST_GTFS ./configs/test_gh_config.yaml; then
+  if [[ ! -f "./configs/test_gh_config_one_feed.yaml" ]]; then
     echo "Also setting up link mapper single-feed test config"
-    cp ./test_gh_config.yaml ./test_gh_config_one_feed.yaml
-    sed -i -e "s/{{ TEST_OSM }}/.\/test-data\/micro_nor_cal.osm.pbf/g" ./test_gh_config_one_feed.yaml
-    sed -i -e "s/{{ TEST_GTFS }}/.\/test-data\/link_mapping_test_feed.zip/g" ./test_gh_config_one_feed.yaml
-    sed -i -e "s/transit_data\/graphhopper/transit_data\/link_mapper/g" ./test_gh_config_one_feed.yaml
+    cp ./configs/test_gh_config.yaml ./configs/test_gh_config_one_feed.yaml
+    sed -i -e "s/{{ TEST_OSM }}/.\/test-data\/micro_nor_cal.osm.pbf/g" ./configs/test_gh_config_one_feed.yaml
+    sed -i -e "s/{{ TEST_GTFS }}/.\/test-data\/link_mapping_test_feed.zip/g" ./configs/test_gh_config_one_feed.yaml
+    sed -i -e "s/transit_data\/graphhopper/transit_data\/link_mapper/g" ./configs/test_gh_config_one_feed.yaml
   fi
   export GTFS_FILE_LIST=$(ls ./web/test-data/gtfs/ | awk '{print "./test-data/gtfs/"$1}' | paste -s -d, -)
-  sed -i -e "s/{{ TEST_GTFS }}/${GTFS_FILE_LIST//\//\\/}/g" ./test_gh_config.yaml
+  sed -i -e "s/{{ TEST_GTFS }}/${GTFS_FILE_LIST//\//\\/}/g" ./configs/test_gh_config.yaml
 fi
 
 echo "Setup complete! Tests can now be run with 'mvn test'"

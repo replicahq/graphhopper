@@ -18,8 +18,38 @@
     <dependencies>
         <dependency>
             <groupId>com.graphhopper</groupId>
-            <artifactId>graphhopper-matrix</artifactId>
-            <version>3.0-replica4</version>
+            <artifactId>graphhopper-core</artifactId>
+            <version>99682c42c3df04226349421c82c44fa0474eedb4</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-reader-gtfs</artifactId>
+            <version>99682c42c3df04226349421c82c44fa0474eedb4</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-web-bundle</artifactId>
+            <version>99682c42c3df04226349421c82c44fa0474eedb4</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-web</artifactId>
+            <version>99682c42c3df04226349421c82c44fa0474eedb4</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-tools</artifactId>
+            <version>99682c42c3df04226349421c82c44fa0474eedb4</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.9.0</version>
         </dependency>
     </dependencies>
 

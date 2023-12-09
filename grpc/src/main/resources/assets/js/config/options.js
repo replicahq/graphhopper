@@ -14,6 +14,6 @@ exports.options = {
     routing: {host: 'localhost:8998', api_key: '48531d4f4b6e70e2314489e3244c6c71fa8b984c5690af42'},
     geocoding: {host: '', api_key: ''},
     thunderforest: {api_key: ''},
-    omniscale: {api_key: ''},
+    omniscale: {api_key: 'graphhopper-34c9f6fd'},
     mapilion: {api_key: ''}
 };

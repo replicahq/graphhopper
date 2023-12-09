@@ -2,70 +2,71 @@ package com.graphhopper.replica;
 
 import com.google.common.collect.Lists;
 import com.graphhopper.GraphHopper;
-import com.graphhopper.routing.ev.DecimalEncodedValue;
-import com.graphhopper.routing.ev.EnumEncodedValue;
-import com.graphhopper.routing.ev.RoadClass;
-import com.graphhopper.routing.util.AllEdgesIterator;
-import com.graphhopper.routing.util.CarFlagEncoder;
-import com.graphhopper.routing.util.EncodingManager;
+import com.graphhopper.OsmHelper;
+import com.graphhopper.routing.ev.*;
+import com.graphhopper.routing.util.*;
 import com.graphhopper.stableid.StableIdEncodedValues;
-import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.storage.IntsRef;
 import com.graphhopper.storage.NodeAccess;
-import com.graphhopper.util.DistanceCalcEarth;
-import com.graphhopper.util.EdgeIteratorState;
-import com.graphhopper.util.FetchMode;
-import com.graphhopper.util.PointList;
+import com.graphhopper.util.*;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.glassfish.jersey.internal.guava.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class StreetEdgeExporter {
     private static final Logger logger = LoggerFactory.getLogger(StreetEdgeExporter.class);
 
+    private static final Map<String, String> ACCESSIBILITY_MODE_MAP = Map.of(
+            "car", "CAR",
+            "bike", "BIKE",
+            "foot", "PEDESTRIAN"
+    );
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
-    private static final String[] COLUMN_HEADERS = {"stableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
-            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway"};
+    private static final String[] COLUMN_HEADERS = {"stableEdgeId", "humanReadableStableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
+            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
+            "startOsmNode", "endOsmNode"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
     // Some sticky members
     private Map<Long, Map<String, String>> osmIdToLaneTags;
-    private Map<Integer, Long> ghIdToOsmId;
-    private Map<Long, List<String>> osmIdToAccessFlags;
     private Map<Long, String> osmIdToStreetName;
     private Map<Long, String> osmIdToHighway;
-    //
+
     private NodeAccess nodes;
     private DecimalEncodedValue avgSpeedEnc;
     private StableIdEncodedValues stableIdEncodedValues;
     private EnumEncodedValue<RoadClass> roadClassEnc;
+    private IntEncodedValue osmWayIdEnc;
+    private EncodingManager encodingManager;
+    private OsmHelper osmHelper;
 
-    public StreetEdgeExporter(GraphHopper configuredGraphHopper, Map<Long, Map<String, String>> osmIdToLaneTags, Map<Integer, Long> ghIdToOsmId, Map<Long, List<String>> osmIdToAccessFlags, Map<Long, String> osmIdToStreetName, Map<Long, String> osmIdToHighway) {
+    public StreetEdgeExporter(GraphHopper configuredGraphHopper,
+                              Map<Long, Map<String, String>> osmIdToLaneTags,
+                              Map<Long, String> osmIdToStreetName,
+                              Map<Long, String> osmIdToHighway,
+                              OsmHelper osmHelper) {
         this.osmIdToLaneTags = osmIdToLaneTags;
-        this.ghIdToOsmId = ghIdToOsmId;
-        this.osmIdToAccessFlags = osmIdToAccessFlags;
         this.osmIdToStreetName = osmIdToStreetName;
         this.osmIdToHighway = osmIdToHighway;
+        this.osmHelper = osmHelper;
 
         // Grab edge/node iterators for graph loaded from pre-built GH files
-        GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
-        nodes = graphHopperStorage.getNodeAccess();
+        this.nodes = configuredGraphHopper.getBaseGraph().getNodeAccess();
 
         // Setup encoders for determining speed and road type info for each edge
-        EncodingManager encodingManager = configuredGraphHopper.getEncodingManager();
-        stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(encodingManager);
-        roadClassEnc = encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
-        CarFlagEncoder carFlagEncoder = (CarFlagEncoder)encodingManager.getEncoder("car");
-        avgSpeedEnc = carFlagEncoder.getAverageSpeedEnc();
+        this.encodingManager = configuredGraphHopper.getEncodingManager();
+        this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper);
+        this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
+        this.avgSpeedEnc = this.encodingManager.getDecimalEncodedValue(VehicleSpeed.key("car"));
+        this.osmWayIdEnc = this.encodingManager.getIntEncodedValue("osmid");
     }
 
     public List<StreetEdgeExportRecord> generateRecords(EdgeIteratorState iteratorState) {
@@ -74,7 +75,6 @@ public class StreetEdgeExporter {
         int ghEdgeId = iteratorState.getEdge();
         int startVertex = iteratorState.getBaseNode();
         int endVertex = iteratorState.getAdjNode();
-
         double startLat = nodes.getLat(startVertex);
         double startLon = nodes.getLon(startVertex);
         double endLat = nodes.getLat(endVertex);
@@ -93,29 +93,71 @@ public class StreetEdgeExporter {
         // Convert GH's distance in meters to millimeters to match R5's implementation
         long distanceMillimeters = distanceMeters * 1000;
 
-        // Fetch OSM ID, skipping edges from PT meta-graph that have no IDs set (getOsmIdForGhEdge returns -1)
-        long osmId = OsmHelper.getOsmIdForGhEdge(ghEdgeId, ghIdToOsmId);
-        if (osmId == -1L) {
+        // Fetch OSM Way ID, skipping edges that have no IDs set (getOSMWay returns -1)
+        long osmWayId = iteratorState.get(osmWayIdEnc);
+        if (osmWayId <= 0L) {
+            throw new RuntimeException("OSM Way ID <= 0 for edge " + ghEdgeId + "! This shouldn't happen");
+        }
+
+        // Fetch OSM Node IDs for each node of edge
+        long startOsmNode = osmHelper.getOSMNode(startVertex);
+        long endOsmNode = osmHelper.getOSMNode(endVertex);
+
+        // Check if start or end node IDs are artificial IDs; if so, replace them with real IDs
+        if (startOsmNode <= 0) {
+            startOsmNode = osmHelper.getRealNodeIdFromArtificial(startOsmNode);
+        }
+        if (endOsmNode <= 0) {
+            endOsmNode = osmHelper.getRealNodeIdFromArtificial(endOsmNode);
+        }
+
+        if (startOsmNode <= 0 || endOsmNode <= 0) {
+            throw new RuntimeException("Start or end OSM node ID is <= 0! This shouldn't happen");
+        }
+
+        // Filter out single-point "edges" + edges with identical start/end point locations
+        // and no intermediate points (as would exist in the case of road loops)
+        if (wayGeometry.size() <= 1) {
+            return output;
+        } else if (wayGeometry.size() == 2 && (wayGeometry.get(0).equals(wayGeometry.get(1)))) {
             return output;
         }
 
         // Use street name parsed from Ways/Relations, if it exists; otherwise, use default GH edge name
-        String streetName = osmIdToStreetName.getOrDefault(osmId, iteratorState.getName());
+        String streetName = osmIdToStreetName.getOrDefault(osmWayId, iteratorState.getName());
 
         // Grab OSM highway type and encoded stable IDs for both edge directions
-        String highwayTag = osmIdToHighway.getOrDefault(osmId, iteratorState.get(roadClassEnc).toString());
+        String highwayTag = osmIdToHighway.getOrDefault(osmWayId, iteratorState.get(roadClassEnc).toString());
         String forwardStableEdgeId = stableIdEncodedValues.getStableId(false, iteratorState);
         String backwardStableEdgeId = stableIdEncodedValues.getStableId(true, iteratorState);
 
+        int segmentIndex = osmHelper.getSegmentIndexForGhEdge(ghEdgeId);
+        String humanReadableForwardStableEdgeId = StableIdEncodedValues.calculateHumanReadableStableEdgeId(osmWayId, segmentIndex, false);
+        String humanReadableBackwardStableEdgeId = StableIdEncodedValues.calculateHumanReadableStableEdgeId(osmWayId, segmentIndex, true);
+
         // Set accessibility flags for each edge direction
         // Returned flags are from the set {ALLOWS_CAR, ALLOWS_BIKE, ALLOWS_PEDESTRIAN}
-        String forwardFlags = OsmHelper.getFlagsForGhEdge(ghEdgeId, false, osmIdToAccessFlags, ghIdToOsmId);
-        String backwardFlags = OsmHelper.getFlagsForGhEdge(ghEdgeId, true, osmIdToAccessFlags, ghIdToOsmId);
+        IntsRef edgeFlags = iteratorState.getFlags();
+        Set<String> forwardFlags = Sets.newHashSet();
+        Set<String> backwardFlags = Sets.newHashSet();
+        for (String vehicle: encodingManager.getVehicles()) {
+            // Only record accessibility for car, bike, and foot vehicles
+            String mode = ACCESSIBILITY_MODE_MAP.getOrDefault(vehicle, null);
+            if (mode != null) {
+                BooleanEncodedValue access = encodingManager.getBooleanEncodedValue(VehicleAccess.key(vehicle));
+                if (access.getBool(false, ghEdgeId, new IntsRefEdgeIntAccess(edgeFlags))) {
+                    forwardFlags.add("ALLOWS_" + mode);
+                }
+                if (access.getBool(true, ghEdgeId, new IntsRefEdgeIntAccess(edgeFlags))) {
+                    backwardFlags.add("ALLOWS_" + mode);
+                }
+            }
+        }
 
         // Calculate number of lanes for edge, as done in R5, based on OSM tags + edge direction
-        int overallLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes");
-        int forwardLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes:forward");
-        int backwardLanes = parseLanesTag(osmId, osmIdToLaneTags, "lanes:backward");
+        int overallLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes");
+        int forwardLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes:forward");
+        int backwardLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes:backward");
 
         if (!backwardFlags.contains("ALLOWS_CAR")) {
             backwardLanes = 0;
@@ -141,22 +183,19 @@ public class StreetEdgeExporter {
             }
         }
 
-        // Copy R5's logic; filter out edges with unwanted highway tags and negative OSM IDs
-        // todo: do negative OSM ids happen in GH? This might have been R5-specific
-        if (!HIGHWAY_FILTER_TAGS.contains(highwayTag) && osmId >= 0) {
-            // Print line for each edge direction, if edge is accessible.
-            // Inaccessible edges have no flags set; flags are stored as stringified lists,
-            // so innaccessible edges will have a flag equal to "[]", the empty list's toString().
-            // Only remove inaccessible edges with highway tags of motorway or motorway_link
-            if (!(forwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
-                output.add(new StreetEdgeExportRecord(forwardStableEdgeId, startVertex, endVertex,
-                        startLat, startLon, endLat, endLon, geometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, forwardFlags, forwardLanes, highwayTag));
+        // Filter out edges with unwanted highway tags
+        if (!HIGHWAY_FILTER_TAGS.contains(highwayTag)) {
+            // Print line for each edge direction, if edge is accessible; inaccessible edges should have
+            // no flags set. Only remove inaccessible edges with highway tags of motorway or motorway_link
+            if (!(forwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
+                output.add(new StreetEdgeExportRecord(forwardStableEdgeId, humanReadableForwardStableEdgeId,
+                        startVertex, endVertex, startLat, startLon, endLat, endLon, geometryString, streetName,
+                        distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag, startOsmNode, endOsmNode));
             }
-            if (!(backwardFlags.equals("[]") && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
-                output.add(new StreetEdgeExportRecord(backwardStableEdgeId, endVertex, startVertex,
-                        endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
-                        distanceMillimeters, osmId, speedcms, backwardFlags, backwardLanes, highwayTag));
+            if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
+                output.add(new StreetEdgeExportRecord(backwardStableEdgeId, humanReadableBackwardStableEdgeId,
+                        endVertex, startVertex, endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
+                        distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag, endOsmNode, startOsmNode));
             }
         }
 
@@ -164,15 +203,13 @@ public class StreetEdgeExporter {
     }
 
     public static void writeStreetEdgesCsv(GraphHopper configuredGraphHopper,
-                                            Map<Long, Map<String, String>> osmIdToLaneTags,
-                                            Map<Integer, Long> ghIdToOsmId,
-                                            Map<Long, List<String>> osmIdToAccessFlags,
-                                            Map<Long, String> osmIdToStreetName,
-                                            Map<Long, String> osmIdToHighway) {
-
-        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags, ghIdToOsmId, osmIdToAccessFlags, osmIdToStreetName, osmIdToHighway);
-        GraphHopperStorage graphHopperStorage = configuredGraphHopper.getGraphHopperStorage();
-        AllEdgesIterator edgeIterator = graphHopperStorage.getAllEdges();
+                                           Map<Long, Map<String, String>> osmIdToLaneTags,
+                                           Map<Long, String> osmIdToStreetName,
+                                           Map<Long, String> osmIdToHighway,
+                                           OsmHelper osmHelper) {
+        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags,
+                osmIdToStreetName, osmIdToHighway, osmHelper);
+        AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
         File outputFile = new File(configuredGraphHopper.getGraphHopperLocation() + "/street_edges.csv");
 
         logger.info("Writing street edges...");
@@ -191,8 +228,9 @@ public class StreetEdgeExporter {
                         skippedEdgeCount++;
                     }
                     for(StreetEdgeExportRecord r : records) {
-                        printer.printRecord(r.edgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
-                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag);
+                        printer.printRecord(r.edgeId, r.humanReadableEdgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
+                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
+                                r.startOsmNode, r.endOsmNode);
                     }
                 }
             }

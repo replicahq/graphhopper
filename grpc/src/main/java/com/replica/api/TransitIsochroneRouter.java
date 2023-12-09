@@ -1,16 +1,16 @@
 package com.replica.api;
 
-import com.graphhopper.GraphHopper;
+import com.conveyal.gtfs.model.Stop;
 import com.graphhopper.gtfs.*;
 import com.graphhopper.isochrone.algorithm.ContourBuilder;
 import com.graphhopper.isochrone.algorithm.ReadableTriangulation;
-import com.graphhopper.routing.querygraph.QueryGraph;
-import com.graphhopper.routing.util.DefaultEdgeFilter;
-import com.graphhopper.routing.util.EdgeFilter;
+import com.graphhopper.routing.ev.*;
+import com.graphhopper.routing.util.DefaultSnapFilter;
+import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.weighting.FastestWeighting;
+import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.NodeAccess;
-import com.graphhopper.storage.index.LocationIndex;
-import com.graphhopper.storage.index.Snap;
+import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.shapes.BBox;
 import io.grpc.stub.StreamObserver;
 import org.locationtech.jts.geom.*;
@@ -19,23 +19,17 @@ import org.locationtech.jts.triangulate.ConstraintVertex;
 import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
 import org.locationtech.jts.triangulate.quadedge.QuadEdgeSubdivision;
 import org.locationtech.jts.triangulate.quadedge.Vertex;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import router.RouterOuterClass;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.function.Function;
 
 public class TransitIsochroneRouter {
 
     private static final double JTS_TOLERANCE = 0.00001;
-    private final Function<Label, Double> z = label -> (double) label.currentTime;
+    private final GraphHopperGtfs graphHopper;
 
-    private static final Logger logger = LoggerFactory.getLogger(TransitIsochroneRouter.class);
-    private final GraphHopper graphHopper;
-
-    public TransitIsochroneRouter(GraphHopper graphHopper) {
+    public TransitIsochroneRouter(GraphHopperGtfs graphHopper) {
         this.graphHopper = graphHopper;
     }
 
@@ -44,36 +38,46 @@ public class TransitIsochroneRouter {
         try {
             initialTime = Instant.ofEpochSecond(request.getEarliestDepartureTime().getSeconds(), request.getEarliestDepartureTime().getNanos());
         } catch (Exception e) {
-            throw new IllegalArgumentException(String.format(Locale.ROOT, "Illegal value for required parameter %s: [%s]", "earliest_departure_time", request.getEarliestDepartureTime().getSeconds()));
+            throw new IllegalArgumentException(String.format("Illegal value for required parameter %s: [%s]", "earliest_departure_time", request.getEarliestDepartureTime().getSeconds()));
         }
 
-        double targetZ = initialTime.toEpochMilli() + request.getTimeLimit() * 1000;
+        double targetZ = request.getTimeLimit() * 1000;
+        GHLocation location = GHLocation.fromString(request.getCenter().getLat() + "," + request.getCenter().getLon());
 
         GeometryFactory geometryFactory = new GeometryFactory();
-        final EdgeFilter filter = DefaultEdgeFilter.allEdges(graphHopper.getGraphHopperStorage().getEncodingManager().getEncoder("foot"));
-        Snap snap = graphHopper.getLocationIndex().findClosest(request.getCenter().getLat(), request.getCenter().getLon(), filter);
-        QueryGraph queryGraph = QueryGraph.create(graphHopper.getGraphHopperStorage(), Collections.singletonList(snap));
-        if (!snap.isValid()) {
-            throw new IllegalArgumentException("Cannot find point: " + request.getCenter());
-        }
+        EncodingManager encodingManager = graphHopper.getEncodingManager();
+        BooleanEncodedValue accessEnc = encodingManager.getBooleanEncodedValue(VehicleAccess.key("foot"));
+        DecimalEncodedValue speedEnc = encodingManager.getDecimalEncodedValue(VehicleSpeed.key("foot"));
+        final Weighting weighting = new FastestWeighting(accessEnc, speedEnc);
+        DefaultSnapFilter snapFilter = new DefaultSnapFilter(weighting, encodingManager.getBooleanEncodedValue(Subnetwork.key("foot")));
 
-        PtEncodedValues ptEncodedValues = PtEncodedValues.fromEncodingManager(graphHopper.getEncodingManager());
-        GtfsStorage gtfsStorage = ((GraphHopperGtfs) graphHopper).getGtfsStorage();
-        GraphExplorer graphExplorer = new GraphExplorer(queryGraph, new FastestWeighting(graphHopper.getEncodingManager().getEncoder("foot")), ptEncodedValues, gtfsStorage, RealtimeFeed.empty(gtfsStorage), request.getReverseFlow(), false, 5.0, request.getReverseFlow());
-        MultiCriteriaLabelSetting router = new MultiCriteriaLabelSetting(graphExplorer, ptEncodedValues, request.getReverseFlow(), false, false, false, 0, 1000000, Collections.emptyList());
+        GtfsStorage gtfsStorage = graphHopper.getGtfsStorage();
+        boolean reverseFlow = request.getReverseFlow();
+        PtLocationSnapper.Result snapResult = new PtLocationSnapper(graphHopper.getBaseGraph(), graphHopper.getLocationIndex(), gtfsStorage).snapAll(Arrays.asList(location), Arrays.asList(snapFilter));
+        GraphExplorer graphExplorer = new GraphExplorer(snapResult.queryGraph, gtfsStorage.getPtGraph(), weighting, gtfsStorage, RealtimeFeed.empty(), reverseFlow, false, false, 5.0, reverseFlow, request.getBlockedRouteTypes());
+        MultiCriteriaLabelSetting router = new MultiCriteriaLabelSetting(graphExplorer, reverseFlow, false, false, 0, Collections.emptyList());
 
         Map<Coordinate, Double> z1 = new HashMap<>();
-        NodeAccess nodeAccess = queryGraph.getNodeAccess();
+        NodeAccess nodeAccess = snapResult.queryGraph.getNodeAccess();
 
-        MultiCriteriaLabelSetting.SPTVisitor sptVisitor = nodeLabel -> {
-            Coordinate nodeCoordinate = new Coordinate(nodeAccess.getLongitude(nodeLabel.adjNode), nodeAccess.getLatitude(nodeLabel.adjNode));
-            z1.merge(nodeCoordinate, this.z.apply(nodeLabel), Math::min);
-        };
+        for (Label label : router.calcLabels(snapResult.nodes.get(0), initialTime)) {
+            if (!((label.currentTime - initialTime.toEpochMilli()) * (reverseFlow ? -1 : 1) <= targetZ)) {
+                break;
+            }
+            if (label.node.streetNode != -1) {
+                Coordinate nodeCoordinate = new Coordinate(nodeAccess.getLon(label.node.streetNode), nodeAccess.getLat(label.node.streetNode));
+                z1.merge(nodeCoordinate, (double) (label.currentTime - initialTime.toEpochMilli()) * (reverseFlow ? -1 : 1), Math::min);
+            } else if (label.edge != null && (label.edge.getType() == GtfsStorage.EdgeType.EXIT_PT || label.edge.getType() == GtfsStorage.EdgeType.ENTER_PT)) {
+                GtfsStorage.PlatformDescriptor platformDescriptor = label.edge.getPlatformDescriptor();
+                Stop stop = gtfsStorage.getGtfsFeeds().get(platformDescriptor.feed_id).stops.get(platformDescriptor.stop_id);
+                Coordinate nodeCoordinate = new Coordinate(stop.stop_lon, stop.stop_lat);
+                z1.merge(nodeCoordinate, (double) (label.currentTime - initialTime.toEpochMilli()) * (reverseFlow ? -1 : 1), Math::min);
+            }
+        }
 
         RouterOuterClass.IsochroneRouteReply.Builder replyBuilder = RouterOuterClass.IsochroneRouteReply.newBuilder();
 
         if (request.getResultFormat().equals("multipoint")) {
-            router.calcLabels(snap.getClosestNode(), initialTime, request.getBlockedRouteTypes(), sptVisitor, label -> label.currentTime <= targetZ);
             MultiPoint exploredPoints = geometryFactory.createMultiPointFromCoords(z1.keySet().toArray(new Coordinate[0]));
             replyBuilder.addBuckets(RouterOuterClass.IsochroneBucket.newBuilder()
                     .setBucket(0)
@@ -82,17 +86,14 @@ public class TransitIsochroneRouter {
             responseObserver.onNext(replyBuilder.build());
             responseObserver.onCompleted();
         } else {
-            router.calcLabels(snap.getClosestNode(), initialTime, request.getBlockedRouteTypes(), sptVisitor, label -> label.currentTime <= targetZ);
             MultiPoint exploredPoints = geometryFactory.createMultiPointFromCoords(z1.keySet().toArray(new Coordinate[0]));
 
             // Get at least all nodes within our bounding box (I think convex hull would be enough.)
             // I think then we should have all possible encroaching points. (Proof needed.)
-            graphHopper.getLocationIndex().query(BBox.fromEnvelope(exploredPoints.getEnvelopeInternal()), new LocationIndex.Visitor() {
-                @Override
-                public void onNode(int nodeId) {
-                    Coordinate nodeCoordinate = new Coordinate(nodeAccess.getLongitude(nodeId), nodeAccess.getLatitude(nodeId));
-                    z1.merge(nodeCoordinate, Double.MAX_VALUE, Math::min);
-                }
+            graphHopper.getLocationIndex().query(BBox.fromEnvelope(exploredPoints.getEnvelopeInternal()), edgeId -> {
+                EdgeIteratorState edge = snapResult.queryGraph.getEdgeIteratorStateForKey(edgeId * 2);
+                z1.merge(new Coordinate(nodeAccess.getLon(edge.getBaseNode()), nodeAccess.getLat(edge.getBaseNode())), Double.MAX_VALUE, Math::min);
+                z1.merge(new Coordinate(nodeAccess.getLon(edge.getAdjNode()), nodeAccess.getLat(edge.getAdjNode())), Double.MAX_VALUE, Math::min);
             });
             exploredPoints = geometryFactory.createMultiPointFromCoords(z1.keySet().toArray(new Coordinate[0]));
 

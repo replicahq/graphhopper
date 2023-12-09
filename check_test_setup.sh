@@ -13,7 +13,7 @@ if [[ -z "$(ls -A ./web/test-data/gtfs)" ]]; then
 fi
 
 echo "Checking that paths to micro_nor_cal test files have been added to test_gh_config.yaml"
-if grep -q TEST_OSM ./test_gh_config.yaml || grep -q TEST_GTFS ./test_gh_config.yaml; then
+if grep -q TEST_OSM ./configs/test_gh_config.yaml || grep -q TEST_GTFS ./configs/test_gh_config.yaml; then
   echo "test_gh_config.yaml is not pointing to micro_nor_cal test files! Run setup_tests.sh before running tests"
   exit 1
 fi

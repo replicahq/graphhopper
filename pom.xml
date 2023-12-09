@@ -122,7 +122,7 @@
         <dependency>
             <groupId>io.dropwizard</groupId>
             <artifactId>dropwizard-testing</artifactId>
-            <version>2.0.16</version>
+            <version>2.1.5</version>
             <scope>test</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.mockito/mockito-core -->
@@ -143,18 +143,9 @@
             <releases><enabled>true</enabled></releases>
         </repository>
         <repository>
-            <id>graphhopper-matrix</id>
-            <url>https://packagecloud.io/priv/${env.GRAPHHOPPER_TOKEN}/graphhopper/matrix/maven2</url>
-        </repository>
-        <repository>
             <id>github-core</id>
             <name>GraphHopper Core Packages</name>
             <url>https://maven.pkg.github.com/graphhopper/graphhopper</url>
-        </repository>
-        <repository>
-            <id>github-mm</id>
-            <name>GraphHopper Map Matching Packages</name>
-            <url>https://maven.pkg.github.com/graphhopper/map-matching</url>
         </repository>
     </repositories>
 
