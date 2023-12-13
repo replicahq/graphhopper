@@ -1,19 +1,19 @@
 package com.graphhopper.customspeeds;
 
 import com.google.common.collect.ImmutableMap;
-import com.graphhopper.RouterConstants;
+import com.google.common.collect.Maps;
 import com.graphhopper.config.Profile;
 import com.graphhopper.reader.ReaderWay;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.checkerframework.checker.units.qual.C;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class CustomSpeedsUtils {
 
@@ -30,17 +30,27 @@ public class CustomSpeedsUtils {
      * vehicle type. The speeds mapping associates each customized OSM way id to the speed to use for that way, in kph.
      * Vehicles without custom speeds are omitted from the map.
      *
-     * @throws IllegalArgumentException if any profiles associate the same vehicle with different custom speed files, or
-     * if the base vehicle type for any custom speeds vehicles could not be determined
+     * @throws IllegalArgumentException if any profiles associate the same vehicle with different custom speed files,
+     * if the base vehicle type for any custom speeds vehicles could not be determined, or if any custom speeds are invalid
      * @throws RuntimeException if any custom speed files could not be found or are not properly formatted
      */
     public static ImmutableMap<String, CustomSpeedsVehicle> getCustomSpeedVehiclesByName(List<Profile> profiles) {
         Map<String, File> vehicleNameToCustomSpeedFile = getVehicleNameToCustomSpeedFile(profiles);
-        return vehicleNameToCustomSpeedFile.entrySet()
-                .stream()
-                .collect(ImmutableMap.toImmutableMap(
-                        Map.Entry::getKey,
-                        entry -> CustomSpeedsVehicle.create(entry.getKey(), CustomSpeedsUtils.parseOsmWayIdToMaxSpeed(entry.getValue()))));
+        // wrap transformValues result in a HashMap to turn the live, lazy view into a traditional map
+        Map<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds = new HashMap<>(
+                Maps.transformValues(vehicleNameToCustomSpeedFile, CustomSpeedsUtils::parseOsmWayIdToMaxSpeed));
+
+        // validate all speeds before attempting to create CustomSpeedsVehicles so all invalid speeds will be logged
+        // and users can address all errors instead of one-at-a-time
+        Set<String> invalidSpeedVehicleNames = vehicleNameToCustomSpeeds.entrySet().stream()
+                .filter(entry -> !CustomSpeedsVehicle.validateCustomSpeeds(entry.getKey(), entry.getValue()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+        if (!invalidSpeedVehicleNames.isEmpty()) {
+            throw new IllegalArgumentException(String.format("Invalid custom speeds for vehicles %s. See logging for details", invalidSpeedVehicleNames));
+        }
+
+        return ImmutableMap.copyOf(Maps.transformEntries(vehicleNameToCustomSpeeds, CustomSpeedsVehicle::create));
     }
 
     private static Map<String, File> getVehicleNameToCustomSpeedFile(List<Profile> profiles) {
