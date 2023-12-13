@@ -30,7 +30,6 @@ import java.util.Map;
  * @author Peter Karich
  */
 public class TruckAverageSpeedParser extends CarAverageSpeedParser {
-    public static final double EE_CAR_MAX_SPEED = 140;
     public static final double EE_SMALL_TRUCK_MAX_SPEED = 106;
     public static final double EE_TRUCK_MAX_SPEED = 96;
     // Assume 50 for scooter. This is a bit faster than Germany and Austria with 45, but other countries have higher limits...
@@ -65,7 +64,7 @@ public class TruckAverageSpeedParser extends CarAverageSpeedParser {
     }
 
     public TruckAverageSpeedParser(DecimalEncodedValue speedEnc, PMap properties, ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed) {
-        super(speedEnc, speedEnc.getNextStorableValue(properties.getDouble("max_speed", EE_CAR_MAX_SPEED)));
+        super(speedEnc, speedEnc.getNextStorableValue(properties.getDouble("max_speed", CarAverageSpeedParser.CAR_MAX_SPEED)));
         this.osmWayIdToCustomMaxSpeed = osmWayIdToCustomMaxSpeed;
     }
 

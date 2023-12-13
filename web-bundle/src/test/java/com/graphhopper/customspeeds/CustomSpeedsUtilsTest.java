@@ -7,12 +7,13 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.Nullable;
 import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 public class CustomSpeedsUtilsTest {
-    private static final ImmutableMap<Long, Double> TEST_CUSTOM_SPEEDS = ImmutableMap.of(1L, 2.0, 3L, 4.0, 123L, 456.789);
+    private static final ImmutableMap<Long, Double> TEST_CUSTOM_SPEEDS = ImmutableMap.of(1L, 2.0, 3L, 4.0, 123L, 45.6789);
     private static final ImmutableMap<Long, Double> FAST_THRUTON_DRIVE_SPEEDS = ImmutableMap.of(10485465L, 90.0);
 
     @Test

@@ -1,17 +1,33 @@
 package com.graphhopper.customspeeds;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.graphhopper.RouterConstants;
+import com.graphhopper.http.TruckAverageSpeedParser;
+import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.EnumSet;
-import java.util.Objects;
+import java.util.*;
 
 public class CustomSpeedsVehicle {
+    private static final Logger logger = LoggerFactory.getLogger(CustomSpeedsVehicle.class);
+
     // TODO support custom speeds for bikes and pedestrians (RAD-6445, RAD-6446)
     public enum VehicleType {
-        CAR,
-        TRUCK,
-        SMALL_TRUCK,
+        CAR(CarAverageSpeedParser.CAR_MAX_SPEED),
+        TRUCK(TruckAverageSpeedParser.EE_TRUCK_MAX_SPEED),
+        SMALL_TRUCK(TruckAverageSpeedParser.EE_SMALL_TRUCK_MAX_SPEED);
+
+        private double maxValidSpeed;
+
+        VehicleType(double maxValidSpeed) {
+            this.maxValidSpeed = maxValidSpeed;
+        }
+
+        public double getMaxValidSpeed() {
+            return this.maxValidSpeed;
+        }
     }
 
     public final VehicleType baseVehicleType;
@@ -25,7 +41,26 @@ public class CustomSpeedsVehicle {
     }
 
     public static CustomSpeedsVehicle create(String customVehicleName, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
+        if (!validateCustomSpeeds(customVehicleName, osmWayIdToCustomSpeed)) {
+            throw new IllegalArgumentException(String.format("Invalid speeds for vehicle %s. See logging for details", customVehicleName));
+        }
+
         return new CustomSpeedsVehicle(customVehicleName, CustomSpeedsVehicle.getBaseVehicleType(customVehicleName), osmWayIdToCustomSpeed);
+    }
+
+    public static boolean validateCustomSpeeds(String customVehicleName, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
+        VehicleType baseVehicleType = CustomSpeedsVehicle.getBaseVehicleType(customVehicleName);
+
+        // wrap filterValues result in a HashMap to turn live, lazy view into a traditional map
+        Map<Long, Double> invalidSpeeds = new HashMap<>(Maps.filterValues(osmWayIdToCustomSpeed,
+                speed -> speed < 0 || speed > baseVehicleType.getMaxValidSpeed()));
+        if (!invalidSpeeds.isEmpty()) {
+            logger.error("Invalid speeds found for vehicle {}. Custom speeds for base vehicle {} must be between 0 and {}. Full mapping of invalid speeds: {}",
+                    customVehicleName, baseVehicleType, baseVehicleType.getMaxValidSpeed(), invalidSpeeds);
+            return false;
+        }
+
+        return true;
     }
 
     private static CustomSpeedsVehicle.VehicleType getBaseVehicleType(String customVehicleName) {
