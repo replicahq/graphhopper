@@ -13,6 +13,7 @@ import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.shapes.BBox;
 import io.grpc.stub.StreamObserver;
+import org.apache.commons.compress.utils.Lists;
 import org.locationtech.jts.geom.*;
 import org.locationtech.jts.triangulate.ConformingDelaunayTriangulator;
 import org.locationtech.jts.triangulate.ConstraintVertex;
@@ -41,7 +42,6 @@ public class TransitIsochroneRouter {
             throw new IllegalArgumentException(String.format("Illegal value for required parameter %s: [%s]", "earliest_departure_time", request.getEarliestDepartureTime().getSeconds()));
         }
 
-        double targetZ = request.getTimeLimit() * 1000;
         GHLocation location = GHLocation.fromString(request.getCenter().getLat() + "," + request.getCenter().getLon());
 
         GeometryFactory geometryFactory = new GeometryFactory();
@@ -57,10 +57,44 @@ public class TransitIsochroneRouter {
         GraphExplorer graphExplorer = new GraphExplorer(snapResult.queryGraph, gtfsStorage.getPtGraph(), weighting, gtfsStorage, RealtimeFeed.empty(), reverseFlow, false, false, 5.0, reverseFlow, request.getBlockedRouteTypes());
         MultiCriteriaLabelSetting router = new MultiCriteriaLabelSetting(graphExplorer, reverseFlow, false, false, 0, Collections.emptyList());
 
-        Map<Coordinate, Double> z1 = new HashMap<>();
         NodeAccess nodeAccess = snapResult.queryGraph.getNodeAccess();
+        Label.NodeId startingNode = snapResult.nodes.get(0);
 
-        for (Label label : router.calcLabels(snapResult.nodes.get(0), initialTime)) {
+        // Calculate target distance for each bucket
+        double targetZ = request.getTimeLimit() * 1000;
+        ArrayList<Double> bucketTargets = new ArrayList<>();
+        OptionalInt nBuckets = OptionalInt.of(request.getNBuckets());
+        double delta = targetZ / nBuckets.orElseThrow(() -> new IllegalArgumentException("query param buckets is not a number."));
+        for (int i = 0; i < nBuckets.getAsInt(); i++) {
+            bucketTargets.add((i + 1) * delta);
+        }
+
+        // Calculate isochrones for each bucket
+        List<Map<Coordinate, Double>> pointsPerBucket = Lists.newArrayList();
+        for (Double bucketTarget : bucketTargets) {
+            pointsPerBucket.add(calcIsochrone(startingNode, nodeAccess, router, initialTime, reverseFlow, bucketTarget, gtfsStorage));
+        }
+
+        // Generate polygons for each bucket
+        RouterOuterClass.IsochroneRouteReply.Builder replyBuilder = RouterOuterClass.IsochroneRouteReply.newBuilder();
+        for (int i = 0; i < pointsPerBucket.size(); i++) {
+            String isochronePolygon = getIsochronePolygon(request.getResultFormat().equals("multipoint"), geometryFactory,
+                    pointsPerBucket.get(i), snapResult, nodeAccess, bucketTargets.get(i));
+            replyBuilder.addBuckets(RouterOuterClass.IsochroneBucket.newBuilder()
+                    .setBucket(i)
+                    .setGeometry(isochronePolygon)
+            );
+        }
+
+        responseObserver.onNext(replyBuilder.build());
+        responseObserver.onCompleted();
+    }
+
+    private Map<Coordinate, Double> calcIsochrone(Label.NodeId startingNode, NodeAccess nodeAccess, MultiCriteriaLabelSetting router,
+                                               Instant initialTime, boolean reverseFlow, double targetZ, GtfsStorage gtfsStorage) {
+        Map<Coordinate, Double> z1 = new HashMap<>();
+
+        for (Label label : router.calcLabels(startingNode, initialTime)) {
             if (!((label.currentTime - initialTime.toEpochMilli()) * (reverseFlow ? -1 : 1) <= targetZ)) {
                 break;
             }
@@ -74,28 +108,25 @@ public class TransitIsochroneRouter {
                 z1.merge(nodeCoordinate, (double) (label.currentTime - initialTime.toEpochMilli()) * (reverseFlow ? -1 : 1), Math::min);
             }
         }
+        return z1;
+    }
 
-        RouterOuterClass.IsochroneRouteReply.Builder replyBuilder = RouterOuterClass.IsochroneRouteReply.newBuilder();
-
-        if (request.getResultFormat().equals("multipoint")) {
-            MultiPoint exploredPoints = geometryFactory.createMultiPointFromCoords(z1.keySet().toArray(new Coordinate[0]));
-            replyBuilder.addBuckets(RouterOuterClass.IsochroneBucket.newBuilder()
-                    .setBucket(0)
-                    .setGeometry(exploredPoints.toString())
-            );
-            responseObserver.onNext(replyBuilder.build());
-            responseObserver.onCompleted();
+    private String getIsochronePolygon(boolean multipoint, GeometryFactory geometryFactory, Map<Coordinate, Double> bucketPoints,
+                                       PtLocationSnapper.Result snapResult, NodeAccess nodeAccess, double targetZ) {
+        if (multipoint) {
+            MultiPoint exploredPoints = geometryFactory.createMultiPointFromCoords(bucketPoints.keySet().toArray(new Coordinate[0]));
+            return exploredPoints.toString();
         } else {
-            MultiPoint exploredPoints = geometryFactory.createMultiPointFromCoords(z1.keySet().toArray(new Coordinate[0]));
+            MultiPoint exploredPoints = geometryFactory.createMultiPointFromCoords(bucketPoints.keySet().toArray(new Coordinate[0]));
 
             // Get at least all nodes within our bounding box (I think convex hull would be enough.)
             // I think then we should have all possible encroaching points. (Proof needed.)
             graphHopper.getLocationIndex().query(BBox.fromEnvelope(exploredPoints.getEnvelopeInternal()), edgeId -> {
                 EdgeIteratorState edge = snapResult.queryGraph.getEdgeIteratorStateForKey(edgeId * 2);
-                z1.merge(new Coordinate(nodeAccess.getLon(edge.getBaseNode()), nodeAccess.getLat(edge.getBaseNode())), Double.MAX_VALUE, Math::min);
-                z1.merge(new Coordinate(nodeAccess.getLon(edge.getAdjNode()), nodeAccess.getLat(edge.getAdjNode())), Double.MAX_VALUE, Math::min);
+                bucketPoints.merge(new Coordinate(nodeAccess.getLon(edge.getBaseNode()), nodeAccess.getLat(edge.getBaseNode())), Double.MAX_VALUE, Math::min);
+                bucketPoints.merge(new Coordinate(nodeAccess.getLon(edge.getAdjNode()), nodeAccess.getLat(edge.getAdjNode())), Double.MAX_VALUE, Math::min);
             });
-            exploredPoints = geometryFactory.createMultiPointFromCoords(z1.keySet().toArray(new Coordinate[0]));
+            exploredPoints = geometryFactory.createMultiPointFromCoords(bucketPoints.keySet().toArray(new Coordinate[0]));
 
             CoordinateList siteCoords = DelaunayTriangulationBuilder.extractUniqueCoordinates(exploredPoints);
             List<ConstraintVertex> constraintVertices = new ArrayList<>();
@@ -114,7 +145,7 @@ public class TransitIsochroneRouter {
                 if (tin.isFrameVertex(vertex)) {
                     vertex.setZ(Double.MAX_VALUE);
                 } else {
-                    Double aDouble = z1.get(vertex.getCoordinate());
+                    Double aDouble = bucketPoints.get(vertex.getCoordinate());
                     if (aDouble != null) {
                         vertex.setZ(aDouble);
                     } else {
@@ -126,12 +157,7 @@ public class TransitIsochroneRouter {
             ReadableTriangulation triangulation = ReadableTriangulation.wrap(tin);
             ContourBuilder contourBuilder = new ContourBuilder(triangulation);
             MultiPolygon isoline = contourBuilder.computeIsoline(targetZ, triangulation.getEdges());
-            replyBuilder.addBuckets(RouterOuterClass.IsochroneBucket.newBuilder()
-                    .setBucket(0)
-                    .setGeometry(isoline.toString())
-            );
-            responseObserver.onNext(replyBuilder.build());
-            responseObserver.onCompleted();
+            return isoline.toString();
         }
     }
 }
