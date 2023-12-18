@@ -1,6 +1,8 @@
 package com.replica.api;
 
 import com.conveyal.gtfs.model.Stop;
+import com.google.rpc.Code;
+import com.google.rpc.Status;
 import com.graphhopper.gtfs.*;
 import com.graphhopper.isochrone.algorithm.ContourBuilder;
 import com.graphhopper.isochrone.algorithm.ReadableTriangulation;
@@ -11,7 +13,9 @@ import com.graphhopper.routing.weighting.FastestWeighting;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.EdgeIteratorState;
+import com.graphhopper.util.exceptions.PointNotFoundException;
 import com.graphhopper.util.shapes.BBox;
+import io.grpc.protobuf.StatusProto;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.compress.utils.Lists;
 import org.locationtech.jts.geom.*;
@@ -39,7 +43,9 @@ public class TransitIsochroneRouter {
         try {
             initialTime = Instant.ofEpochSecond(request.getEarliestDepartureTime().getSeconds(), request.getEarliestDepartureTime().getNanos());
         } catch (Exception e) {
-            throw new IllegalArgumentException(String.format("Illegal value for required parameter %s: [%s]", "earliest_departure_time", request.getEarliestDepartureTime().getSeconds()));
+            String errorMessage = String.format("Illegal value for required parameter %s: [%s]", "earliest_departure_time", request.getEarliestDepartureTime().getSeconds());
+            handleError(errorMessage, Code.INVALID_ARGUMENT, responseObserver);
+            return;
         }
 
         GHLocation location = GHLocation.fromString(request.getCenter().getLat() + "," + request.getCenter().getLon());
@@ -53,7 +59,13 @@ public class TransitIsochroneRouter {
 
         GtfsStorage gtfsStorage = graphHopper.getGtfsStorage();
         boolean reverseFlow = request.getReverseFlow();
-        PtLocationSnapper.Result snapResult = new PtLocationSnapper(graphHopper.getBaseGraph(), graphHopper.getLocationIndex(), gtfsStorage).snapAll(Arrays.asList(location), Arrays.asList(snapFilter));
+        PtLocationSnapper.Result snapResult = null;
+        try {
+            new PtLocationSnapper(graphHopper.getBaseGraph(), graphHopper.getLocationIndex(), gtfsStorage).snapAll(Arrays.asList(location), Arrays.asList(snapFilter));
+        } catch (PointNotFoundException e) {
+            handleError(e.getMessage(), Code.NOT_FOUND, responseObserver);
+            return;
+        }
         GraphExplorer graphExplorer = new GraphExplorer(snapResult.queryGraph, gtfsStorage.getPtGraph(), weighting, gtfsStorage, RealtimeFeed.empty(), reverseFlow, false, false, 5.0, reverseFlow, request.getBlockedRouteTypes());
         MultiCriteriaLabelSetting router = new MultiCriteriaLabelSetting(graphExplorer, reverseFlow, false, false, 0, Collections.emptyList());
 
@@ -88,6 +100,14 @@ public class TransitIsochroneRouter {
 
         responseObserver.onNext(replyBuilder.build());
         responseObserver.onCompleted();
+    }
+
+    private static void handleError(String errorMessage, Code code, StreamObserver<RouterOuterClass.IsochroneRouteReply> responseObserver) {
+        Status status = Status.newBuilder()
+                .setCode(code.getNumber())
+                .setMessage(errorMessage)
+                .build();
+        responseObserver.onError(StatusProto.toStatusRuntimeException(status));
     }
 
     private Map<Coordinate, Double> calcIsochrone(Label.NodeId startingNode, NodeAccess nodeAccess, MultiCriteriaLabelSetting router,
