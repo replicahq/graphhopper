@@ -10,7 +10,6 @@ graphhopper:
   import.osm.ignored_highways:
 
   max_speed_calculator.enabled: true
-  graph.encoded_values: country
   graph.urban_density.threads: 16
 
   # Profiles specifying vehicle and weightings for each mode type.

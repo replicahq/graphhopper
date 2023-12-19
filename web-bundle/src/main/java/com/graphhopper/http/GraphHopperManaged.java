@@ -49,12 +49,16 @@ public class GraphHopperManaged implements Managed {
     private final GraphHopper graphHopper;
 
     public GraphHopperManaged(GraphHopperConfig configuration) {
+        String encodedValueString = "osmid,stable_id_byte_0,stable_id_byte_1,stable_id_byte_2,stable_id_byte_3,stable_id_byte_4,stable_id_byte_5,stable_id_byte_6,stable_id_byte_7,reverse_stable_id_byte_0,reverse_stable_id_byte_1,reverse_stable_id_byte_2,reverse_stable_id_byte_3,reverse_stable_id_byte_4,reverse_stable_id_byte_5,reverse_stable_id_byte_6,reverse_stable_id_byte_7";
+
         if (configuration.has("validation")) {
             graphHopper = new CustomGraphHopperValidator((configuration));
         } else if (configuration.has("gtfs.file")) {
             graphHopper = new CustomGraphHopperGtfs(configuration);
         } else {
             graphHopper = new CustomGraphHopperOSM(configuration);
+            // Street edge export is being run; country is needed for setting proper default speeds
+            encodedValueString = "country," + encodedValueString;
         }
 
         String customModelFolder = configuration.getString("custom_model_folder", "");
@@ -71,7 +75,7 @@ public class GraphHopperManaged implements Managed {
         graphHopper.setVehicleTagParserFactory(new ReplicaVehicleTagParserFactory(customSpeedsVehiclesByName));
         graphHopper.setVehicleEncodedValuesFactory(new ReplicaVehicleEncodedValuesFactory(customSpeedsVehiclesByName));
         graphHopper.init(configuration);
-        graphHopper.setEncodedValuesString("max_speed,max_speed_estimated,country,osmid,stable_id_byte_0,stable_id_byte_1,stable_id_byte_2,stable_id_byte_3,stable_id_byte_4,stable_id_byte_5,stable_id_byte_6,stable_id_byte_7,reverse_stable_id_byte_0,reverse_stable_id_byte_1,reverse_stable_id_byte_2,reverse_stable_id_byte_3,reverse_stable_id_byte_4,reverse_stable_id_byte_5,reverse_stable_id_byte_6,reverse_stable_id_byte_7");
+        graphHopper.setEncodedValuesString(encodedValueString);
         graphHopper.setPathDetailsBuilderFactory(new PathDetailsBuilderFactoryWithStableId());
         graphHopper.setAllowWrites(!Boolean.parseBoolean(System.getenv("GRAPHHOPPER_READ_ONLY")));
     }

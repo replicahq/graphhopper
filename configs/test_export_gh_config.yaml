@@ -9,6 +9,9 @@ graphhopper:
   prepare.ch.threads: 16
   import.osm.ignored_highways:
 
+  max_speed_calculator.enabled: true
+  graph.urban_density.threads: 16
+
   # Profiles specifying vehicle and weightings for each mode type.
   # For nationwide export, save time by not building contraction hierarchies
   profiles:
