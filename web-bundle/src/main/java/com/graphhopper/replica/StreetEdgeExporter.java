@@ -31,7 +31,7 @@ public class StreetEdgeExporter {
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "humanReadableStableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
-            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
+            "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "speedEstimated", "flags", "lanes", "highway",
             "startOsmNode", "endOsmNode"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
@@ -41,7 +41,8 @@ public class StreetEdgeExporter {
     private Map<Long, String> osmIdToHighway;
 
     private NodeAccess nodes;
-    private DecimalEncodedValue avgSpeedEnc;
+    private DecimalEncodedValue maxSpeedEnc;
+    private BooleanEncodedValue maxSpeedEstimatedEnc;
     private StableIdEncodedValues stableIdEncodedValues;
     private EnumEncodedValue<RoadClass> roadClassEnc;
     private IntEncodedValue osmWayIdEnc;
@@ -65,7 +66,8 @@ public class StreetEdgeExporter {
         this.encodingManager = configuredGraphHopper.getEncodingManager();
         this.stableIdEncodedValues = StableIdEncodedValues.fromEncodingManager(this.encodingManager, osmHelper);
         this.roadClassEnc = this.encodingManager.getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
-        this.avgSpeedEnc = this.encodingManager.getDecimalEncodedValue(VehicleSpeed.key("car"));
+        this.maxSpeedEnc = this.encodingManager.getDecimalEncodedValue(MaxSpeed.KEY);
+        this.maxSpeedEstimatedEnc = this.encodingManager.getBooleanEncodedValue(MaxSpeedEstimated.KEY);
         this.osmWayIdEnc = this.encodingManager.getIntEncodedValue("osmid");
     }
 
@@ -88,7 +90,10 @@ public class StreetEdgeExporter {
 
         long distanceMeters = Math.round(DistanceCalcEarth.DIST_EARTH.calcDist(startLat, startLon, endLat, endLon));
         // Convert GH's km/h speed to cm/s to match R5's implementation
-        int speedcms = (int) (iteratorState.get(avgSpeedEnc) / 3.6 * 100);
+        int speedcms = (int) (iteratorState.get(maxSpeedEnc) / 3.6 * 100);
+
+        // Grab flag denoting if speed sourced from OSM `maxspeed` tag, or estimated
+        boolean speedEstimated = iteratorState.get(maxSpeedEstimatedEnc);
 
         // Convert GH's distance in meters to millimeters to match R5's implementation
         long distanceMillimeters = distanceMeters * 1000;
@@ -190,12 +195,14 @@ public class StreetEdgeExporter {
             if (!(forwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, humanReadableForwardStableEdgeId,
                         startVertex, endVertex, startLat, startLon, endLat, endLon, geometryString, streetName,
-                        distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag, startOsmNode, endOsmNode));
+                        distanceMillimeters, osmWayId, speedcms, speedEstimated, forwardFlags.toString(), forwardLanes,
+                        highwayTag, startOsmNode, endOsmNode));
             }
             if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, humanReadableBackwardStableEdgeId,
                         endVertex, startVertex, endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
-                        distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag, endOsmNode, startOsmNode));
+                        distanceMillimeters, osmWayId, speedcms, speedEstimated, backwardFlags.toString(), backwardLanes,
+                        highwayTag, endOsmNode, startOsmNode));
             }
         }
 
@@ -229,7 +236,7 @@ public class StreetEdgeExporter {
                     }
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.humanReadableEdgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
-                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
+                                r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.speedEstimated, r.flags, r.lanes, r.highwayTag,
                                 r.startOsmNode, r.endOsmNode);
                     }
                 }

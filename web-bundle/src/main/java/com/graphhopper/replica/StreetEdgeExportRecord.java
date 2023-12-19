@@ -14,6 +14,7 @@ public class StreetEdgeExportRecord {
     public long distanceMillimeters;
     public long osmId;
     public int speedCms;
+    public boolean speedEstimated;
     public String flags;
     public int lanes;
     public String highwayTag;
@@ -23,8 +24,8 @@ public class StreetEdgeExportRecord {
     public StreetEdgeExportRecord(String edgeId, String humanReadableEdgeId, int startVertexId, int endVertexId,
                                   double startLat, double startLon, double endLat, double endLon,
                                   String geometryString, String streetName, long distanceMillimeters,
-                                  long osmId, int speedCms, String flags, int lanes, String highwayTag,
-                                  long startOsmNode, long endOsmNode) {
+                                  long osmId, int speedCms, boolean speedEstimated, String flags, int lanes,
+                                  String highwayTag, long startOsmNode, long endOsmNode) {
         this.edgeId = edgeId;
         this.humanReadableEdgeId = humanReadableEdgeId;
         this.startVertexId = startVertexId;
@@ -38,6 +39,7 @@ public class StreetEdgeExportRecord {
         this.distanceMillimeters = distanceMillimeters;
         this.osmId = osmId;
         this.speedCms = speedCms;
+        this.speedEstimated = speedEstimated;
         this.flags = flags;
         this.lanes = lanes;
         this.highwayTag = highwayTag;
