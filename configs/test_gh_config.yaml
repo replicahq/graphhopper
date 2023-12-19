@@ -15,6 +15,9 @@ graphhopper:
   prepare.ch.threads: 16
   import.osm.ignored_highways:
 
+  max_speed_calculator.enabled: true
+  graph.urban_density.threads: 16
+
   # Uncomment this if the export was done with turn-restriction-aware contraction hierarchies
   # prepare.ch.edge_based: edge_and_node
   # graph.flag_encoders: car|turn_costs=true
