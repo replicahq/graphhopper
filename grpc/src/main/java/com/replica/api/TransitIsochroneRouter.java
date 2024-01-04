@@ -59,9 +59,9 @@ public class TransitIsochroneRouter {
 
         GtfsStorage gtfsStorage = graphHopper.getGtfsStorage();
         boolean reverseFlow = request.getReverseFlow();
-        PtLocationSnapper.Result snapResult = null;
+        PtLocationSnapper.Result snapResult;
         try {
-            new PtLocationSnapper(graphHopper.getBaseGraph(), graphHopper.getLocationIndex(), gtfsStorage).snapAll(Arrays.asList(location), Arrays.asList(snapFilter));
+            snapResult = new PtLocationSnapper(graphHopper.getBaseGraph(), graphHopper.getLocationIndex(), gtfsStorage).snapAll(Arrays.asList(location), Arrays.asList(snapFilter));
         } catch (PointNotFoundException e) {
             handleError(e.getMessage(), Code.NOT_FOUND, responseObserver);
             return;
