@@ -672,7 +672,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         final RouterOuterClass.IsochroneRouteReply threeBucketResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_THREE_BUCKET);
         final RouterOuterClass.IsochroneRouteReply fiveBucketResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_FIVE_BUCKET);
         final RouterOuterClass.IsochroneRouteReply fifteenMinResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_FIFTEEN_MIN);
-        final RouterOuterClass.IsochroneRouteReply reverseFlowResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_REVERSE_FLOW);
 
         // Correct number of buckets returned
         assertEquals(3, threeBucketResponse.getBucketsList().size());
@@ -701,6 +700,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
         // TODO: re-enable once reverseFlow works properly for PT isochrones
         /*
+        final RouterOuterClass.IsochroneRouteReply reverseFlowResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_REVERSE_FLOW);
+
         // With reverse flow set, buckets are different
         MultiPolygon reverseFlowInnerBucket = (MultiPolygon) wktReader.read(reverseFlowResponse.getBuckets(0).getGeometry());
         assertNotEquals(reverseFlowInnerBucket.getArea(), threeBucketInnerBucket.getArea());
