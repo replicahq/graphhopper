@@ -59,6 +59,13 @@ public class TransitIsochroneRouter {
 
         GtfsStorage gtfsStorage = graphHopper.getGtfsStorage();
         boolean reverseFlow = request.getReverseFlow();
+
+        // todo: remove once PT isochrones actually support reverse flow
+        if (reverseFlow) {
+            handleError("Reverse flow isn't yet working for transit isochrones! Try again with reverseFlow set to False", Code.UNIMPLEMENTED, responseObserver);
+            return;
+        }
+
         PtLocationSnapper.Result snapResult;
         try {
             snapResult = new PtLocationSnapper(graphHopper.getBaseGraph(), graphHopper.getLocationIndex(), gtfsStorage).snapAll(Arrays.asList(location), Arrays.asList(snapFilter));
