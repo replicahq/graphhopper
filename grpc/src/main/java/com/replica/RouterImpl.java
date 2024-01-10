@@ -19,6 +19,8 @@
 package com.replica;
 
 import com.google.common.collect.Maps;
+import com.google.rpc.Code;
+import com.google.rpc.Status;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.gtfs.PtRouter;
@@ -26,6 +28,8 @@ import com.graphhopper.isochrone.algorithm.JTSTriangulator;
 import com.graphhopper.storage.BaseGraph;
 import com.replica.api.*;
 import com.timgroup.statsd.StatsDClient;
+import io.grpc.StatusRuntimeException;
+import io.grpc.protobuf.StatusProto;
 import io.grpc.stub.StreamObserver;
 import router.RouterOuterClass.*;
 
@@ -92,11 +96,31 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
 
     @Override
     public void routePt(PtRouteRequest request, StreamObserver<PtRouteReply> responseObserver) {
-        transitRouter.routePt(request, responseObserver);
+        if (transitRouter != null) {
+            transitRouter.routePt(request, responseObserver);
+        } else {
+            responseObserver.onError(buildUnavailableEndpointException(
+                    "Transit routing is not available! This router was not built with any GTFS"
+            ));
+        }
     }
 
     @Override
     public void routePtIsochrone(PtIsochroneRouteRequest request, StreamObserver<IsochroneRouteReply> responseObserver) {
-        transitIsochroneRouter.routePtIsochrone(request, responseObserver);
+        if (transitIsochroneRouter != null) {
+            transitIsochroneRouter.routePtIsochrone(request, responseObserver);
+        } else {
+            responseObserver.onError(buildUnavailableEndpointException(
+                    "Transit isochrone routing is not available! This router was not built with any GTFS"
+            ));
+        }
+    }
+
+    private static StatusRuntimeException buildUnavailableEndpointException(String message) {
+        Status status = Status.newBuilder()
+                .setCode(Code.UNAVAILABLE.getNumber())
+                .setMessage(message)
+                .build();
+        return StatusProto.toStatusRuntimeException(status);
     }
 }
