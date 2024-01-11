@@ -21,10 +21,9 @@ import com.google.common.collect.*;
 import com.google.protobuf.Timestamp;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.ReplicaPathDetails;
-import com.graphhopper.RouterConstants;
-import com.graphhopper.gtfs.*;
-import com.graphhopper.stableid.StableIdPathDetailsBuilder;
-import com.graphhopper.util.Parameters;
+import com.graphhopper.gtfs.GraphHopperGtfs;
+import com.graphhopper.gtfs.PtRouter;
+import com.graphhopper.gtfs.PtRouterTripBasedImpl;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -35,6 +34,9 @@ import io.grpc.protobuf.services.ProtoReflectionService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKTReader;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import router.RouterOuterClass;
@@ -62,10 +64,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
     private static final Timestamp EARLIEST_DEPARTURE_TIME =
             Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-15T13:30:00Z").toEpochMilli() / 1000).build();
-    private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467,-121.29023848101498}; // Roseville area
-    private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281,-121.48746937746185}; // Sacramento area
-    private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914,-121.43714698730038}; // Sacramento area
-    private static final double[] REQUEST_DESTINATION_2 = {38.69871256445126,-121.27320348867218}; // South of Roseville
+    private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467, -121.29023848101498}; // Roseville area
+    private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281, -121.48746937746185}; // Sacramento area
+    private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914, -121.43714698730038}; // Sacramento area
+    private static final double[] REQUEST_DESTINATION_2 = {38.69871256445126, -121.27320348867218}; // South of Roseville
 
     // Should force a transfer between routes from 2 distinct feeds
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_DIFF_FEEDS = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
@@ -91,6 +93,27 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final RouterOuterClass.StreetRouteRequest SMALL_TRUCK_REQUEST =
             createStreetRequest(DEFAULT_SMALL_TRUCK_PROFILE_NAME, false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
 
+    private static final RouterOuterClass.IsochroneRouteRequest STREET_ISOCHRONE_REQUEST_THREE_BUCKET =
+            createStreetIsochroneRequest(REQUEST_ORIGIN_2, 3, 60 * 5, false);
+    private static final RouterOuterClass.IsochroneRouteRequest STREET_ISOCHRONE_REQUEST_OUT_OF_BOUNDS =
+            createStreetIsochroneRequest(new double[]{37.0, -121.43714698730038}, 3, 60 * 5, false);
+    private static final RouterOuterClass.IsochroneRouteRequest STREET_ISOCHRONE_REQUEST_FIVE_BUCKET =
+            createStreetIsochroneRequest(REQUEST_ORIGIN_2, 5, 60 * 5, false);
+    private static final RouterOuterClass.IsochroneRouteRequest STREET_ISOCHRONE_REQUEST_TEN_MIN =
+            createStreetIsochroneRequest(REQUEST_ORIGIN_2, 3, 60 * 10, false);
+    private static final RouterOuterClass.IsochroneRouteRequest STREET_ISOCHRONE_REQUEST_REVERSE_FLOW =
+            createStreetIsochroneRequest(REQUEST_ORIGIN_2, 3, 60 * 5, true);
+    private static final RouterOuterClass.PtIsochroneRouteRequest PT_ISOCHRONE_REQUEST_THREE_BUCKET =
+            createPtIsochroneRequest(REQUEST_DESTINATION_1, 3, 60 * 10, false);
+    private static final RouterOuterClass.PtIsochroneRouteRequest PT_ISOCHRONE_REQUEST_OUT_OF_BOUNDS =
+            createPtIsochroneRequest(new double[]{37.0, -121.43714698730038}, 3, 60 * 10, false);
+    private static final RouterOuterClass.PtIsochroneRouteRequest PT_ISOCHRONE_REQUEST_FIVE_BUCKET =
+            createPtIsochroneRequest(REQUEST_DESTINATION_1, 5, 60 * 10, false);
+    private static final RouterOuterClass.PtIsochroneRouteRequest PT_ISOCHRONE_REQUEST_FIFTEEN_MIN =
+            createPtIsochroneRequest(REQUEST_DESTINATION_1, 3, 60 * 15, false);
+    private static final RouterOuterClass.PtIsochroneRouteRequest PT_ISOCHRONE_REQUEST_REVERSE_FLOW =
+            createPtIsochroneRequest(REQUEST_DESTINATION_1, 3, 60 * 10, true);
+
     private static final long THURTON_DRIVE_OSM_ID = 10485465;
     // n.b. graphhopper internally rounds car speeds to the nearest multiple of 5 and truck speeds to the nearest multiple
     // of 2 (see speed_factor property in VehicleEncodedValues#car and TruckFlagEncoder.TRUCK_SPEED_FACTOR), so we choose
@@ -104,6 +127,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final ImmutableMap<String, String> CUSTOM_THURTON_DRIVE_PROFILE_TO_DEFAULT_PROFILE = ImmutableMap.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, "truck_custom_fast_thurton_drive", DEFAULT_TRUCK_PROFILE_NAME, "small_truck_custom_fast_thurton_drive", DEFAULT_SMALL_TRUCK_PROFILE_NAME);
 
     private static router.RouterGrpc.RouterBlockingStub routerStub = null;
+    private static WKTReader wktReader = new WKTReader();
 
     @BeforeAll
     public static void startTestServer() throws Exception {
@@ -197,6 +221,35 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .setEgressMode(egressMode)
                 .setBetaAccessTime(1.5)
                 .setBetaEgressTime(1.5)
+                .build();
+    }
+
+    private static RouterOuterClass.IsochroneRouteRequest createStreetIsochroneRequest(double[] center, int nBuckets, int timeLimit, boolean reverseFlow) {
+        return RouterOuterClass.IsochroneRouteRequest.newBuilder()
+                .setCenter(RouterOuterClass.Point.newBuilder()
+                        .setLat(center[0])
+                        .setLon(center[1])
+                        .build())
+                .setMode("car")
+                .setNBuckets(nBuckets)
+                .setReverseFlow(reverseFlow)
+                .setTimeLimit(timeLimit)
+                .setTolerance(0)
+                .setFullGeometry(true)
+                .build();
+    }
+
+    private static RouterOuterClass.PtIsochroneRouteRequest createPtIsochroneRequest(double[] center, int nBuckets, int timeLimit, boolean reverseFlow) {
+        return RouterOuterClass.PtIsochroneRouteRequest.newBuilder()
+                .setCenter(RouterOuterClass.Point.newBuilder()
+                        .setLat(center[0])
+                        .setLon(center[1])
+                        .build())
+                .setNBuckets(nBuckets)
+                .setReverseFlow(reverseFlow)
+                .setTimeLimit(timeLimit)
+                .setEarliestDepartureTime(EARLIEST_DEPARTURE_TIME)
+                .setBlockedRouteTypes(0)
                 .build();
     }
 
@@ -575,5 +628,83 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertTrue(streetRouteReply.getPathsList().stream().allMatch(path -> path.getStableEdgeIdsCount() > 0));
             assertTrue(streetRouteReply.getPathsList().stream().allMatch(path -> path.getEdgeDurationsMillisCount() > 0));
         }
+    }
+
+    @Test
+    public void testStreetIsochrone() throws ParseException {
+        final RouterOuterClass.IsochroneRouteReply threeBucketResponse = routerStub.routeIsochrone(STREET_ISOCHRONE_REQUEST_THREE_BUCKET);
+        final RouterOuterClass.IsochroneRouteReply fiveBucketResponse = routerStub.routeIsochrone(STREET_ISOCHRONE_REQUEST_FIVE_BUCKET);
+        final RouterOuterClass.IsochroneRouteReply tenMinResponse = routerStub.routeIsochrone(STREET_ISOCHRONE_REQUEST_TEN_MIN);
+        final RouterOuterClass.IsochroneRouteReply reverseFlowResponse = routerStub.routeIsochrone(STREET_ISOCHRONE_REQUEST_REVERSE_FLOW);
+
+        // Correct number of buckets returned
+        assertEquals(3, threeBucketResponse.getBucketsList().size());
+        assertEquals(3, tenMinResponse.getBucketsList().size());
+        assertEquals(5, fiveBucketResponse.getBucketsList().size());
+
+        // Bucket indices are correct
+        List<Integer> returnedBuckets = fiveBucketResponse.getBucketsList().stream()
+                .map(RouterOuterClass.IsochroneBucket::getBucket)
+                .collect(Collectors.toList());
+        assertEquals(List.of(0, 1, 2, 3, 4), returnedBuckets);
+
+        // Three-bucket/5 min response has larger buckets than five-bucket/5 min response
+        MultiPolygon threeBucketInnerBucket = (MultiPolygon) wktReader.read(threeBucketResponse.getBuckets(0).getGeometry());
+        MultiPolygon fiveBucketInnerBucket = (MultiPolygon) wktReader.read(fiveBucketResponse.getBuckets(0).getGeometry());
+        assertTrue(threeBucketInnerBucket.getArea() > fiveBucketInnerBucket.getArea());
+
+        // 5 min/3 bucket response has smaller buckets than 10 min/3 bucket response
+        MultiPolygon fiveMinInnerBucket = (MultiPolygon) wktReader.read(threeBucketResponse.getBuckets(0).getGeometry());
+        MultiPolygon tenMinInnerBucket = (MultiPolygon) wktReader.read(tenMinResponse.getBuckets(0).getGeometry());
+        assertTrue(fiveMinInnerBucket.getArea() < tenMinInnerBucket.getArea());
+
+        // With reverse flow set, buckets are different
+        MultiPolygon reverseFlowInnerBucket = (MultiPolygon) wktReader.read(reverseFlowResponse.getBuckets(0).getGeometry());
+        assertNotEquals(reverseFlowInnerBucket.getArea(), threeBucketInnerBucket.getArea());
+
+        assertThrows(RuntimeException.class, () -> {
+            routerStub.routeIsochrone(STREET_ISOCHRONE_REQUEST_OUT_OF_BOUNDS);
+        });
+    }
+
+    @Test
+    public void testPtIsochrone() throws ParseException {
+        final RouterOuterClass.IsochroneRouteReply threeBucketResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_THREE_BUCKET);
+        final RouterOuterClass.IsochroneRouteReply fiveBucketResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_FIVE_BUCKET);
+        final RouterOuterClass.IsochroneRouteReply fifteenMinResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_FIFTEEN_MIN);
+
+        // Correct number of buckets returned
+        assertEquals(3, threeBucketResponse.getBucketsList().size());
+        assertEquals(3, fifteenMinResponse.getBucketsList().size());
+        assertEquals(5, fiveBucketResponse.getBucketsList().size());
+
+        // Bucket indices are correct
+        List<Integer> returnedBuckets = fiveBucketResponse.getBucketsList().stream()
+                .map(RouterOuterClass.IsochroneBucket::getBucket)
+                .collect(Collectors.toList());
+        assertEquals(List.of(0, 1, 2, 3, 4), returnedBuckets);
+
+        // Three-bucket/10 min response has larger buckets than five-bucket/10 min response
+        MultiPolygon threeBucketInnerBucket = (MultiPolygon) wktReader.read(threeBucketResponse.getBuckets(0).getGeometry());
+        MultiPolygon fiveBucketInnerBucket = (MultiPolygon) wktReader.read(fiveBucketResponse.getBuckets(0).getGeometry());
+        assertTrue(threeBucketInnerBucket.getArea() > fiveBucketInnerBucket.getArea());
+
+        // 10 min/3 bucket response has smaller buckets than 15 min/3 bucket response
+        MultiPolygon fiveMinInnerBucket = (MultiPolygon) wktReader.read(threeBucketResponse.getBuckets(0).getGeometry());
+        MultiPolygon fifteenMinInnerBucket = (MultiPolygon) wktReader.read(fifteenMinResponse.getBuckets(0).getGeometry());
+        assertTrue(fiveMinInnerBucket.getArea() < fifteenMinInnerBucket.getArea());
+
+        assertThrows(RuntimeException.class, () -> {
+            routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_OUT_OF_BOUNDS);
+        });
+
+        // TODO: re-enable once reverseFlow works properly for PT isochrones
+        /*
+        final RouterOuterClass.IsochroneRouteReply reverseFlowResponse = routerStub.routePtIsochrone(PT_ISOCHRONE_REQUEST_REVERSE_FLOW);
+
+        // With reverse flow set, buckets are different
+        MultiPolygon reverseFlowInnerBucket = (MultiPolygon) wktReader.read(reverseFlowResponse.getBuckets(0).getGeometry());
+        assertNotEquals(reverseFlowInnerBucket.getArea(), threeBucketInnerBucket.getArea());
+        */
     }
 }
