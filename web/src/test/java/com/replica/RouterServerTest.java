@@ -81,6 +81,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
     private static final String DEFAULT_TRUCK_PROFILE_NAME = "truck_default";
     private static final String DEFAULT_SMALL_TRUCK_PROFILE_NAME = "small_truck_default";
+    private static final String DEFAULT_BIKE_PROFILE_NAME = "bike_default";
+    private static final String DEFAULT_FOOT_PROFILE_NAME = "foot_default";
 
     private static final RouterOuterClass.StreetRouteRequest AUTO_REQUEST =
             createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
@@ -121,6 +123,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final double THURTON_DRIVE_CUSTOM_SPEED = 90;
     private static final String CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
     private static final String CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME = "car_custom_closed_baseline_road";
+    private static final String CLOSED_BASELINE_ROAD_BIKE_PROFILE_NAME = "bike_custom_closed_baseline_road";
+    private static final String CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME = "foot_custom_closed_baseline_road";
     private static final ImmutableSet<String> CAR_PROFILES =
             ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME);
 
@@ -594,13 +598,20 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
         Predicate<Long> onlyOnePathPredicate = pathCount -> pathCount == 1L;
 
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, origin, dest, onlyOnePathPredicate);
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_BIKE_PROFILE_NAME, DEFAULT_BIKE_PROFILE_NAME, origin, dest, onlyOnePathPredicate);
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME, DEFAULT_FOOT_PROFILE_NAME, origin, dest, onlyOnePathPredicate);
+    }
+
+    private static void checkCustomSpeedRoadClosure(String closedRoadProfileName, String defaultProfileName,
+                                                    double[] origin, double[] dest, Predicate<Long> onlyOnePathPredicate) {
         final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(
-                createStreetRequest(CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, false, origin, dest));
-        checkStreetBasedResponse(customSpeedsResponse, ImmutableSet.of(CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME), onlyOnePathPredicate);
+                createStreetRequest(closedRoadProfileName, false, origin, dest));
+        checkStreetBasedResponse(customSpeedsResponse, ImmutableSet.of(closedRoadProfileName), onlyOnePathPredicate);
 
         final RouterOuterClass.StreetRouteReply defaultSpeedsResponse = routerStub.routeStreetMode(
-                createStreetRequest(DEFAULT_CAR_PROFILE_NAME, false, origin, dest));
-        checkStreetBasedResponse(defaultSpeedsResponse, ImmutableSet.of(DEFAULT_CAR_PROFILE_NAME), onlyOnePathPredicate);
+                createStreetRequest(defaultProfileName, false, origin, dest));
+        checkStreetBasedResponse(defaultSpeedsResponse, ImmutableSet.of(defaultProfileName), onlyOnePathPredicate);
 
         RouterOuterClass.StreetPath customSpeedsPath = Iterables.getOnlyElement(customSpeedsResponse.getPathsList());
         RouterOuterClass.StreetPath defaultSpeedsPath = Iterables.getOnlyElement(defaultSpeedsResponse.getPathsList());
