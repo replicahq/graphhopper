@@ -127,6 +127,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final String CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME = "foot_custom_closed_baseline_road";
     private static final ImmutableSet<String> CAR_PROFILES =
             ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME);
+    private static final ImmutableSet<String> WALK_PROFILES = ImmutableSet.of("foot", DEFAULT_FOOT_PROFILE_NAME, CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME);
 
     private static final ImmutableMap<String, String> CUSTOM_THURTON_DRIVE_PROFILE_TO_DEFAULT_PROFILE = ImmutableMap.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, "truck_custom_fast_thurton_drive", DEFAULT_TRUCK_PROFILE_NAME, "small_truck_custom_fast_thurton_drive", DEFAULT_SMALL_TRUCK_PROFILE_NAME);
 
@@ -430,10 +431,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     @Test
     public void testWalkQuery() {
         final RouterOuterClass.StreetRouteReply response = routerStub.routeStreetMode(WALK_REQUEST);
-
-        Set<String> expectedWalkProfiles = ImmutableSet.of("foot");
         Predicate<Long> perProfilePathCountPredicate = pathCount -> pathCount == 1L;
-        checkStreetBasedResponse(response, expectedWalkProfiles, perProfilePathCountPredicate);
+        checkStreetBasedResponse(response, WALK_PROFILES, perProfilePathCountPredicate);
     }
 
     @Test
