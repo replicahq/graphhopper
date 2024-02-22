@@ -11,6 +11,9 @@ import com.graphhopper.util.PMap;
 public class ReplicaCustomSpeedsFootTagParser extends FootAverageSpeedParser {
     private final ImmutableMap<Long, Double> osmWayIdToMaxSpeed;
 
+    // Replica-specific limit for custom walking speeds
+    public static final int FOOT_MAX_SPEED = 10;
+    
     // Copied directly from FootAverageSpeedParser
     static final int SLOW_SPEED = 2;
     static final int MEAN_SPEED = 5;

@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.graphhopper.RouterConstants;
 import com.graphhopper.http.TruckAverageSpeedParser;
+import com.graphhopper.replica.ReplicaCustomSpeedsFootTagParser;
 import com.graphhopper.routing.util.parsers.BikeAverageSpeedParser;
 import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
 import org.slf4j.Logger;
@@ -19,7 +20,7 @@ public class CustomSpeedsVehicle {
         TRUCK(TruckAverageSpeedParser.EE_TRUCK_MAX_SPEED),
         SMALL_TRUCK(TruckAverageSpeedParser.EE_SMALL_TRUCK_MAX_SPEED),
         BIKE(BikeAverageSpeedParser.MAX_SPEED),
-        FOOT(RouterConstants.FOOT_MAX_SPEED);
+        FOOT(ReplicaCustomSpeedsFootTagParser.FOOT_MAX_SPEED);
 
         private double maxValidSpeed;
 
