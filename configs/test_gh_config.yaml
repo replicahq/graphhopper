@@ -44,7 +44,7 @@ graphhopper:
       weighting: fastest
       # sets a zero speed for a section of Baseline Road in Roseville (OSM way id 76254223)
       custom_speed_file: test-data/custom_speeds/baseline_road_zero_speed.csv # mvn tests run from the /web folder
-    - name: bike_default  # _default suffix required for comparison against Thurton Drive custom speeds profile
+    - name: bike_default  # _default suffix required for comparison against closed Baseline Road custom speeds profile
       vehicle: bike
       weighting: fastest
     - name: bike_custom_closed_baseline_road
@@ -55,7 +55,7 @@ graphhopper:
     - name: foot  # "foot" profile name required for internal PT routing usage
       vehicle: foot
       weighting: fastest
-    - name: foot_default  # _default suffix required for comparison against Thurton Drive custom speeds profile
+    - name: foot_default  # _default suffix required for comparison against closed Baseline Road custom speeds profile
       vehicle: foot
       weighting: fastest
     - name: foot_custom_closed_baseline_road

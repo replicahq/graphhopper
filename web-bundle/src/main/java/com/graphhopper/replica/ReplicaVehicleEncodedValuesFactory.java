@@ -29,7 +29,6 @@ public class ReplicaVehicleEncodedValuesFactory extends DefaultVehicleEncodedVal
             baseCustomSpeedsVehicleType = customSpeedsVehiclesByName.get(vehicleName).baseVehicleType;
         }
 
-        // TODO: Do we need to have the first clause in these checks? Won't the super() call handle these cases fine?
         if (vehicleName.equals(RouterConstants.CAR_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.CAR) {
             return VehicleEncodedValues.car(configuration);
         } else if (vehicleName.equals(RouterConstants.TRUCK_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.TRUCK) {
