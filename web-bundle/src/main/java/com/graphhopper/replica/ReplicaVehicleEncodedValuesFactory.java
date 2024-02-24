@@ -35,6 +35,10 @@ public class ReplicaVehicleEncodedValuesFactory extends DefaultVehicleEncodedVal
             return TruckFlagEncoder.createTruck(vehicleName);
         } else if (vehicleName.equals(RouterConstants.SMALL_TRUCK_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.SMALL_TRUCK) {
             return TruckFlagEncoder.createSmallTruck(vehicleName);
+        } else if (vehicleName.equals(RouterConstants.BIKE_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.BIKE) {
+            return VehicleEncodedValues.bike(configuration);
+        } else if (vehicleName.equals(RouterConstants.FOOT_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.FOOT) {
+            return VehicleEncodedValues.foot(configuration);
         }
 
         return super.createVehicleEncodedValues(vehicleName, configuration);

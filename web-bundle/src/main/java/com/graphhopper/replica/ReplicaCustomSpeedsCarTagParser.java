@@ -5,10 +5,7 @@ import com.graphhopper.customspeeds.CustomSpeedsUtils;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
-import com.graphhopper.routing.util.parsers.TagParser;
 import com.graphhopper.util.PMap;
-
-import java.util.Objects;
 
 public class ReplicaCustomSpeedsCarTagParser extends CarAverageSpeedParser {
     private final ImmutableMap<Long, Double> osmWayIdToMaxSpeed;

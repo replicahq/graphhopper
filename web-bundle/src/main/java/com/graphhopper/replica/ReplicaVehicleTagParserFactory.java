@@ -27,7 +27,7 @@ import com.graphhopper.reader.osm.conditional.DateRangeParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParsers;
-import com.graphhopper.routing.util.parsers.CarAccessParser;
+import com.graphhopper.routing.util.parsers.*;
 import com.graphhopper.util.PMap;
 
 import static com.graphhopper.http.TruckAverageSpeedParser.*;
@@ -63,9 +63,23 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
             return new VehicleTagParsers(
                     new CarAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
                     new ReplicaCustomSpeedsCarTagParser(lookup, configuration, osmWayIdToCustomSpeed),
-                    null);
-
-        } else if (vehicleName.equals(RouterConstants.CAR_VEHICLE_NAME) ) {
+                    null
+            );
+        } else if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.BIKE) {
+            return new VehicleTagParsers(
+                    new BikeAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
+                    new ReplicaCustomSpeedsBikeTagParser(lookup, configuration, osmWayIdToCustomSpeed),
+                    new BikePriorityParser(lookup, configuration)
+            );
+        } else if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.FOOT) {
+            return new VehicleTagParsers(
+                    new FootAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
+                    new ReplicaCustomSpeedsFootTagParser(lookup, configuration, osmWayIdToCustomSpeed),
+                    new FootPriorityParser(lookup, configuration)
+            );
+        } else if (vehicleName.equals(RouterConstants.CAR_VEHICLE_NAME)
+                || vehicleName.equals(RouterConstants.BIKE_VEHICLE_NAME)
+                || vehicleName.equals(RouterConstants.FOOT_VEHICLE_NAME)) {
             // do nothing and carry through to superclass implementation. we could use pass an empty custom speeds mapping
             // to ReplicaCustomSpeedsCarTagParser, but it's safer to use the default GraphHopper behavior directly
         } else if (vehicleName.equals(RouterConstants.TRUCK_VEHICLE_NAME) || baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.TRUCK) {

@@ -4,6 +4,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.graphhopper.RouterConstants;
 import com.graphhopper.http.TruckAverageSpeedParser;
+import com.graphhopper.replica.ReplicaCustomSpeedsFootTagParser;
+import com.graphhopper.routing.util.parsers.BikeAverageSpeedParser;
 import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,11 +15,12 @@ import java.util.*;
 public class CustomSpeedsVehicle {
     private static final Logger logger = LoggerFactory.getLogger(CustomSpeedsVehicle.class);
 
-    // TODO support custom speeds for bikes and pedestrians (RAD-6445, RAD-6446)
     public enum VehicleType {
         CAR(CarAverageSpeedParser.CAR_MAX_SPEED),
         TRUCK(TruckAverageSpeedParser.EE_TRUCK_MAX_SPEED),
-        SMALL_TRUCK(TruckAverageSpeedParser.EE_SMALL_TRUCK_MAX_SPEED);
+        SMALL_TRUCK(TruckAverageSpeedParser.EE_SMALL_TRUCK_MAX_SPEED),
+        BIKE(BikeAverageSpeedParser.MAX_SPEED),
+        FOOT(ReplicaCustomSpeedsFootTagParser.FOOT_MAX_SPEED);
 
         private double maxValidSpeed;
 
@@ -72,6 +75,12 @@ public class CustomSpeedsVehicle {
         }
         if (customVehicleName.startsWith(RouterConstants.SMALL_TRUCK_VEHICLE_NAME)) {
             return CustomSpeedsVehicle.VehicleType.SMALL_TRUCK;
+        }
+        if (customVehicleName.startsWith(RouterConstants.BIKE_VEHICLE_NAME)) {
+            return CustomSpeedsVehicle.VehicleType.BIKE;
+        }
+        if (customVehicleName.startsWith(RouterConstants.FOOT_VEHICLE_NAME)) {
+            return CustomSpeedsVehicle.VehicleType.FOOT;
         }
         throw new IllegalArgumentException("Could not determine base vehicle type for custom speeds vehicle " + customVehicleName + ". Supported base vehicle types: " + EnumSet.allOf(CustomSpeedsVehicle.VehicleType.class));
     }
