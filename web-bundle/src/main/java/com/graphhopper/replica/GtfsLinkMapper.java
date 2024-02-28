@@ -183,7 +183,7 @@ public class GtfsLinkMapper {
                 }
                 List<String> stableEdgeIds = Lists.newArrayList(gtfsLinkMappings.get(stopPairString).split(","));
                 String stableEdgeIdString = stableEdgeIds.size() == 0 ? ""
-                        : String.format("\"[%s]\"", stableEdgeIds.stream().map(id -> "'" + id + "'").collect(Collectors.joining(",")));
+                        : String.format("[%s]", stableEdgeIds.stream().map(id -> "'" + id + "'").collect(Collectors.joining(",")));
 
                 // format: "{feed_id}:{route_id}/{feed_id}:{stop_id}/{feed_id}:{next_stop_id}"
                 String transitEdgeString = stop.feed_id + ":" + routeId + "/" + stop.feed_id + ":"
@@ -199,7 +199,7 @@ public class GtfsLinkMapper {
     private static String getCsvLine(String routeId, String feedId, String stopId, String nextStopId,
                                      double stopLat, double stopLon, double stopLatNext, double stopLonNext,
                                      String stableEdgeIdString, String transitEdgeString) {
-        return String.format("%s,%s,%s,%s,%f,%f,%f,%f,%s,%s", routeId, feedId, stopId, nextStopId,
+        return String.format("\"%s\",\"%s\",\"%s\",\"%s\",%f,%f,%f,%f,\"%s\",\"%s\"", routeId, feedId, stopId, nextStopId,
                 stopLat, stopLon, stopLatNext, stopLonNext, stableEdgeIdString, transitEdgeString
         );
     }
