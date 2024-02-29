@@ -199,6 +199,7 @@ public class GtfsLinkMapper {
     private static String getCsvLine(String routeId, String feedId, String stopId, String nextStopId,
                                      double stopLat, double stopLon, double stopLatNext, double stopLonNext,
                                      String stableEdgeIdString, String transitEdgeString) {
+        // Add quotes around all string fields for ease of parsing CSV - some fields contain commas
         return String.format("\"%s\",\"%s\",\"%s\",\"%s\",%f,%f,%f,%f,\"%s\",\"%s\"", routeId, feedId, stopId, nextStopId,
                 stopLat, stopLon, stopLatNext, stopLonNext, stableEdgeIdString, transitEdgeString
         );
