@@ -12,7 +12,14 @@ public final class MetricUtils {
         // utility class
     }
 
-    public static void sendDatadogStats(StatsDClient statsDClient, String[] tags, double durationSeconds) {
+    public static void sendRoutingStats(StatsDClient statsDClient, String[] tags, double durationSeconds, int numAlternatives) {
+        if (statsDClient != null) {
+            statsDClient.histogram("routers.num_alternatives", numAlternatives, tags);
+        }
+        sendRoutingStats(statsDClient, tags, durationSeconds);
+    }
+
+    public static void sendRoutingStats(StatsDClient statsDClient, String[] tags, double durationSeconds) {
         if (statsDClient != null) {
             statsDClient.incrementCounter("routers.num_requests", tags);
             statsDClient.histogram("routers.request_seconds", durationSeconds, tags);

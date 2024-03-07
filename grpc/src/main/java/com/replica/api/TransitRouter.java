@@ -85,7 +85,7 @@ public class TransitRouter {
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 tags = new String[]{"mode:pt", "api:grpc", "routes_found:false"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
-                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+                MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
                 Status status = Status.newBuilder()
                         .setCode(Code.NOT_FOUND.getNumber())
@@ -105,7 +105,7 @@ public class TransitRouter {
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 tags = new String[]{"mode:pt", "api:grpc", "routes_found:true"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
-                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+                MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, pathsWithStableIds.size());
 
                 // Request info log for slow-running requests; uncomment if needed for debugging
                 /*
@@ -128,7 +128,7 @@ public class TransitRouter {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:pt", "api:grpc", "routes_found:false"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+            MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
                     .setCode(Code.NOT_FOUND.getNumber())
@@ -141,7 +141,7 @@ public class TransitRouter {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:pt", "api:grpc", "routes_found:error"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+            MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
                     .setCode(Code.INTERNAL.getNumber())
