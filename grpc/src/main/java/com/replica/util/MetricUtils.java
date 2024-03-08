@@ -12,9 +12,9 @@ public final class MetricUtils {
         // utility class
     }
 
-    public static void sendRoutingStats(StatsDClient statsDClient, String[] tags, double durationSeconds, int numAlternatives) {
+    public static void sendRoutingStats(StatsDClient statsDClient, String[] tags, double durationSeconds, int numRoutes) {
         if (statsDClient != null) {
-            statsDClient.histogram("routers.num_alternatives", numAlternatives, tags);
+            statsDClient.histogram("routers.num_routes", numRoutes, tags);
         }
         sendRoutingStats(statsDClient, tags, durationSeconds);
     }

@@ -94,7 +94,7 @@ public class StreetRouter {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
+            MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, 0);
 
             Status status = Status.newBuilder()
                     .setCode(Code.NOT_FOUND.getNumber())
