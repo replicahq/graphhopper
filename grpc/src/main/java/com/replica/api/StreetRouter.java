@@ -54,14 +54,14 @@ public class StreetRouter {
         GHPoint dest = ghRequest.getPoints().get(1);
 
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
-        boolean anyPathsFound = false;
+        int pathsFound = 0;
         for (String profile : profilesToQuery) {
             ghRequest.setProfile(profile);
             try {
                 GHResponse ghResponse = graphHopper.route(ghRequest);
                 // ghResponse.hasErrors() means that the router returned no results
                 if (!ghResponse.hasErrors()) {
-                    anyPathsFound = true;
+                    pathsFound += ghResponse.getAll().size();
                     ghResponse.getAll().stream()
                             .map(responsePath -> RouterConverters.toStreetPath(responsePath, profile, request.getReturnFullPathDetails()))
                             .forEach(replyBuilder::addPaths);
@@ -75,7 +75,7 @@ public class StreetRouter {
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
-                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+                MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
                 Status status = Status.newBuilder()
                         .setCode(Code.INTERNAL.getNumber())
@@ -87,14 +87,14 @@ public class StreetRouter {
 
         // If no paths were found across any of the queried profiles,
         // return the standard NOT_FOUND grpc error code
-        if (!anyPathsFound) {
+        if (pathsFound == 0) {
             String message = "Path could not be found between "
                     + origin.lat + "," + origin.lon + " to " + dest.lat + "," + dest.lon;
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+            MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, 0);
 
             Status status = Status.newBuilder()
                     .setCode(Code.NOT_FOUND.getNumber())
@@ -105,7 +105,7 @@ public class StreetRouter {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+            MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, pathsFound);
 
             responseObserver.onNext(replyBuilder.build());
             responseObserver.onCompleted();

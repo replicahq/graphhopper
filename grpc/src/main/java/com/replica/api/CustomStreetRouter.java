@@ -49,7 +49,7 @@ public class CustomStreetRouter {
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
-                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+                MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, 0);
 
                 Status status = Status.newBuilder()
                         .setCode(Code.NOT_FOUND.getNumber())
@@ -65,7 +65,7 @@ public class CustomStreetRouter {
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
-                MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+                MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, ghResponse.getAll().size());
 
                 responseObserver.onNext(replyBuilder.build());
                 responseObserver.onCompleted();
@@ -78,7 +78,7 @@ public class CustomStreetRouter {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
             String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
-            MetricUtils.sendDatadogStats(statsDClient, tags, durationSeconds);
+            MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
             Status status = Status.newBuilder()
                     .setCode(Code.INTERNAL.getNumber())
