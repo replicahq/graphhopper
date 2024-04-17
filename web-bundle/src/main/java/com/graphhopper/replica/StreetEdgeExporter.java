@@ -20,6 +20,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+import static com.graphhopper.OsmHelper.*;
+
 public class StreetEdgeExporter {
     private static final Logger logger = LoggerFactory.getLogger(StreetEdgeExporter.class);
 
@@ -32,14 +34,10 @@ public class StreetEdgeExporter {
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "humanReadableStableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
             "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
-            "startOsmNode", "endOsmNode"};
+            "startOsmNode", "endOsmNode", "direction"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
-    // Some sticky members
-    private Map<Long, Map<String, String>> osmIdToLaneTags;
-    private Map<Long, String> osmIdToStreetName;
-    private Map<Long, String> osmIdToHighway;
-
+    private Map<Long, Map<String, String>> osmIdToWayTags;
     private NodeAccess nodes;
     private DecimalEncodedValue avgSpeedEnc;
     private StableIdEncodedValues stableIdEncodedValues;
@@ -49,13 +47,9 @@ public class StreetEdgeExporter {
     private OsmHelper osmHelper;
 
     public StreetEdgeExporter(GraphHopper configuredGraphHopper,
-                              Map<Long, Map<String, String>> osmIdToLaneTags,
-                              Map<Long, String> osmIdToStreetName,
-                              Map<Long, String> osmIdToHighway,
+                              Map<Long, Map<String, String>> osmIdToWayTags,
                               OsmHelper osmHelper) {
-        this.osmIdToLaneTags = osmIdToLaneTags;
-        this.osmIdToStreetName = osmIdToStreetName;
-        this.osmIdToHighway = osmIdToHighway;
+        this.osmIdToWayTags = osmIdToWayTags;
         this.osmHelper = osmHelper;
 
         // Grab edge/node iterators for graph loaded from pre-built GH files
@@ -124,10 +118,10 @@ public class StreetEdgeExporter {
         }
 
         // Use street name parsed from Ways/Relations, if it exists; otherwise, use default GH edge name
-        String streetName = osmIdToStreetName.getOrDefault(osmWayId, iteratorState.getName());
+        String streetName = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_NAME_TAG)).orElse(iteratorState.getName());
 
         // Grab OSM highway type and encoded stable IDs for both edge directions
-        String highwayTag = osmIdToHighway.getOrDefault(osmWayId, iteratorState.get(roadClassEnc).toString());
+        String highwayTag = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_HIGHWAY_TAG)).orElse(iteratorState.get(roadClassEnc).toString());
         String forwardStableEdgeId = stableIdEncodedValues.getStableId(false, iteratorState);
         String backwardStableEdgeId = stableIdEncodedValues.getStableId(true, iteratorState);
 
@@ -155,9 +149,9 @@ public class StreetEdgeExporter {
         }
 
         // Calculate number of lanes for edge, as done in R5, based on OSM tags + edge direction
-        int overallLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes");
-        int forwardLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes:forward");
-        int backwardLanes = parseLanesTag(osmWayId, osmIdToLaneTags, "lanes:backward");
+        int overallLanes = parseLanesTag(osmWayId, osmIdToWayTags, OSM_LANES_TAG);
+        int forwardLanes = parseLanesTag(osmWayId, osmIdToWayTags, OSM_FORWARD_LANES_TAG);
+        int backwardLanes = parseLanesTag(osmWayId, osmIdToWayTags, OSM_BACKWARD_LANES_TAG);
 
         if (!backwardFlags.contains("ALLOWS_CAR")) {
             backwardLanes = 0;
@@ -183,6 +177,9 @@ public class StreetEdgeExporter {
             }
         }
 
+        // Grab direction we parsed from Way
+        String direction = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_DIRECTION_TAG)).orElse("");
+
         // Filter out edges with unwanted highway tags
         if (!HIGHWAY_FILTER_TAGS.contains(highwayTag)) {
             // Print line for each edge direction, if edge is accessible; inaccessible edges should have
@@ -190,12 +187,14 @@ public class StreetEdgeExporter {
             if (!(forwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, humanReadableForwardStableEdgeId,
                         startVertex, endVertex, startLat, startLon, endLat, endLon, geometryString, streetName,
-                        distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag, startOsmNode, endOsmNode));
+                        distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag,
+                        startOsmNode, endOsmNode, direction));
             }
             if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, humanReadableBackwardStableEdgeId,
                         endVertex, startVertex, endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
-                        distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag, endOsmNode, startOsmNode));
+                        distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag,
+                        endOsmNode, startOsmNode, direction));
             }
         }
 
@@ -203,12 +202,9 @@ public class StreetEdgeExporter {
     }
 
     public static void writeStreetEdgesCsv(GraphHopper configuredGraphHopper,
-                                           Map<Long, Map<String, String>> osmIdToLaneTags,
-                                           Map<Long, String> osmIdToStreetName,
-                                           Map<Long, String> osmIdToHighway,
+                                           Map<Long, Map<String, String>> osmIdToWayTags,
                                            OsmHelper osmHelper) {
-        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToLaneTags,
-                osmIdToStreetName, osmIdToHighway, osmHelper);
+        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, osmIdToWayTags, osmHelper);
         AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
         File outputFile = new File(configuredGraphHopper.getGraphHopperLocation() + "/street_edges.csv");
 
@@ -230,7 +226,7 @@ public class StreetEdgeExporter {
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.humanReadableEdgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
                                 r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
-                                r.startOsmNode, r.endOsmNode);
+                                r.startOsmNode, r.endOsmNode, r.direction);
                     }
                 }
             }
@@ -245,16 +241,26 @@ public class StreetEdgeExporter {
         }
     }
 
+    private static String parseWayTag(long osmId, Map<Long, Map<String, String>> osmIdToWayTags, String wayTag) {
+        Map<String, String> wayTagsOnEdge = OsmHelper.getWayTag(osmId, osmIdToWayTags);
+        if (wayTagsOnEdge != null) {
+            if (wayTagsOnEdge.containsKey(wayTag)) {
+                return wayTagsOnEdge.get(wayTag);
+            }
+        }
+        return null;
+    }
+
     // Taken from R5's lane parsing logic. See EdgeServiceServer.java in R5 repo
-    private static int parseLanesTag(long osmId, Map<Long, Map<String, String>> osmIdToLaneTags, String laneTag) {
+    private static int parseLanesTag(long osmId, Map<Long, Map<String, String>> osmIdToWayTags, String laneTag) {
         int result = -1;
-        Map<String, String> laneTagsOnEdge = OsmHelper.getLanesTag(osmId, osmIdToLaneTags);
-        if (laneTagsOnEdge != null) {
-            if (laneTagsOnEdge.containsKey(laneTag)) {
+        Map<String, String> wayTagsOnEdge = OsmHelper.getWayTag(osmId, osmIdToWayTags);
+        if (wayTagsOnEdge != null) {
+            if (wayTagsOnEdge.containsKey(laneTag)) {
                 try {
-                    return parseLanesTag(laneTagsOnEdge.get(laneTag));
+                    return parseLanesTag(wayTagsOnEdge.get(laneTag));
                 } catch (NumberFormatException ex) {
-                    logger.warn("way {}: Unable to parse lanes value as number {}", osmId, laneTag);
+                    logger.warn("way {}: Unable to parse {} tag value as number", osmId, laneTag);
                 }
             }
         }

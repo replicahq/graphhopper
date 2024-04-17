@@ -13,6 +13,13 @@ public class OsmHelper {
     private DataAccess ghEdgeIdToSegmentIndexMapping;
     private BitUtil bitUtil;
 
+    public static final String OSM_NAME_TAG = "name";
+    public static final String OSM_HIGHWAY_TAG = "highway";
+    public static final String OSM_DIRECTION_TAG = "direction";
+    public static final String OSM_LANES_TAG = "lanes";
+    public static final String OSM_FORWARD_LANES_TAG = "lanes:forward";
+    public static final String OSM_BACKWARD_LANES_TAG = "lanes:backward";
+
     public OsmHelper(DataAccess nodeMapping,
                      DataAccess artificialIdToOsmNodeIdMapping,
                      DataAccess ghEdgeIdToSegmentIndexMapping,
@@ -38,13 +45,13 @@ public class OsmHelper {
         return ghEdgeIdToSegmentIndexMapping.getInt(pointer);
     }
 
-    public static Map<String, String> getLanesTag(long osmId, Map<Long, Map<String, String>> osmIdToLaneTags) {
-        return osmIdToLaneTags.getOrDefault(osmId, null);
+    public static Map<String, String> getWayTag(long osmId, Map<Long, Map<String, String>> osmIdToWayTags) {
+        return osmIdToWayTags.getOrDefault(osmId, null);
     }
 
-    public static String getHighwayFromOsmWay(ReaderWay way) {
-        if (way.hasTag("highway")) {
-            return way.getTag("highway");
+    public static String getTagValueFromOsmWay(ReaderWay way, String tagName) {
+        if (way.hasTag(tagName)) {
+            return way.getTag(tagName);
         } else {
             return null;
         }
