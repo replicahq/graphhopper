@@ -20,7 +20,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 import static com.graphhopper.OsmHelper.*;
 import static com.graphhopper.util.GHUtility.readCountries;
@@ -180,7 +182,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
                         LOG.info("Parsing tag info from OSM ways. " + readCount + " read so far.");
                     }
                     final ReaderWay ghReaderWay = (ReaderWay) next;
-                    parseWayTags(ghReaderWay);
+                    osmIdToWayTags.put(ghReaderWay.getId(), parseWayTags(ghReaderWay));
                 } else if (next.getType().equals(ReaderElement.Type.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
@@ -216,23 +218,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
         } catch (Exception e) {
             throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
         }
-    }
-
-    public void parseWayTags(ReaderWay ghReaderWay) {
-        long osmId = ghReaderWay.getId();
-        Map<String, String> parsedWayTagValues = Maps.newHashMap();
-
-        // Parse street name, which is a concat of `name` and `ref` tags (if present)
-        parsedWayTagValues.put(OSM_NAME_TAG, getConcatNameFromOsmElement(ghReaderWay));
-
-        // Parse highway and direction tags, plus all tags needed for determining lane counts
-        for (String wayTag : ALL_TAGS_TO_PARSE) {
-            parsedWayTagValues.put(wayTag, getTagValueFromOsmWay(ghReaderWay, wayTag));
-        }
-
-        // Remove any tags that weren't present for this Way (ie the value was parsed as null)
-        parsedWayTagValues.values().removeIf(Objects::isNull);
-        osmIdToWayTags.put(osmId, parsedWayTagValues);
     }
 
     public Map<Long, Map<String, String>> getOsmIdToWayTags() {

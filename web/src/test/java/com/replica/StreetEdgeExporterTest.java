@@ -117,9 +117,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         gh.collectOsmInfo();
 
         // Copied from writeStreetEdgesCsv
-        StreetEdgeExporter exporter = new StreetEdgeExporter(
-                configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper()
-        );
+        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, gh.getOsmIdToWayTags(), gh.getOsmHelper());
         AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
 
         // Generate the rows for the first item in the edge iterator

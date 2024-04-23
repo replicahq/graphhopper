@@ -1,5 +1,6 @@
 package com.graphhopper;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderWay;
@@ -7,6 +8,7 @@ import com.graphhopper.storage.DataAccess;
 import com.graphhopper.util.BitUtil;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class OsmHelper {
@@ -63,6 +65,22 @@ public class OsmHelper {
         } else {
             return null;
         }
+    }
+
+    public static Map<String, String> parseWayTags(ReaderWay ghReaderWay) {
+        Map<String, String> parsedWayTagValues = Maps.newHashMap();
+
+        // Parse street name, which is a concat of `name` and `ref` tags (if present)
+        parsedWayTagValues.put(OSM_NAME_TAG, getConcatNameFromOsmElement(ghReaderWay));
+
+        // Parse highway and direction tags, plus all tags needed for determining lane counts
+        for (String wayTag : ALL_TAGS_TO_PARSE) {
+            parsedWayTagValues.put(wayTag, getTagValueFromOsmWay(ghReaderWay, wayTag));
+        }
+
+        // Remove any tags that weren't present for this Way (ie the value was parsed as null)
+        parsedWayTagValues.values().removeIf(Objects::isNull);
+        return parsedWayTagValues;
     }
 
     // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
