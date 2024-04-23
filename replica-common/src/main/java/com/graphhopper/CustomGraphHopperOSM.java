@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,6 +53,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
 
     public CustomGraphHopperOSM(GraphHopperConfig ghConfig) {
         this.osmPath = ghConfig.getString("datareader.file", "");
+        this.osmIdToWayTags = Maps.newHashMap();
     }
 
     @Override
@@ -208,7 +210,7 @@ public class CustomGraphHopperOSM extends GraphHopper {
                             if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(OSM_NAME_TAG)) {
                                 String streetName = getConcatNameFromOsmElement(relation);
                                 if (streetName != null) {
-                                    Map<String, String> currentWayTags = osmIdToWayTags.getOrDefault(member.getRef(), Maps.newHashMap());
+                                    Map<String, String> currentWayTags = new HashMap<>(osmIdToWayTags.getOrDefault(member.getRef(), Maps.newHashMap()));
                                     currentWayTags.put(OSM_NAME_TAG, streetName);
                                     osmIdToWayTags.put(member.getRef(), currentWayTags);
                                 }
