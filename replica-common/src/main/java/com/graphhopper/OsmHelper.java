@@ -21,6 +21,7 @@ public class OsmHelper {
     public static final String OSM_HIGHWAY_TAG = "highway";
     public static final String OSM_DIRECTION_TAG = "direction";
     public static final String OSM_LANES_TAG = "lanes";
+    public static final String OSM_RELATION_ID = "relation";  // Not a formal OSM tag, just a placeholder to hold relation ID for Ways
     public static final String OSM_FORWARD_LANES_TAG = "lanes:forward";
     public static final String OSM_BACKWARD_LANES_TAG = "lanes:backward";
 

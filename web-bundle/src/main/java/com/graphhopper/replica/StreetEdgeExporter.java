@@ -34,7 +34,7 @@ public class StreetEdgeExporter {
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "humanReadableStableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
             "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
-            "startOsmNode", "endOsmNode", "direction"};
+            "startOsmNode", "endOsmNode", "direction", "osmRelationId"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
     private Map<Long, Map<String, String>> osmIdToWayTags;
@@ -180,6 +180,9 @@ public class StreetEdgeExporter {
         // Grab direction we parsed from Way
         String direction = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_DIRECTION_TAG)).orElse("");
 
+        // Grab relation ID associated with Way
+        long osmRelationId = Long.parseLong(Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_ID)).orElse("0"));
+
         // Filter out edges with unwanted highway tags
         if (!HIGHWAY_FILTER_TAGS.contains(highwayTag)) {
             // Print line for each edge direction, if edge is accessible; inaccessible edges should have
@@ -188,13 +191,13 @@ public class StreetEdgeExporter {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, humanReadableForwardStableEdgeId,
                         startVertex, endVertex, startLat, startLon, endLat, endLon, geometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag,
-                        startOsmNode, endOsmNode, direction));
+                        startOsmNode, endOsmNode, direction, osmRelationId));
             }
             if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, humanReadableBackwardStableEdgeId,
                         endVertex, startVertex, endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag,
-                        endOsmNode, startOsmNode, direction));
+                        endOsmNode, startOsmNode, direction, osmRelationId));
             }
         }
 
@@ -226,7 +229,7 @@ public class StreetEdgeExporter {
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.humanReadableEdgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
                                 r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
-                                r.startOsmNode, r.endOsmNode, r.direction);
+                                r.startOsmNode, r.endOsmNode, r.direction, r.osmRelationId);
                     }
                 }
             }

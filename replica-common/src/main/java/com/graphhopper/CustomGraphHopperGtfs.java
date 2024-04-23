@@ -209,6 +209,9 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                     }
                     for (ReaderRelation.Member member : relation.getMembers()) {
                         if (member.getType() == ReaderElement.Type.WAY) {
+                            // Store the relation ID for the Way
+                            osmIdToWayTags.put(member.getRef(), Map.of(OSM_RELATION_ID, Long.toString(relation.getId())));
+
                             // If we haven't recorded a street name for a Way in this Relation,
                             // use the Relation's name instead, if it exists
                             if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(OSM_NAME_TAG)) {
