@@ -2,7 +2,6 @@ package com.graphhopper;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
@@ -40,23 +39,10 @@ import static com.graphhopper.util.Helper.isEmpty;
 public class CustomGraphHopperOSM extends GraphHopper {
     private static final Logger LOG = LoggerFactory.getLogger(CustomGraphHopperOSM.class);
 
-    // Tags we consider when calculating the value of the `lanes` column
-    private static final Set<String> LANE_TAGS = Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG);
-    // Tags we parse to include as columns in network link export
-    private static final Set<String> WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_DIRECTION_TAG);
-    private static final Set<String> ALL_TAGS_TO_PARSE = Sets.union(LANE_TAGS, WAY_TAGS);
-
     private String osmPath;
     // Map of OSM Way ID -> (Map of OSM tag name -> tag value)
     private Map<Long, Map<String, String>> osmIdToWayTags;
 
-    // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
-    private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of OSM ID to street name. Name is parsed directly from Way, unless name field isn't present,
-    // in which case the name is taken from the Relation containing the Way, if one exists
-    private Map<Long, String> osmIdToStreetName;
-    // Map of OSM ID to highway tag
-    private Map<Long, String> osmIdToHighwayTag;
     private DataAccess nodeMapping;
     private DataAccess artificialIdToOsmNodeIdMapping;
     private DataAccess ghEdgeIdToSegmentIndexMapping;
@@ -64,9 +50,6 @@ public class CustomGraphHopperOSM extends GraphHopper {
 
     public CustomGraphHopperOSM(GraphHopperConfig ghConfig) {
         this.osmPath = ghConfig.getString("datareader.file", "");
-        this.osmIdToLaneTags = Maps.newHashMap();
-        this.osmIdToStreetName = Maps.newHashMap();
-        this.osmIdToHighwayTag = Maps.newHashMap();
     }
 
     @Override
@@ -217,10 +200,12 @@ public class CustomGraphHopperOSM extends GraphHopper {
                         if (member.getType() == ReaderElement.Type.WAY) {
                             // If we haven't recorded a street name for a Way in this Relation,
                             // use the Relation's name instead, if it exists
-                            if (!osmIdToStreetName.containsKey(member.getRef())) {
+                            if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(OSM_NAME_TAG)) {
                                 String streetName = getConcatNameFromOsmElement(relation);
                                 if (streetName != null) {
-                                    osmIdToStreetName.put(member.getRef(), streetName);
+                                    Map<String, String> currentWayTags = osmIdToWayTags.getOrDefault(member.getRef(), Maps.newHashMap());
+                                    currentWayTags.put(OSM_NAME_TAG, streetName);
+                                    osmIdToWayTags.put(member.getRef(), currentWayTags);
                                 }
                             }
                         }
@@ -252,17 +237,5 @@ public class CustomGraphHopperOSM extends GraphHopper {
 
     public Map<Long, Map<String, String>> getOsmIdToWayTags() {
         return osmIdToWayTags;
-    }
-
-    public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
-        return osmIdToLaneTags;
-    }
-
-    public Map<Long, String> getOsmIdToStreetName() {
-        return osmIdToStreetName;
-    }
-
-    public Map<Long, String> getOsmIdToHighwayTag() {
-        return osmIdToHighwayTag;
     }
 }

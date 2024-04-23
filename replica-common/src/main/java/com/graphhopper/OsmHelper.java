@@ -1,11 +1,13 @@
 package com.graphhopper;
 
+import com.google.common.collect.Sets;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.storage.DataAccess;
 import com.graphhopper.util.BitUtil;
 
 import java.util.Map;
+import java.util.Set;
 
 public class OsmHelper {
     private DataAccess nodeMapping;
@@ -19,6 +21,12 @@ public class OsmHelper {
     public static final String OSM_LANES_TAG = "lanes";
     public static final String OSM_FORWARD_LANES_TAG = "lanes:forward";
     public static final String OSM_BACKWARD_LANES_TAG = "lanes:backward";
+
+    // Tags we consider when calculating the value of the `lanes` column
+    public static final Set<String> LANE_TAGS = Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG);
+    // Tags we parse to include as columns in network link export
+    public static final Set<String> WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_DIRECTION_TAG);
+    public static final Set<String> ALL_TAGS_TO_PARSE = Sets.union(LANE_TAGS, WAY_TAGS);
 
     public OsmHelper(DataAccess nodeMapping,
                      DataAccess artificialIdToOsmNodeIdMapping,
