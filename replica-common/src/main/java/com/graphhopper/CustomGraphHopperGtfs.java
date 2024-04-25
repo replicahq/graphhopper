@@ -214,14 +214,16 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
                             // Store the relation ID for the Way
                             osmIdToWayTags.put(member.getRef(), Map.of(OSM_RELATION_ID, Long.toString(relation.getId())));
 
-                            // If we haven't recorded a street name for a Way in this Relation,
-                            // use the Relation's name instead, if it exists
-                            if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(OSM_NAME_TAG)) {
-                                String streetName = getConcatNameFromOsmElement(relation);
-                                if (streetName != null) {
-                                    Map<String, String> currentWayTags = new HashMap<>(osmIdToWayTags.getOrDefault(member.getRef(), Maps.newHashMap()));
-                                    currentWayTags.put(OSM_NAME_TAG, streetName);
-                                    osmIdToWayTags.put(member.getRef(), currentWayTags);
+                            // If we haven't recorded a street name/direction for a Way in this Relation,
+                            // use the Relation's name/direction instead, if it exists
+                            for (String osmTag : List.of(OSM_NAME_TAG, OSM_DIRECTION_TAG)) {
+                                if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(osmTag)) {
+                                    String tagValue = osmTag.equals(OSM_NAME_TAG) ? getConcatNameFromOsmElement(relation) : getTagValueFromOsmElement(relation, osmTag);
+                                    if (tagValue != null) {
+                                        Map<String, String> currentWayTags = new HashMap<>(osmIdToWayTags.getOrDefault(member.getRef(), Maps.newHashMap()));
+                                        currentWayTags.put(osmTag, tagValue);
+                                        osmIdToWayTags.put(member.getRef(), currentWayTags);
+                                    }
                                 }
                             }
                         }

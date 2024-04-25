@@ -60,9 +60,9 @@ public class OsmHelper {
         return osmIdToWayTags.getOrDefault(osmId, null);
     }
 
-    public static String getTagValueFromOsmWay(ReaderWay way, String tagName) {
-        if (way.hasTag(tagName)) {
-            return way.getTag(tagName);
+    public static String getTagValueFromOsmElement(ReaderElement wayOrRelation, String tagName) {
+        if (wayOrRelation.hasTag(tagName)) {
+            return wayOrRelation.getTag(tagName);
         } else {
             return null;
         }
@@ -76,7 +76,7 @@ public class OsmHelper {
 
         // Parse highway and direction tags, plus all tags needed for determining lane counts
         for (String wayTag : ALL_TAGS_TO_PARSE) {
-            parsedWayTagValues.put(wayTag, getTagValueFromOsmWay(ghReaderWay, wayTag));
+            parsedWayTagValues.put(wayTag, getTagValueFromOsmElement(ghReaderWay, wayTag));
         }
 
         // Remove any tags that weren't present for this Way (ie the value was parsed as null)
@@ -86,10 +86,7 @@ public class OsmHelper {
 
     // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
     public static String getConcatNameFromOsmElement(ReaderElement wayOrRelation) {
-        String name = null;
-        if (wayOrRelation.hasTag("name")) {
-            name = wayOrRelation.getTag("name");
-        }
+        String name = getTagValueFromOsmElement(wayOrRelation, "name");
         if (wayOrRelation.hasTag("ref")) {
             name = name == null ? wayOrRelation.getTag("ref") : wayOrRelation.getTag("ref") + ", " + name;
         }
