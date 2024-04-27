@@ -34,7 +34,7 @@ public class StreetEdgeExporter {
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
     private static final String[] COLUMN_HEADERS = {"stableEdgeId", "humanReadableStableEdgeId", "startVertex", "endVertex", "startLat", "startLon",
             "endLat", "endLon", "geometry", "streetName", "distance", "osmid", "speed", "flags", "lanes", "highway",
-            "startOsmNode", "endOsmNode", "direction", "osmRelationId"};
+            "startOsmNode", "endOsmNode", "osmDirection", "osmRelationId"};
     public static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.withHeader(COLUMN_HEADERS);
 
     private Map<Long, Map<String, String>> osmIdToWayTags;
