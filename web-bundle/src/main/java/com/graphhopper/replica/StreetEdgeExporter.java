@@ -180,8 +180,10 @@ public class StreetEdgeExporter {
         // Grab direction we parsed from Way
         String direction = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_DIRECTION_TAG)).orElse("");
 
-        // Grab relation ID associated with Way
-        long osmRelationId = Long.parseLong(Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_ID)).orElse("0"));
+        // Grab relation ID and relation name associated with Way
+        String parsedRelationId = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_ID);
+        Long osmRelationId = parsedRelationId != null ? Long.parseLong(parsedRelationId) : null;
+        String osmRelationName = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_NAME_TAG);
 
         // Filter out edges with unwanted highway tags
         if (!HIGHWAY_FILTER_TAGS.contains(highwayTag)) {
@@ -191,13 +193,13 @@ public class StreetEdgeExporter {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, humanReadableForwardStableEdgeId,
                         startVertex, endVertex, startLat, startLon, endLat, endLon, geometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag,
-                        startOsmNode, endOsmNode, direction, osmRelationId));
+                        startOsmNode, endOsmNode, direction, osmRelationId, osmRelationName));
             }
             if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, humanReadableBackwardStableEdgeId,
                         endVertex, startVertex, endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag,
-                        endOsmNode, startOsmNode, direction, osmRelationId));
+                        endOsmNode, startOsmNode, direction, osmRelationId, osmRelationName));
             }
         }
 

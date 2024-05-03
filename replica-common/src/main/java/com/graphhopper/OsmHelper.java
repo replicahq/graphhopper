@@ -29,6 +29,7 @@ public class OsmHelper {
     public static final String OSM_DIRECTION_TAG = "direction";
     public static final String OSM_LANES_TAG = "lanes";
     public static final String OSM_RELATION_ID = "relation";  // Not a formal OSM tag, just a placeholder to hold relation ID for Ways
+    public static final String OSM_RELATION_NAME_TAG = "relation_name";  // Not a formal OSM tag, just a placeholder to hold relation name for Ways
     public static final String OSM_FORWARD_LANES_TAG = "lanes:forward";
     public static final String OSM_BACKWARD_LANES_TAG = "lanes:backward";
 
@@ -103,7 +104,9 @@ public class OsmHelper {
     public static void updateOsmIdToWayTags(Map<Long, Map<String, String>> osmIdToWayTags, Long osmId, Map<String, String> newTagValues) {
         Map<String, String> currentWayTags = new HashMap<>(osmIdToWayTags.getOrDefault(osmId, Maps.newHashMap()));
         for (String tag : newTagValues.keySet()) {
-            currentWayTags.put(tag, newTagValues.get(tag));
+            if (!currentWayTags.containsKey(tag)) {
+                currentWayTags.put(tag, newTagValues.get(tag));
+            }
         }
         osmIdToWayTags.put(osmId, currentWayTags);
     }
@@ -143,6 +146,12 @@ public class OsmHelper {
                             // Store the relation ID for the Way
                             updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_RELATION_ID, Long.toString(relation.getId())));
 
+                            // Store the relation name for the Way
+                            String parsedRelationName = getTagValueFromOsmElement(relation, "name");
+                            if (parsedRelationName != null) {
+                                updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_RELATION_NAME_TAG, parsedRelationName));
+                            }
+
                             // If we haven't recorded a street name/direction for a Way in this Relation,
                             // use the Relation's name/direction instead, if it exists
                             for (String osmTag : List.of(OSM_NAME_TAG, OSM_DIRECTION_TAG)) {
@@ -159,6 +168,7 @@ public class OsmHelper {
             }
             LOG.info("Finished scanning road relations for additional street names. " + readCount + " total relations were considered.");
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
         }
     }
