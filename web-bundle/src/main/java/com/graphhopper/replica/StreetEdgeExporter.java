@@ -231,7 +231,7 @@ public class StreetEdgeExporter {
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.humanReadableEdgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
                                 r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
-                                r.startOsmNode, r.endOsmNode, r.direction, r.osmRelationId);
+                                r.startOsmNode, r.endOsmNode, r.direction, r.osmRelationId, r.osmRelationName);
                     }
                 }
             }
