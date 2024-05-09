@@ -176,15 +176,6 @@ public class StreetEdgeExporter {
                 }
             }
         }
-
-        // Grab direction we parsed from Way
-        String direction = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_DIRECTION_TAG)).orElse("");
-
-        // Grab relation ID and relation name associated with Way
-        String parsedRelationId = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_ID);
-        Long osmRelationId = parsedRelationId != null ? Long.parseLong(parsedRelationId) : null;
-        String osmRelationName = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_NAME_TAG);
-
         // Filter out edges with unwanted highway tags
         if (!HIGHWAY_FILTER_TAGS.contains(highwayTag)) {
             // Print line for each edge direction, if edge is accessible; inaccessible edges should have
@@ -193,13 +184,13 @@ public class StreetEdgeExporter {
                 output.add(new StreetEdgeExportRecord(forwardStableEdgeId, humanReadableForwardStableEdgeId,
                         startVertex, endVertex, startLat, startLon, endLat, endLon, geometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, forwardFlags.toString(), forwardLanes, highwayTag,
-                        startOsmNode, endOsmNode, direction, osmRelationId, osmRelationName));
+                        startOsmNode, endOsmNode));
             }
             if (!(backwardFlags.isEmpty() && INACCESSIBLE_MOTORWAY_TAGS.contains(highwayTag))) {
                 output.add(new StreetEdgeExportRecord(backwardStableEdgeId, humanReadableBackwardStableEdgeId,
                         endVertex, startVertex, endLat, endLon, startLat, startLon, reverseGeometryString, streetName,
                         distanceMillimeters, osmWayId, speedcms, backwardFlags.toString(), backwardLanes, highwayTag,
-                        endOsmNode, startOsmNode, direction, osmRelationId, osmRelationName));
+                        endOsmNode, startOsmNode));
             }
         }
 
@@ -231,7 +222,7 @@ public class StreetEdgeExporter {
                     for(StreetEdgeExportRecord r : records) {
                         printer.printRecord(r.edgeId, r.humanReadableEdgeId, r.startVertexId, r.endVertexId, r.startLat, r.startLon, r.endLat, r.endLon,
                                 r.geometryString, r.streetName, r.distanceMillimeters, r.osmId, r.speedCms, r.flags, r.lanes, r.highwayTag,
-                                r.startOsmNode, r.endOsmNode, r.direction, r.osmRelationId, r.osmRelationName);
+                                r.startOsmNode, r.endOsmNode);
                     }
                 }
             }

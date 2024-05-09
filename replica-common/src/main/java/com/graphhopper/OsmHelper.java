@@ -26,17 +26,14 @@ public class OsmHelper {
 
     public static final String OSM_NAME_TAG = "name";
     public static final String OSM_HIGHWAY_TAG = "highway";
-    public static final String OSM_DIRECTION_TAG = "direction";
     public static final String OSM_LANES_TAG = "lanes";
-    public static final String OSM_RELATION_ID = "relation";  // Not a formal OSM tag, just a placeholder to hold relation ID for Ways
-    public static final String OSM_RELATION_NAME_TAG = "relation_name";  // Not a formal OSM tag, just a placeholder to hold relation name for Ways
     public static final String OSM_FORWARD_LANES_TAG = "lanes:forward";
     public static final String OSM_BACKWARD_LANES_TAG = "lanes:backward";
 
     // Tags we consider when calculating the value of the `lanes` column
     public static final Set<String> LANE_TAGS = Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG);
     // Tags we parse to include as columns in network link export
-    public static final Set<String> WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_DIRECTION_TAG);
+    public static final Set<String> WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG);
     public static final Set<String> ALL_TAGS_TO_PARSE = Sets.union(LANE_TAGS, WAY_TAGS);
 
     public OsmHelper(DataAccess nodeMapping,
@@ -143,23 +140,12 @@ public class OsmHelper {
                     }
                     for (ReaderRelation.Member member : relation.getMembers()) {
                         if (member.getType() == ReaderElement.Type.WAY) {
-                            // Store the relation ID for the Way
-                            updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_RELATION_ID, Long.toString(relation.getId())));
-
-                            // Store the relation name for the Way
-                            String parsedRelationName = getTagValueFromOsmElement(relation, "name");
-                            if (parsedRelationName != null) {
-                                updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_RELATION_NAME_TAG, parsedRelationName));
-                            }
-
-                            // If we haven't recorded a street name/direction for a Way in this Relation,
-                            // use the Relation's name/direction instead, if it exists
-                            for (String osmTag : List.of(OSM_NAME_TAG, OSM_DIRECTION_TAG)) {
-                                if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(osmTag)) {
-                                    String tagValue = osmTag.equals(OSM_NAME_TAG) ? getConcatNameFromOsmElement(relation) : getTagValueFromOsmElement(relation, osmTag);
-                                    if (tagValue != null) {
-                                        updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(osmTag, tagValue));
-                                    }
+                            // If we haven't recorded a street name for a Way in this Relation,
+                            // use the Relation's name instead, if it exists
+                            if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(OSM_NAME_TAG)) {
+                                String tagValue = getConcatNameFromOsmElement(relation);
+                                if (tagValue != null) {
+                                    updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_NAME_TAG, tagValue));
                                 }
                             }
                         }
