@@ -28,16 +28,17 @@ public class OsmHelper {
     public static final String OSM_HIGHWAY_TAG = "highway";
     public static final String OSM_DIRECTION_TAG = "direction";
     public static final String OSM_LANES_TAG = "lanes";
-    public static final String OSM_RELATION_ID = "relation";  // Not a formal OSM tag, just a placeholder to hold relation ID for Ways
-    public static final String OSM_RELATION_NAME_TAG = "relation_name";  // Not a formal OSM tag, just a placeholder to hold relation name for Ways
     public static final String OSM_FORWARD_LANES_TAG = "lanes:forward";
     public static final String OSM_BACKWARD_LANES_TAG = "lanes:backward";
+    public static final String OSM_RELATION_ID = "relation";  // Not a formal OSM tag, just a placeholder to hold relation ID for Ways
+    public static final String OSM_RELATION_NAME = "relation_name";  // Not a formal OSM tag, just a placeholder to hold relation name for Ways
 
     // Tags we consider when calculating the value of the `lanes` column
-    public static final Set<String> LANE_TAGS = Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG);
+    public static final Set<String> LANE_TAGS = Collections.unmodifiableSet(Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG));
     // Tags we parse to include as columns in network link export
-    public static final Set<String> WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_DIRECTION_TAG);
-    public static final Set<String> ALL_TAGS_TO_PARSE = Sets.union(LANE_TAGS, WAY_TAGS);
+    public static final Set<String> OTHER_WAY_TAGS = Collections.unmodifiableSet(Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_NAME_TAG, OSM_DIRECTION_TAG));
+    public static final Set<String> ALL_WAY_TAGS_TO_PARSE = Collections.unmodifiableSet(Sets.union(LANE_TAGS, OTHER_WAY_TAGS));
+    public static final Set<String> ALL_RELATION_TAGS_TO_PARSE = Collections.unmodifiableSet(Sets.newHashSet(OSM_NAME_TAG, OSM_DIRECTION_TAG, OSM_RELATION_ID, OSM_RELATION_NAME));
 
     public OsmHelper(DataAccess nodeMapping,
                      DataAccess artificialIdToOsmNodeIdMapping,
@@ -76,20 +77,26 @@ public class OsmHelper {
         }
     }
 
-    public static Map<String, String> parseWayTags(ReaderWay ghReaderWay) {
-        Map<String, String> parsedWayTagValues = Maps.newHashMap();
+    public static Map<String, String> parseTagsFromOsmElement(ReaderElement wayOrRelation, Set<String> tagsToParse) {
+        Map<String, String> parsedTagValues = Maps.newHashMap();
 
-        // Parse street name, which is a concat of `name` and `ref` tags (if present)
-        parsedWayTagValues.put(OSM_NAME_TAG, getConcatNameFromOsmElement(ghReaderWay));
-
-        // Parse highway and direction tags, plus all tags needed for determining lane counts
-        for (String wayTag : ALL_TAGS_TO_PARSE) {
-            parsedWayTagValues.put(wayTag, getTagValueFromOsmElement(ghReaderWay, wayTag));
+        for (String tag : tagsToParse) {
+            if (OSM_NAME_TAG.equals(tag)) {
+                // Parse street name, which is a concat of `name` and `ref` tags (if present)
+                parsedTagValues.put(tag, getConcatNameFromOsmElement(wayOrRelation));
+            } else if (OSM_RELATION_ID.equals(tag)) {  // special case, OSM_RELATION_ID isn't a real tag
+                parsedTagValues.put(tag, Long.toString(wayOrRelation.getId()));
+            } else if (OSM_RELATION_NAME.equals(tag)) {  // special case, OSM_RELATION_NAME isn't a real tag
+                parsedTagValues.put(tag, getTagValueFromOsmElement(wayOrRelation, "name"));
+            }
+            else {
+                parsedTagValues.put(tag, getTagValueFromOsmElement(wayOrRelation, tag));
+            }
         }
 
-        // Remove any tags that weren't present for this Way (ie the value was parsed as null)
-        parsedWayTagValues.values().removeIf(Objects::isNull);
-        return parsedWayTagValues;
+        // Remove any tags that weren't present for this element (ie the value was parsed as null)
+        parsedTagValues.values().removeIf(Objects::isNull);
+        return parsedTagValues;
     }
 
     // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
@@ -104,7 +111,9 @@ public class OsmHelper {
     public static void updateOsmIdToWayTags(Map<Long, Map<String, String>> osmIdToWayTags, Long osmId, Map<String, String> newTagValues) {
         Map<String, String> currentWayTags = new HashMap<>(osmIdToWayTags.getOrDefault(osmId, Maps.newHashMap()));
         for (String tag : newTagValues.keySet()) {
-            if (!currentWayTags.containsKey(tag)) {
+            if (currentWayTags.containsKey(tag)) {
+                throw new RuntimeException("Value for tag " + tag + " has already been stored! Only new tag values not already in osmIdToWayTags allowed");
+            } else {
                 currentWayTags.put(tag, newTagValues.get(tag));
             }
         }
@@ -125,7 +134,8 @@ public class OsmHelper {
                         LOG.info("Parsing tag info from OSM ways. " + readCount + " read so far.");
                     }
                     final ReaderWay ghReaderWay = (ReaderWay) next;
-                    updateOsmIdToWayTags(osmIdToWayTags, ghReaderWay.getId(), parseWayTags(ghReaderWay));
+                    // Parse highway, name, and lane tags from Way
+                    updateOsmIdToWayTags(osmIdToWayTags, ghReaderWay.getId(), parseTagsFromOsmElement(ghReaderWay, ALL_WAY_TAGS_TO_PARSE));
                 } else if (next.getType().equals(ReaderElement.Type.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
@@ -143,25 +153,13 @@ public class OsmHelper {
                     }
                     for (ReaderRelation.Member member : relation.getMembers()) {
                         if (member.getType() == ReaderElement.Type.WAY) {
-                            // Store the relation ID for the Way
-                            updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_RELATION_ID, Long.toString(relation.getId())));
+                            // Out of all possible relation tags we could parse, narrow down to set
+                            // that we haven't yet parsed values for
+                            Set<String> relationTagsToParse = Sets.newHashSet(ALL_RELATION_TAGS_TO_PARSE);
+                            relationTagsToParse.removeIf(tag -> osmIdToWayTags.containsKey(member.getRef())
+                                            && osmIdToWayTags.get(member.getRef()).containsKey(tag));
 
-                            // Store the relation name for the Way
-                            String parsedRelationName = getTagValueFromOsmElement(relation, "name");
-                            if (parsedRelationName != null) {
-                                updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_RELATION_NAME_TAG, parsedRelationName));
-                            }
-
-                            // If we haven't recorded a street name/direction for a Way in this Relation,
-                            // use the Relation's name/direction instead, if it exists
-                            for (String osmTag : List.of(OSM_NAME_TAG, OSM_DIRECTION_TAG)) {
-                                if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(osmTag)) {
-                                    String tagValue = osmTag.equals(OSM_NAME_TAG) ? getConcatNameFromOsmElement(relation) : getTagValueFromOsmElement(relation, osmTag);
-                                    if (tagValue != null) {
-                                        updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(osmTag, tagValue));
-                                    }
-                                }
-                            }
+                            updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), parseTagsFromOsmElement(relation, relationTagsToParse));
                         }
                     }
                 }

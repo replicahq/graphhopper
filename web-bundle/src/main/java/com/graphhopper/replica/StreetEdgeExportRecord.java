@@ -52,4 +52,3 @@ public class StreetEdgeExportRecord {
         this.osmRelationName = osmRelationName;
     }
 }
-

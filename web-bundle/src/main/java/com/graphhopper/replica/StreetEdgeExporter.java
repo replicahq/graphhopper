@@ -118,10 +118,10 @@ public class StreetEdgeExporter {
         }
 
         // Use street name parsed from Ways/Relations, if it exists; otherwise, use default GH edge name
-        String streetName = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_NAME_TAG)).orElse(iteratorState.getName());
+        String streetName = parseWayTag(osmWayId, osmIdToWayTags, OSM_NAME_TAG).orElse(iteratorState.getName());
 
         // Grab OSM highway type and encoded stable IDs for both edge directions
-        String highwayTag = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_HIGHWAY_TAG)).orElse(iteratorState.get(roadClassEnc).toString());
+        String highwayTag = parseWayTag(osmWayId, osmIdToWayTags, OSM_HIGHWAY_TAG).orElse(iteratorState.get(roadClassEnc).toString());
         String forwardStableEdgeId = stableIdEncodedValues.getStableId(false, iteratorState);
         String backwardStableEdgeId = stableIdEncodedValues.getStableId(true, iteratorState);
 
@@ -178,12 +178,12 @@ public class StreetEdgeExporter {
         }
 
         // Grab direction we parsed from Way
-        String direction = Optional.ofNullable(parseWayTag(osmWayId, osmIdToWayTags, OSM_DIRECTION_TAG)).orElse("");
+        String direction = parseWayTag(osmWayId, osmIdToWayTags, OSM_DIRECTION_TAG).orElse("");
 
         // Grab relation ID and relation name associated with Way
-        String parsedRelationId = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_ID);
-        Long osmRelationId = parsedRelationId != null ? Long.parseLong(parsedRelationId) : null;
-        String osmRelationName = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_NAME_TAG);
+        Optional<String> parsedRelationId = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_ID);
+        Long osmRelationId = parsedRelationId.isEmpty() ? null : Long.parseLong(parsedRelationId.get());
+        String osmRelationName = parseWayTag(osmWayId, osmIdToWayTags, OSM_RELATION_NAME).orElse("");
 
         // Filter out edges with unwanted highway tags
         if (!HIGHWAY_FILTER_TAGS.contains(highwayTag)) {
@@ -246,14 +246,14 @@ public class StreetEdgeExporter {
         }
     }
 
-    private static String parseWayTag(long osmId, Map<Long, Map<String, String>> osmIdToWayTags, String wayTag) {
+    private static Optional<String> parseWayTag(long osmId, Map<Long, Map<String, String>> osmIdToWayTags, String wayTag) {
         Map<String, String> wayTagsOnEdge = OsmHelper.getWayTag(osmId, osmIdToWayTags);
         if (wayTagsOnEdge != null) {
             if (wayTagsOnEdge.containsKey(wayTag)) {
-                return wayTagsOnEdge.get(wayTag);
+                return Optional.ofNullable(wayTagsOnEdge.get(wayTag));
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     // Taken from R5's lane parsing logic. See EdgeServiceServer.java in R5 repo
