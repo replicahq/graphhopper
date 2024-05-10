@@ -102,7 +102,9 @@ public class OsmHelper {
     public static void updateOsmIdToWayTags(Map<Long, Map<String, String>> osmIdToWayTags, Long osmId, Map<String, String> newTagValues) {
         Map<String, String> currentWayTags = new HashMap<>(osmIdToWayTags.getOrDefault(osmId, Maps.newHashMap()));
         for (String tag : newTagValues.keySet()) {
-            if (!currentWayTags.containsKey(tag)) {
+            if (currentWayTags.containsKey(tag)) {
+                throw new RuntimeException("Value for tag " + tag + " has already been stored! Only new tag values not already in osmIdToWayTags allowed");
+            } else {
                 currentWayTags.put(tag, newTagValues.get(tag));
             }
         }
