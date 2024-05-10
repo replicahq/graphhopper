@@ -45,4 +45,3 @@ public class StreetEdgeExportRecord {
         this.endOsmNode = endOsmNode;
     }
 }
-

@@ -1,15 +1,8 @@
 package com.graphhopper;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.graphhopper.gtfs.GraphHopperGtfs;
-import com.graphhopper.reader.ReaderElement;
-import com.graphhopper.reader.ReaderRelation;
-import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.reader.osm.CustomOsmReader;
-import com.graphhopper.reader.osm.OSMInput;
-import com.graphhopper.reader.osm.OSMInputFile;
 import com.graphhopper.routing.util.AreaIndex;
 import com.graphhopper.routing.util.CustomArea;
 import com.graphhopper.storage.DAType;
@@ -25,10 +18,7 @@ import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import static com.graphhopper.OsmHelper.getConcatNameFromOsmElement;
-import static com.graphhopper.OsmHelper.getHighwayFromOsmWay;
 import static com.graphhopper.util.GHUtility.readCountries;
 import static com.graphhopper.util.Helper.createFormatter;
 import static com.graphhopper.util.Helper.isEmpty;
@@ -48,17 +38,10 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     // Name of profile (+ CH profile) necessary for GTFS link mapper to run properly
     public static final String GTFS_LINK_MAPPER_PROFILE = "car";
 
-    // Tags considered by R5 when calculating the value of the `lanes` column
-    private static final Set<String> LANE_TAGS = Sets.newHashSet("lanes", "lanes:forward", "lanes:backward");
     private String osmPath;
+    // Map of OSM Way ID -> (Map of OSM tag name -> tag value)
+    private Map<Long, Map<String, String>> osmIdToWayTags;
 
-    // Map of OSM way ID -> (Map of OSM lane tag name -> tag value)
-    private Map<Long, Map<String, String>> osmIdToLaneTags;
-    // Map of OSM ID to street name. Name is parsed directly from Way, unless name field isn't present,
-    // in which case the name is taken from the Relation containing the Way, if one exists
-    private Map<Long, String> osmIdToStreetName;
-    // Map of OSM ID to highway tag
-    private Map<Long, String> osmIdToHighwayTag;
     private DataAccess nodeMapping;
     private DataAccess artificialIdToOsmNodeIdMapping;
     private DataAccess ghEdgeIdToSegmentIndexMapping;
@@ -67,9 +50,7 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
     public CustomGraphHopperGtfs(GraphHopperConfig ghConfig) {
         super(ghConfig);
         this.osmPath = ghConfig.getString("datareader.file", "");
-        this.osmIdToLaneTags = Maps.newHashMap();
-        this.osmIdToStreetName = Maps.newHashMap();
-        this.osmIdToHighwayTag = Maps.newHashMap();
+        this.osmIdToWayTags = Maps.newHashMap();
 
         // Error if gtfs_link_mapper profile wasn't properly included in GH config (link mapper step will fail in this case)
         if (ghConfig.getProfiles().stream().noneMatch(p -> p.getName().equals(GTFS_LINK_MAPPER_PROFILE))) {
@@ -190,92 +171,11 @@ public class CustomGraphHopperGtfs extends GraphHopperGtfs {
         }
     }
 
-    // todo: can we move this logic into CustomOsmReader?
-    // todo: not all of the info we parse here is relevant for the server - can we stop parsing it here?
     public void collectOsmInfo() {
-        LOG.info("Creating custom OSM reader; reading file and parsing lane tag and street name info.");
-        List<ReaderRelation> roadRelations = Lists.newArrayList();
-        int readCount = 0;
-        try (OSMInput input = new OSMInputFile(new File(osmPath)).setWorkerThreads(2).open()) {
-            ReaderElement next;
-            while((next = input.getNext()) != null) {
-                if (next.getType().equals(ReaderElement.Type.WAY)) {
-                    if (++readCount % 100_000 == 0) {
-                        LOG.info("Parsing tag info from OSM ways. " + readCount + " read so far.");
-                    }
-                    final ReaderWay ghReaderWay = (ReaderWay) next;
-                    long osmId = ghReaderWay.getId();
-
-                    // Parse street name from Way, if it exists
-                    String wayName = getConcatNameFromOsmElement(ghReaderWay);
-                    if (wayName != null) {
-                        osmIdToStreetName.put(osmId, wayName);
-                    }
-
-                    // Parse highway tag from Way, if it's present
-                    String highway = getHighwayFromOsmWay(ghReaderWay);
-                    if (highway != null) {
-                        osmIdToHighwayTag.put(osmId, highway);
-                    }
-
-                    // Parse all tags needed for determining lane counts on edge
-                    for (String laneTag : LANE_TAGS) {
-                        if (ghReaderWay.hasTag(laneTag)) {
-                            if (osmIdToLaneTags.containsKey(osmId)) {
-                                Map<String, String> currentLaneTags = osmIdToLaneTags.get(osmId);
-                                currentLaneTags.put(laneTag, ghReaderWay.getTag(laneTag));
-                                osmIdToLaneTags.put(osmId, currentLaneTags);
-                            } else {
-                                Map<String, String> newLaneTags = Maps.newHashMap();
-                                newLaneTags.put(laneTag, ghReaderWay.getTag(laneTag));
-                                osmIdToLaneTags.put(osmId, newLaneTags);
-                            }
-                        }
-                    }
-                } else if (next.getType().equals(ReaderElement.Type.RELATION)) {
-                    if (next.hasTag("route", "road")) {
-                        roadRelations.add((ReaderRelation) next);
-                    }
-                }
-            }
-            LOG.info("Finished parsing lane tag info from OSM ways. " + readCount + " total ways were parsed.");
-
-            readCount = 0;
-            LOG.info("Scanning road relations to populate street names for Ways that didn't have them set.");
-            for (ReaderRelation relation : roadRelations) {
-                if (relation.hasTag("route", "road")) {
-                    if (++readCount % 1000 == 0) {
-                        LOG.info("Parsing tag info from OSM relations. " + readCount + " read so far.");
-                    }
-                    for (ReaderRelation.Member member : relation.getMembers()) {
-                        if (member.getType() == ReaderElement.Type.WAY) {
-                            // If we haven't recorded a street name for a Way in this Relation,
-                            // use the Relation's name instead, if it exists
-                            if (!osmIdToStreetName.containsKey(member.getRef())) {
-                                String streetName = getConcatNameFromOsmElement(relation);
-                                if (streetName != null) {
-                                    osmIdToStreetName.put(member.getRef(), streetName);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            LOG.info("Finished scanning road relations for additional street names. " + readCount + " total relations were considered.");
-        } catch (Exception e) {
-            throw new RuntimeException("Can't open OSM file provided at " + osmPath + "!");
-        }
+        OsmHelper.collectOsmInfo(osmPath, osmIdToWayTags);
     }
 
-    public Map<Long, Map<String, String>> getOsmIdToLaneTags() {
-        return osmIdToLaneTags;
-    }
-
-    public Map<Long, String> getOsmIdToStreetName() {
-        return osmIdToStreetName;
-    }
-
-    public Map<Long, String> getOsmIdToHighwayTag() {
-        return osmIdToHighwayTag;
+    public Map<Long, Map<String, String>> getOsmIdToWayTags() {
+        return osmIdToWayTags;
     }
 }

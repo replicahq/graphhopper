@@ -17,7 +17,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -117,9 +119,7 @@ public class StreetEdgeExporterTest extends ReplicaGraphHopperTest {
         gh.collectOsmInfo();
 
         // Copied from writeStreetEdgesCsv
-        StreetEdgeExporter exporter = new StreetEdgeExporter(
-                configuredGraphHopper, gh.getOsmIdToLaneTags(), gh.getOsmIdToStreetName(), gh.getOsmIdToHighwayTag(), gh.getOsmHelper()
-        );
+        StreetEdgeExporter exporter = new StreetEdgeExporter(configuredGraphHopper, gh.getOsmIdToWayTags(), gh.getOsmHelper());
         AllEdgesIterator edgeIterator = configuredGraphHopper.getBaseGraph().getAllEdges();
 
         // Generate the rows for the first item in the edge iterator
