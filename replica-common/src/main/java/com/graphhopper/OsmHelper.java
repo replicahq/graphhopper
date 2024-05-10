@@ -31,10 +31,10 @@ public class OsmHelper {
     public static final String OSM_BACKWARD_LANES_TAG = "lanes:backward";
 
     // Tags we consider when calculating the value of the `lanes` column
-    public static final Set<String> LANE_TAGS = Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG);
+    public static final Set<String> LANE_TAGS = Collections.unmodifiableSet(Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG));
     // Tags we parse to include as columns in network link export
-    public static final Set<String> OTHER_WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_NAME_TAG);
-    public static final Set<String> ALL_WAY_TAGS_TO_PARSE = Sets.union(LANE_TAGS, OTHER_WAY_TAGS);
+    public static final Set<String> OTHER_WAY_TAGS = Collections.unmodifiableSet(Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_NAME_TAG));
+    public static final Set<String> ALL_WAY_TAGS_TO_PARSE = Collections.unmodifiableSet(Sets.union(LANE_TAGS, OTHER_WAY_TAGS));
 
     public OsmHelper(DataAccess nodeMapping,
                      DataAccess artificialIdToOsmNodeIdMapping,
