@@ -33,8 +33,8 @@ public class OsmHelper {
     // Tags we consider when calculating the value of the `lanes` column
     public static final Set<String> LANE_TAGS = Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG);
     // Tags we parse to include as columns in network link export
-    public static final Set<String> WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG);
-    public static final Set<String> ALL_TAGS_TO_PARSE = Sets.union(LANE_TAGS, WAY_TAGS);
+    public static final Set<String> OTHER_WAY_TAGS = Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_NAME_TAG);
+    public static final Set<String> ALL_WAY_TAGS_TO_PARSE = Sets.union(LANE_TAGS, OTHER_WAY_TAGS);
 
     public OsmHelper(DataAccess nodeMapping,
                      DataAccess artificialIdToOsmNodeIdMapping,
@@ -73,20 +73,21 @@ public class OsmHelper {
         }
     }
 
-    public static Map<String, String> parseWayTags(ReaderWay ghReaderWay) {
-        Map<String, String> parsedWayTagValues = Maps.newHashMap();
+    public static Map<String, String> parseTagsFromOsmElement(ReaderElement wayOrRelation, Set<String> tagsToParse) {
+        Map<String, String> parsedTagValues = Maps.newHashMap();
 
-        // Parse street name, which is a concat of `name` and `ref` tags (if present)
-        parsedWayTagValues.put(OSM_NAME_TAG, getConcatNameFromOsmElement(ghReaderWay));
-
-        // Parse highway and direction tags, plus all tags needed for determining lane counts
-        for (String wayTag : ALL_TAGS_TO_PARSE) {
-            parsedWayTagValues.put(wayTag, getTagValueFromOsmElement(ghReaderWay, wayTag));
+        for (String tag : tagsToParse) {
+            if (OSM_NAME_TAG.equals(tag)) {
+                // Parse street name, which is a concat of `name` and `ref` tags (if present)
+                parsedTagValues.put(tag, getConcatNameFromOsmElement(wayOrRelation));
+            } else {
+                parsedTagValues.put(tag, getTagValueFromOsmElement(wayOrRelation, tag));
+            }
         }
 
-        // Remove any tags that weren't present for this Way (ie the value was parsed as null)
-        parsedWayTagValues.values().removeIf(Objects::isNull);
-        return parsedWayTagValues;
+        // Remove any tags that weren't present for this element (ie the value was parsed as null)
+        parsedTagValues.values().removeIf(Objects::isNull);
+        return parsedTagValues;
     }
 
     // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
@@ -122,7 +123,8 @@ public class OsmHelper {
                         LOG.info("Parsing tag info from OSM ways. " + readCount + " read so far.");
                     }
                     final ReaderWay ghReaderWay = (ReaderWay) next;
-                    updateOsmIdToWayTags(osmIdToWayTags, ghReaderWay.getId(), parseWayTags(ghReaderWay));
+                    // Parse highway, name, and lane tags from Way
+                    updateOsmIdToWayTags(osmIdToWayTags, ghReaderWay.getId(), parseTagsFromOsmElement(ghReaderWay, ALL_WAY_TAGS_TO_PARSE));
                 } else if (next.getType().equals(ReaderElement.Type.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
@@ -143,10 +145,7 @@ public class OsmHelper {
                             // If we haven't recorded a street name for a Way in this Relation,
                             // use the Relation's name instead, if it exists
                             if (!osmIdToWayTags.containsKey(member.getRef()) || !osmIdToWayTags.get(member.getRef()).containsKey(OSM_NAME_TAG)) {
-                                String tagValue = getConcatNameFromOsmElement(relation);
-                                if (tagValue != null) {
-                                    updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), Map.of(OSM_NAME_TAG, tagValue));
-                                }
+                                updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), parseTagsFromOsmElement(relation, Set.of(OSM_NAME_TAG)));
                             }
                         }
                     }
