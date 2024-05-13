@@ -77,7 +77,7 @@ public class OsmHelper {
         }
     }
 
-    public static Map<String, String> parseTagsFromOsmElement(ReaderElement wayOrRelation, Set<String> tagsToParse) {
+    private static Map<String, String> parseTagsFromOsmElement(ReaderElement wayOrRelation, Set<String> tagsToParse) {
         Map<String, String> parsedTagValues = Maps.newHashMap();
 
         for (String tag : tagsToParse) {
@@ -97,6 +97,14 @@ public class OsmHelper {
         // Remove any tags that weren't present for this element (ie the value was parsed as null)
         parsedTagValues.values().removeIf(Objects::isNull);
         return parsedTagValues;
+    }
+
+    public static Map<String, String> parseTagsFromOsmWay(ReaderWay way) {
+        return parseTagsFromOsmElement(way, ALL_WAY_TAGS_TO_PARSE);
+    }
+
+    public static Map<String, String> parseTagsFromOsmRelation(ReaderRelation relation, Set<String> tagsToParse) {
+        return parseTagsFromOsmElement(relation, tagsToParse);
     }
 
     // if only `name` or only `ref` tag exist, return that. if both exist, return "<ref>, <name>". else, return null
@@ -135,7 +143,7 @@ public class OsmHelper {
                     }
                     final ReaderWay ghReaderWay = (ReaderWay) next;
                     // Parse highway, name, and lane tags from Way
-                    updateOsmIdToWayTags(osmIdToWayTags, ghReaderWay.getId(), parseTagsFromOsmElement(ghReaderWay, ALL_WAY_TAGS_TO_PARSE));
+                    updateOsmIdToWayTags(osmIdToWayTags, ghReaderWay.getId(), parseTagsFromOsmWay(ghReaderWay));
                 } else if (next.getType().equals(ReaderElement.Type.RELATION)) {
                     if (next.hasTag("route", "road")) {
                         roadRelations.add((ReaderRelation) next);
@@ -159,7 +167,7 @@ public class OsmHelper {
                             relationTagsToParse.removeIf(tag -> osmIdToWayTags.containsKey(member.getRef())
                                             && osmIdToWayTags.get(member.getRef()).containsKey(tag));
 
-                            updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), parseTagsFromOsmElement(relation, relationTagsToParse));
+                            updateOsmIdToWayTags(osmIdToWayTags, member.getRef(), parseTagsFromOsmRelation(relation, relationTagsToParse));
                         }
                     }
                 }
