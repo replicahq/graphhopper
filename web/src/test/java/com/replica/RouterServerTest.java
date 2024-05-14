@@ -19,11 +19,11 @@ package com.replica;
 
 import com.google.common.collect.*;
 import com.google.protobuf.Timestamp;
-import com.graphhopper.GraphHopper;
-import com.graphhopper.ReplicaPathDetails;
+import com.graphhopper.*;
 import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.PtRouterTripBasedImpl;
+import com.replica.util.RouterConverters;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -50,6 +50,9 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static com.replica.api.StreetRouter.calculatePathId;
+import static com.replica.util.RouterConverters.getEdgeTimes;
+import static com.replica.util.RouterConverters.getPathStableEdgeIds;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -656,6 +659,30 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         final RouterOuterClass.StreetRouteReply responseWithoutDuplicates = routerStub.routeStreetMode(
                 createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false, false));
         assertEquals(expectedProfilesAfterDuplicatesFiltered.size(), responseWithoutDuplicates.getPathsList().size());
+    }
+
+    @Test
+    public void testCalculatePathId() {
+        // Grab an auto route, and calculate its path ID
+        GHRequest ghAutoRequest = RouterConverters.toGHRequest(AUTO_REQUEST);
+        GHResponse ghAutoResponse = graphHopperManaged.getGraphHopper().route(ghAutoRequest);
+        ResponsePath autoPath = ghAutoResponse.getAll().get(0);
+
+        List<String> autoPathStableEdgeIds = ImmutableList.copyOf(getPathStableEdgeIds(autoPath));
+        List<Long> autoPathEdgeTimes = ImmutableList.copyOf(getEdgeTimes(autoPath));
+        Long pathId = calculatePathId(autoPath);
+
+        // Check that when the path's edge time list is modified, its path ID changes
+        List<Long> modifiedEdgeTimes = Lists.newArrayList(autoPathEdgeTimes);
+        modifiedEdgeTimes.remove(modifiedEdgeTimes.size() - 1);
+        Long pathIdModifiedEdgeTimes = calculatePathId(autoPathStableEdgeIds, modifiedEdgeTimes);
+        assertNotEquals(pathIdModifiedEdgeTimes, pathId);
+
+        // Check that when the path's stable edge ID list is modified, its path ID changes
+        List<String> modifiedStableEdgeIds = Lists.newArrayList(autoPathStableEdgeIds);
+        modifiedStableEdgeIds.remove(modifiedStableEdgeIds.size() - 1);
+        Long pathIdModifiedStableEdgeIds = calculatePathId(modifiedStableEdgeIds, autoPathEdgeTimes);
+        assertNotEquals(pathIdModifiedStableEdgeIds, pathId);
     }
 
     @Test

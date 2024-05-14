@@ -43,9 +43,13 @@ public class StreetRouter {
         this.customTags = customTags;
     }
 
-    private static Long calculatePathId(ResponsePath responsePath) {
-        String pathStableEdgeIdsString = String.join(",", getPathStableEdgeIds(responsePath));
-        String edgeTimeString = getEdgeTimes(responsePath).stream().map(Object::toString).collect(Collectors.joining(","));
+    public static Long calculatePathId(ResponsePath responsePath) {
+        return calculatePathId(getPathStableEdgeIds(responsePath), getEdgeTimes(responsePath));
+    }
+
+    public static Long calculatePathId(List<String> pathStableEdgeIds, List<Long> pathEdgeTimes) {
+        String pathStableEdgeIdsString = String.join(",", pathStableEdgeIds);
+        String edgeTimeString = pathEdgeTimes.stream().map(Object::toString).collect(Collectors.joining(","));
         String hashString = pathStableEdgeIdsString + edgeTimeString;
         HashCode hc = Hashing.farmHashFingerprint64().hashString(hashString, Charsets.UTF_8);
         return hc.asLong();
