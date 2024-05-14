@@ -251,14 +251,21 @@ public final class RouterConverters {
         return ghPtRequest;
     }
 
-    public static StreetPath toStreetPath(ResponsePath responsePath, String profile, boolean returnFullPathDetails) {
-        List<String> pathStableEdgeIds = responsePath.getPathDetails().get(ReplicaPathDetails.STABLE_EDGE_IDS).stream()
+    public static List<String> getPathStableEdgeIds(ResponsePath responsePath) {
+        return responsePath.getPathDetails().get(ReplicaPathDetails.STABLE_EDGE_IDS).stream()
                 .map(pathDetail -> (String) pathDetail.getValue())
                 .collect(Collectors.toList());
+    }
 
-        List<Long> edgeTimes = responsePath.getPathDetails().get(ReplicaPathDetails.TIME).stream()
+    public static List<Long> getEdgeTimes(ResponsePath responsePath) {
+        return responsePath.getPathDetails().get(ReplicaPathDetails.TIME).stream()
                 .map(pathDetail -> (Long) pathDetail.getValue())
                 .collect(Collectors.toList());
+    }
+
+    public static StreetPath toStreetPath(ResponsePath responsePath, String profile, boolean returnFullPathDetails) {
+        List<String> pathStableEdgeIds = getPathStableEdgeIds(responsePath);
+        List<Long> edgeTimes = getEdgeTimes(responsePath);
 
         StreetPath.Builder streetPath = StreetPath.newBuilder()
                 .setDurationMillis(responsePath.getTime())

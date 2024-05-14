@@ -1,10 +1,12 @@
 package com.replica.api;
 
+import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
+import com.google.common.hash.HashCode;
+import com.google.common.hash.Hashing;
 import com.google.rpc.Code;
 import com.google.rpc.Status;
-import com.graphhopper.GHRequest;
-import com.graphhopper.GHResponse;
-import com.graphhopper.GraphHopper;
+import com.graphhopper.*;
 import com.graphhopper.config.Profile;
 import com.graphhopper.util.shapes.GHPoint;
 import com.replica.util.MetricUtils;
@@ -12,6 +14,7 @@ import com.replica.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
 import io.grpc.protobuf.StatusProto;
 import io.grpc.stub.StreamObserver;
+import org.glassfish.jersey.internal.guava.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.StreetRouteReply;
@@ -19,7 +22,11 @@ import router.RouterOuterClass.StreetRouteRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.replica.util.RouterConverters.getEdgeTimes;
+import static com.replica.util.RouterConverters.getPathStableEdgeIds;
 
 public class StreetRouter {
 
@@ -34,6 +41,14 @@ public class StreetRouter {
         this.graphHopper = graphHopper;
         this.statsDClient = statsDClient;
         this.customTags = customTags;
+    }
+
+    private static Long calculatePathId(ResponsePath responsePath) {
+        String pathStableEdgeIdsString = String.join(",", getPathStableEdgeIds(responsePath));
+        String edgeTimeString = getEdgeTimes(responsePath).stream().map(Object::toString).collect(Collectors.joining(","));
+        String hashString = pathStableEdgeIdsString + edgeTimeString;
+        HashCode hc = Hashing.farmHashFingerprint64().hashString(hashString, Charsets.UTF_8);
+        return hc.asLong();
     }
 
     public void routeStreetMode(StreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
@@ -55,6 +70,7 @@ public class StreetRouter {
 
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
         int pathsFound = 0;
+        Set<Long> pathIdsInReturnSet = Sets.newHashSet();
         for (String profile : profilesToQuery) {
             ghRequest.setProfile(profile);
             try {
@@ -62,7 +78,20 @@ public class StreetRouter {
                 // ghResponse.hasErrors() means that the router returned no results
                 if (!ghResponse.hasErrors()) {
                     pathsFound += ghResponse.getAll().size();
-                    ghResponse.getAll().stream()
+
+                    // Filter out duplicate paths by removing those with path ID
+                    // matching a path that's already in return set
+                    List<ResponsePath> pathsToReturn = Lists.newArrayList();
+                    for (ResponsePath responsePath : ghResponse.getAll()) {
+                        Long pathId = calculatePathId(responsePath);
+                        if (!pathIdsInReturnSet.contains(pathId)) {
+                            pathsToReturn.add(responsePath);
+                            pathIdsInReturnSet.add(pathId);
+                        }
+                    }
+
+                    // Add filtered set of paths to full response set
+                    pathsToReturn.stream()
                             .map(responsePath -> RouterConverters.toStreetPath(responsePath, profile, request.getReturnFullPathDetails()))
                             .forEach(replyBuilder::addPaths);
                 }
