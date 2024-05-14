@@ -177,11 +177,13 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
     private static RouterOuterClass.StreetRouteRequest createStreetRequest(String mode, boolean alternatives,
                                                                            double[] from, double[] to) {
-        return createStreetRequest(mode, alternatives, from, to, true);
+        return createStreetRequest(mode, alternatives, from, to, true, true);
     }
 
     private static RouterOuterClass.StreetRouteRequest createStreetRequest(String mode, boolean alternatives,
-                                                                           double[] from, double[] to, boolean returnFullPathDetails) {
+                                                                           double[] from, double[] to,
+                                                                           boolean returnFullPathDetails,
+                                                                           boolean includeDuplicateRoutes) {
         return RouterOuterClass.StreetRouteRequest.newBuilder()
                 .addPoints(0, RouterOuterClass.Point.newBuilder()
                         .setLat(from[0])
@@ -197,6 +199,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .setAlternateRouteMaxWeightFactor(3.0)
                 .setAlternateRouteMaxShareFactor(0.9)
                 .setReturnFullPathDetails(returnFullPathDetails)
+                .setIncludeDuplicateRoutes(includeDuplicateRoutes)
                 .build();
     }
 
@@ -623,10 +626,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
     @Test
     public void testPathDetailsReturnedOnlyWhenRequested() {
-        final RouterOuterClass.StreetRouteReply responseWithoutDetails = routerStub.routeStreetMode(createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false));
+        final RouterOuterClass.StreetRouteReply responseWithoutDetails = routerStub.routeStreetMode(createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false, true));
         assertTrue(responseWithoutDetails.getPathsList().stream().allMatch(path -> path.getPathDetailsCount() == 0));
 
-        final RouterOuterClass.StreetRouteReply responseWithDetails = routerStub.routeStreetMode(createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, true));
+        final RouterOuterClass.StreetRouteReply responseWithDetails = routerStub.routeStreetMode(createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, true, true));
         assertTrue(responseWithDetails.getPathsList().stream()
                 .map(RouterServerTest::getPathDetailsByName)
                 .map(Map::keySet)
@@ -638,6 +641,21 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             assertTrue(streetRouteReply.getPathsList().stream().allMatch(path -> path.getStableEdgeIdsCount() > 0));
             assertTrue(streetRouteReply.getPathsList().stream().allMatch(path -> path.getEdgeDurationsMillisCount() > 0));
         }
+    }
+
+    @Test
+    public void testDuplicateRoutesFiltering() {
+        // When duplicate routes are allowed, we get 1 route for each profile in CAR_PROFILES
+        final RouterOuterClass.StreetRouteReply responseWithDuplicates = routerStub.routeStreetMode(
+                createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false, true));
+        assertEquals(CAR_PROFILES.size(), responseWithDuplicates.getPathsList().size());
+
+        // When duplicate route filtering is on, routes from 2 profiles are removed due to redundancy with other routes
+        Set<String> expectedProfilesAfterDuplicatesFiltered = Sets.newHashSet(CAR_PROFILES);
+        expectedProfilesAfterDuplicatesFiltered.removeAll(Set.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME));
+        final RouterOuterClass.StreetRouteReply responseWithoutDuplicates = routerStub.routeStreetMode(
+                createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false, false));
+        assertEquals(expectedProfilesAfterDuplicatesFiltered.size(), responseWithoutDuplicates.getPathsList().size());
     }
 
     @Test

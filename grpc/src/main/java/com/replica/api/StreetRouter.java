@@ -79,14 +79,19 @@ public class StreetRouter {
                 if (!ghResponse.hasErrors()) {
                     pathsFound += ghResponse.getAll().size();
 
-                    // Filter out duplicate paths by removing those with path ID
-                    // matching a path that's already in return set
-                    List<ResponsePath> pathsToReturn = Lists.newArrayList();
-                    for (ResponsePath responsePath : ghResponse.getAll()) {
-                        Long pathId = calculatePathId(responsePath);
-                        if (!pathIdsInReturnSet.contains(pathId)) {
-                            pathsToReturn.add(responsePath);
-                            pathIdsInReturnSet.add(pathId);
+                    List<ResponsePath> pathsToReturn;
+                    if (request.getIncludeDuplicateRoutes()) {
+                        pathsToReturn = ghResponse.getAll();
+                    } else {
+                        // Filter out duplicate paths by removing those with path ID
+                        // matching a path that's already in return set
+                        pathsToReturn = Lists.newArrayList();
+                        for (ResponsePath responsePath : ghResponse.getAll()) {
+                            Long pathId = calculatePathId(responsePath);
+                            if (!pathIdsInReturnSet.contains(pathId)) {
+                                pathsToReturn.add(responsePath);
+                                pathIdsInReturnSet.add(pathId);
+                            }
                         }
                     }
 
