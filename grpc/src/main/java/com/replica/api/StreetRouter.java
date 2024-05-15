@@ -81,8 +81,6 @@ public class StreetRouter {
                 GHResponse ghResponse = graphHopper.route(ghRequest);
                 // ghResponse.hasErrors() means that the router returned no results
                 if (!ghResponse.hasErrors()) {
-                    pathsFound += ghResponse.getAll().size();
-
                     List<ResponsePath> pathsToReturn;
                     if (request.getIncludeDuplicateRoutes()) {
                         pathsToReturn = ghResponse.getAll();
@@ -98,6 +96,7 @@ public class StreetRouter {
                             }
                         }
                     }
+                    pathsFound += pathsToReturn.size();
 
                     // Add filtered set of paths to full response set
                     pathsToReturn.stream()
