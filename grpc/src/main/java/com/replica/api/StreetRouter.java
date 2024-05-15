@@ -41,14 +41,6 @@ public class StreetRouter {
         this.customTags = customTags;
     }
 
-    public static int calculatePathId(ResponsePath responsePath) {
-        return calculatePathId(responsePath.getPoints());
-    }
-
-    public static int calculatePathId(PointList pathPointList) {
-        return pathPointList.hashCode();
-    }
-
     public void routeStreetMode(StreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
         long startTime = System.currentTimeMillis();
 
@@ -68,7 +60,7 @@ public class StreetRouter {
 
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
         int pathsFound = 0;
-        Set<Integer> pathIdsInReturnSet = Sets.newHashSet();
+        Set<PointList> pointListsInReturnSet = Sets.newHashSet();
         for (String profile : profilesToQuery) {
             ghRequest.setProfile(profile);
             try {
@@ -79,14 +71,13 @@ public class StreetRouter {
                     if (request.getIncludeDuplicateRoutes()) {
                         pathsToReturn = ghResponse.getAll();
                     } else {
-                        // Filter out duplicate paths by removing those with path ID
+                        // Filter out duplicate paths by removing those with point lists
                         // matching a path that's already in return set
                         pathsToReturn = Lists.newArrayList();
                         for (ResponsePath responsePath : ghResponse.getAll()) {
-                            int pathId = calculatePathId(responsePath);
-                            if (!pathIdsInReturnSet.contains(pathId)) {
+                            if (!pointListsInReturnSet.contains(responsePath.getPoints())) {
                                 pathsToReturn.add(responsePath);
-                                pathIdsInReturnSet.add(pathId);
+                                pointListsInReturnSet.add(responsePath.getPoints());
                             }
                         }
                     }

@@ -19,13 +19,11 @@ package com.replica;
 
 import com.google.common.collect.*;
 import com.google.protobuf.Timestamp;
-import com.graphhopper.*;
+import com.graphhopper.GraphHopper;
+import com.graphhopper.ReplicaPathDetails;
 import com.graphhopper.gtfs.GraphHopperGtfs;
 import com.graphhopper.gtfs.PtRouter;
 import com.graphhopper.gtfs.PtRouterTripBasedImpl;
-import com.graphhopper.util.PointList;
-import com.graphhopper.util.shapes.GHPoint3D;
-import com.replica.util.RouterConverters;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -52,7 +50,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static com.replica.api.StreetRouter.calculatePathId;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -654,6 +651,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         assertEquals(CAR_PROFILES.size(), responseWithDuplicates.getPathsList().size());
 
         // When duplicate route filtering is on, routes from 2 profiles are removed due to redundancy with other routes
+        // NOTE: which profile's routes get filtered out depends on the order of profiles specified in test_gh_config.yaml
         Set<String> expectedProfilesAfterDuplicatesFiltered = Sets.newHashSet(CAR_PROFILES);
         expectedProfilesAfterDuplicatesFiltered.removeAll(Set.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME));
         final RouterOuterClass.StreetRouteReply responseWithoutDuplicates = routerStub.routeStreetMode(
@@ -661,22 +659,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         Set<String> responseWithoutDuplicatesProfiles = responseWithoutDuplicates.getPathsList().stream()
                 .map(RouterOuterClass.StreetPath::getProfile).collect(Collectors.toSet());
         assertEquals(expectedProfilesAfterDuplicatesFiltered, responseWithoutDuplicatesProfiles);
-    }
-
-    @Test
-    public void testCalculatePathId() {
-        // Grab an auto route, and calculate its path ID
-        GHRequest ghAutoRequest = RouterConverters.toGHRequest(AUTO_REQUEST);
-        GHResponse ghAutoResponse = graphHopperManaged.getGraphHopper().route(ghAutoRequest);
-        ResponsePath autoPath = ghAutoResponse.getAll().get(0);
-        int pathId = calculatePathId(autoPath.getPoints());
-
-        // Check that when the path's point list is modified, its path ID changes
-        PointList autoPathPoints = autoPath.getPoints().clone(false);
-        GHPoint3D firstPoint = autoPathPoints.get(0);
-        autoPathPoints.set(0, firstPoint.lat + 0.1, firstPoint.lon, firstPoint.ele);
-        int pathIdModifiedPointList = calculatePathId(autoPathPoints);
-        assertNotEquals(pathIdModifiedPointList, pathId);
     }
 
     @Test
