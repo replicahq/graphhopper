@@ -60,7 +60,7 @@ public class StreetRouter {
 
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
         int pathsFound = 0;
-        Set<PointList> pointListsInReturnSet = Sets.newHashSet();
+        Set<PointList> pathsInReturnSet = Sets.newHashSet();
         for (String profile : profilesToQuery) {
             ghRequest.setProfile(profile);
             try {
@@ -75,9 +75,9 @@ public class StreetRouter {
                         // matching a path that's already in return set
                         pathsToReturn = Lists.newArrayList();
                         for (ResponsePath responsePath : ghResponse.getAll()) {
-                            if (!pointListsInReturnSet.contains(responsePath.getPoints())) {
+                            if (!pathsInReturnSet.contains(responsePath.getPoints())) {
                                 pathsToReturn.add(responsePath);
-                                pointListsInReturnSet.add(responsePath.getPoints());
+                                pathsInReturnSet.add(responsePath.getPoints());
                             }
                         }
                     }
