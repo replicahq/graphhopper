@@ -658,7 +658,9 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         expectedProfilesAfterDuplicatesFiltered.removeAll(Set.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME));
         final RouterOuterClass.StreetRouteReply responseWithoutDuplicates = routerStub.routeStreetMode(
                 createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false, false));
-        assertEquals(expectedProfilesAfterDuplicatesFiltered.size(), responseWithoutDuplicates.getPathsList().size());
+        Set<String> responseWithoutDuplicatesProfiles = responseWithoutDuplicates.getPathsList().stream()
+                .map(RouterOuterClass.StreetPath::getProfile).collect(Collectors.toSet());
+        assertEquals(expectedProfilesAfterDuplicatesFiltered, responseWithoutDuplicatesProfiles);
     }
 
     @Test
