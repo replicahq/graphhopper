@@ -1,17 +1,21 @@
 package com.replica.api;
 
+import com.google.common.collect.Lists;
 import com.google.rpc.Code;
 import com.google.rpc.Status;
 import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
+import com.graphhopper.ResponsePath;
 import com.graphhopper.config.Profile;
+import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 import com.replica.util.MetricUtils;
 import com.replica.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
 import io.grpc.protobuf.StatusProto;
 import io.grpc.stub.StreamObserver;
+import org.glassfish.jersey.internal.guava.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.StreetRouteReply;
@@ -19,6 +23,7 @@ import router.RouterOuterClass.StreetRouteRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class StreetRouter {
@@ -55,14 +60,31 @@ public class StreetRouter {
 
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
         int pathsFound = 0;
+        Set<PointList> pathsInReturnSet = Sets.newHashSet();
         for (String profile : profilesToQuery) {
             ghRequest.setProfile(profile);
             try {
                 GHResponse ghResponse = graphHopper.route(ghRequest);
                 // ghResponse.hasErrors() means that the router returned no results
                 if (!ghResponse.hasErrors()) {
-                    pathsFound += ghResponse.getAll().size();
-                    ghResponse.getAll().stream()
+                    List<ResponsePath> pathsToReturn;
+                    if (request.getIncludeDuplicateRoutes()) {
+                        pathsToReturn = ghResponse.getAll();
+                    } else {
+                        // Filter out duplicate paths by removing those with point lists
+                        // matching a path that's already in return set
+                        pathsToReturn = Lists.newArrayList();
+                        for (ResponsePath responsePath : ghResponse.getAll()) {
+                            if (!pathsInReturnSet.contains(responsePath.getPoints())) {
+                                pathsToReturn.add(responsePath);
+                                pathsInReturnSet.add(responsePath.getPoints());
+                            }
+                        }
+                    }
+                    pathsFound += pathsToReturn.size();
+
+                    // Add filtered set of paths to full response set
+                    pathsToReturn.stream()
                             .map(responsePath -> RouterConverters.toStreetPath(responsePath, profile, request.getReturnFullPathDetails()))
                             .forEach(replyBuilder::addPaths);
                 }

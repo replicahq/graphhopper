@@ -1,5 +1,6 @@
 package com.graphhopper;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -34,11 +35,11 @@ public class OsmHelper {
     public static final String OSM_RELATION_NAME = "relation_name";  // Not a formal OSM tag, just a placeholder to hold relation name for Ways
 
     // Tags we consider when calculating the value of the `lanes` column
-    public static final Set<String> LANE_TAGS = Collections.unmodifiableSet(Sets.newHashSet(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG));
+    public static final Set<String> LANE_TAGS = ImmutableSet.of(OSM_LANES_TAG, OSM_FORWARD_LANES_TAG, OSM_BACKWARD_LANES_TAG);
     // Tags we parse to include as columns in network link export
-    public static final Set<String> OTHER_WAY_TAGS = Collections.unmodifiableSet(Sets.newHashSet(OSM_HIGHWAY_TAG, OSM_NAME_TAG, OSM_DIRECTION_TAG));
-    public static final Set<String> ALL_WAY_TAGS_TO_PARSE = Collections.unmodifiableSet(Sets.union(LANE_TAGS, OTHER_WAY_TAGS));
-    public static final Set<String> ALL_RELATION_TAGS_TO_PARSE = Collections.unmodifiableSet(Sets.newHashSet(OSM_NAME_TAG, OSM_DIRECTION_TAG, OSM_RELATION_ID, OSM_RELATION_NAME));
+    public static final Set<String> OTHER_WAY_TAGS = ImmutableSet.of(OSM_HIGHWAY_TAG, OSM_NAME_TAG, OSM_DIRECTION_TAG);
+    public static final Set<String> ALL_WAY_TAGS_TO_PARSE = ImmutableSet.copyOf(Sets.union(LANE_TAGS, OTHER_WAY_TAGS));
+    public static final Set<String> ALL_RELATION_TAGS_TO_PARSE = ImmutableSet.of(OSM_NAME_TAG, OSM_DIRECTION_TAG, OSM_RELATION_ID, OSM_RELATION_NAME);
 
     public OsmHelper(DataAccess nodeMapping,
                      DataAccess artificialIdToOsmNodeIdMapping,
