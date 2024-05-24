@@ -60,7 +60,7 @@ public class StreetRouter {
 
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
         int pathsFound = 0;
-        Set<PointList> pathsInReturnSet = Sets.newHashSet();
+        Set<Integer> pathHashesInReturnSet = Sets.newHashSet();
         for (String profile : profilesToQuery) {
             ghRequest.setProfile(profile);
             try {
@@ -72,12 +72,12 @@ public class StreetRouter {
                         pathsToReturn = ghResponse.getAll();
                     } else {
                         // Filter out duplicate paths by removing those with point lists
-                        // matching a path that's already in return set
+                        // whose hashcode matches a path that's already in return set
                         pathsToReturn = Lists.newArrayList();
                         for (ResponsePath responsePath : ghResponse.getAll()) {
-                            if (!pathsInReturnSet.contains(responsePath.getPoints())) {
+                            if (!pathHashesInReturnSet.contains(responsePath.getPoints().hashCode())) {
                                 pathsToReturn.add(responsePath);
-                                pathsInReturnSet.add(responsePath.getPoints());
+                                pathHashesInReturnSet.add(responsePath.getPoints().hashCode());
                             }
                         }
                     }
