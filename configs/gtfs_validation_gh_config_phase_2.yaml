@@ -7,6 +7,7 @@ graphhopper:
   gtfs.file:
 
   gtfs.trip_based: true
+  gtfs.trip_based.max_transfer_time: 900  # 15 * 60
   gtfs.schedule_day: {{ GTFS_SCHEDULE_DAYS }}
 
   graph.location: transit_data/graphhopper

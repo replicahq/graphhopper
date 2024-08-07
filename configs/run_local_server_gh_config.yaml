@@ -6,6 +6,7 @@ graphhopper:
   gtfs.file: web/test-data/gtfs/f-9qc-fairfield~ca~us.zip,web/test-data/gtfs/rosevill.zip,web/test-data/gtfs/srtd.zip,web/test-data/gtfs/vacaville.zip
 
   gtfs.trip_based: true
+  gtfs.trip_based.max_transfer_time: 900  # 15 * 60
   gtfs.schedule_day: 2019-10-15
 
   gtfs.max_transfer_interpolation_walk_time_seconds: 300
