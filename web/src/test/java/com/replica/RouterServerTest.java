@@ -68,15 +68,16 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281, -121.48746937746185}; // Sacramento area
     private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914, -121.43714698730038}; // Sacramento area
     private static final double[] REQUEST_DESTINATION_2 = {38.69871256445126, -121.27320348867218}; // South of Roseville
+    private static final double[] REQUEST_DESTINATION_3 = {38.68163283946138,-121.15723016671839}; // Folsom
 
     // Should force a transfer between routes from 2 distinct feeds
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_DIFF_FEEDS = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
     // Should force a transfer between routes from the same feed
-    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_SAME_FEED = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION_1);
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_SAME_FEED = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION_2);
     // Tests park-and-ride routing, with custom access/egress modes
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, "car", "foot");
     // Tests park-and-ride routing for a longer route (with a transfer)
-    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE_W_TRANSFER = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_2, "car", "foot");
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE_W_TRANSFER = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION_3, "car", "foot");
 
     private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
     private static final String DEFAULT_TRUCK_PROFILE_NAME = "truck_default";
@@ -287,7 +288,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(5, 28, 1, 202, 15)
+                Lists.newArrayList(20, 446, 10, 224, 4)
         );
     }
 
@@ -302,7 +303,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 1, 2,
                 Lists.newArrayList("ACCESS", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(118, 69, 27)
+                Lists.newArrayList(123, 63, 27)
         );
     }
 
@@ -318,7 +319,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(26, 61, 5, 69, 3)
+                Lists.newArrayList(132, 109, 12, 53, 13)
         );
     }
 
