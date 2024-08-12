@@ -19,31 +19,31 @@
         <dependency>
             <groupId>com.graphhopper</groupId>
             <artifactId>graphhopper-core</artifactId>
-            <version>ca01da64b8af84f291a2b3105c11241f3ed55e27</version>
+            <version>09e3c5ee921cf203ded73db64fc705047f5b0b4a</version>
             <type>pom</type>
         </dependency>
         <dependency>
             <groupId>com.graphhopper</groupId>
             <artifactId>graphhopper-reader-gtfs</artifactId>
-            <version>ca01da64b8af84f291a2b3105c11241f3ed55e27</version>
+            <version>09e3c5ee921cf203ded73db64fc705047f5b0b4a</version>
             <type>pom</type>
         </dependency>
         <dependency>
             <groupId>com.graphhopper</groupId>
             <artifactId>graphhopper-web-bundle</artifactId>
-            <version>ca01da64b8af84f291a2b3105c11241f3ed55e27</version>
+            <version>09e3c5ee921cf203ded73db64fc705047f5b0b4a</version>
             <type>pom</type>
         </dependency>
         <dependency>
             <groupId>com.graphhopper</groupId>
             <artifactId>graphhopper-web</artifactId>
-            <version>ca01da64b8af84f291a2b3105c11241f3ed55e27</version>
+            <version>09e3c5ee921cf203ded73db64fc705047f5b0b4a</version>
             <type>pom</type>
         </dependency>
         <dependency>
             <groupId>com.graphhopper</groupId>
             <artifactId>graphhopper-tools</artifactId>
-            <version>ca01da64b8af84f291a2b3105c11241f3ed55e27</version>
+            <version>09e3c5ee921cf203ded73db64fc705047f5b0b4a</version>
             <type>pom</type>
         </dependency>
         <dependency>
