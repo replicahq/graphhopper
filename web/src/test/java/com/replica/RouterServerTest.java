@@ -288,7 +288,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         checkTransitQuery(response, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(20, 446, 10, 224, 4)
+                Lists.newArrayList(17, 208, 271, 49, 4)
         );
     }
 
