@@ -283,12 +283,13 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
         expectedModeCounts.put("car", 0);
-        expectedModeCounts.put("foot", 3);
+        expectedModeCounts.put("foot", 2);
 
-        checkTransitQuery(response, 2, 3,
-                Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
+        // Transfers are so close that no transfer legs are returned in this query
+        checkTransitQuery(response, 3, 2,
+                Lists.newArrayList("ACCESS", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(20, 446, 10, 224, 4)
+                Lists.newArrayList(17, 208, 271, 49, 4)
         );
     }
 
