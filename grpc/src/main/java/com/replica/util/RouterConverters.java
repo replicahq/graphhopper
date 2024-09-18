@@ -8,10 +8,7 @@ import com.google.protobuf.Timestamp;
 import com.graphhopper.*;
 import com.graphhopper.gtfs.Request;
 import com.graphhopper.jackson.Jackson;
-import com.graphhopper.util.CustomModel;
-import com.graphhopper.util.DistanceCalcEarth;
-import com.graphhopper.util.PMap;
-import com.graphhopper.util.Parameters;
+import com.graphhopper.util.*;
 import com.graphhopper.util.details.PathDetail;
 import com.graphhopper.util.shapes.GHPoint;
 import com.replica.CustomPtLeg;
@@ -310,6 +307,16 @@ public final class RouterConverters {
         return leg.details.get(ReplicaPathDetails.STABLE_EDGE_IDS).stream()
                 .map(idPathDetail -> (String) idPathDetail.getValue())
                 .collect(toList());
+    }
+
+    public static CustomStreetLeg createEmptyCustomStreetLeg(org.locationtech.jts.geom.Point point, Date departureTime,
+                                                             String travelSegmentType, String mode) {
+        // Set departureLocation, instructions, and details params as either "" or null (these values aren't used in
+        // our returned proto objects). Departure and arrival time are set as equal, and distance is set to 0.0
+        Trip.WalkLeg emptyWalkLeg = new Trip.WalkLeg("", departureTime, point, 0.0, null, null, departureTime);
+
+        // Set stable edge ID list as empty
+        return new CustomStreetLeg(emptyWalkLeg, Lists.newArrayList(), travelSegmentType, mode);
     }
 
     private static String gtfsRouteInfoKey(Trip.PtLeg leg) {

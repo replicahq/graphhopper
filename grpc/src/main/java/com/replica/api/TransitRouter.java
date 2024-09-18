@@ -16,6 +16,7 @@ import com.replica.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
 import io.grpc.protobuf.StatusProto;
 import io.grpc.stub.StreamObserver;
+import org.locationtech.jts.geom.LineString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import router.RouterOuterClass.Point;
@@ -167,10 +168,12 @@ public class TransitRouter {
 
         boolean accessExists = false;
         boolean egressExists = false;
+        Trip.Leg lastSeenLeg = null;
         for (int i = 0; i < legs.size(); i++) {
             Trip.Leg leg = legs.get(i);
             // Note: graphhopper returns Trip.WalkLegs even if we requested different access/egress modes
             if (leg instanceof Trip.WalkLeg) {
+                lastSeenLeg = leg;
                 Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
                 String travelSegmentType;
                 String legMode = "foot";
@@ -192,6 +195,21 @@ public class TransitRouter {
             } else if (leg instanceof Trip.PtLeg) {
                 Trip.PtLeg thisLeg = (Trip.PtLeg) leg;
 
+                // If we haven't seen an ACCESS walk leg yet, or the last leg was a pt leg, insert an empty street leg
+                if (i == 0){
+                    path.getLegs().add(RouterConverters.createEmptyCustomStreetLeg(
+                            ((LineString) leg.geometry).getPointN(0),
+                            leg.getDepartureTime(), "ACCESS", ghPtRequest.getAccessProfile()
+                    ));
+                } else if (lastSeenLeg instanceof Trip.PtLeg) {
+                    LineString lastSeenLegGeometry = (LineString) lastSeenLeg.geometry;
+                    path.getLegs().add(RouterConverters.createEmptyCustomStreetLeg(
+                            lastSeenLegGeometry.getPointN(lastSeenLegGeometry.getNumPoints() - 1),
+                            leg.getDepartureTime(), "TRANSFER", "foot"
+                    ));
+                }
+                lastSeenLeg = leg;
+
                 long startTime = System.currentTimeMillis();
                 CustomPtLeg customPtLeg = RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo);
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
@@ -200,6 +218,15 @@ public class TransitRouter {
 
                 path.getLegs().add(customPtLeg);
             }
+        }
+
+        // If no EGRESS walk leg exists, insert an empty one
+        if (lastSeenLeg instanceof Trip.PtLeg) {
+            LineString lastSeenLegGeometry = (LineString) lastSeenLeg.geometry;
+            path.getLegs().add(RouterConverters.createEmptyCustomStreetLeg(
+                    lastSeenLegGeometry.getPointN(lastSeenLegGeometry.getNumPoints() - 1),
+                    lastSeenLeg.getArrivalTime(), "EGRESS", ghPtRequest.getEgressProfile()
+            ));
         }
 
         // TODO: can we remove this clause? Or does the duplicate ID issue still exist for access/egress legs?
