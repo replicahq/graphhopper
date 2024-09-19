@@ -157,7 +157,8 @@ public class TransitRouter {
      * Performs public-transit-specific modifications to the legs of the ResponsePath. Specifically:
      *
      * - adds stable edge ids to the walk and PT legs
-     * - stores ACCESS/EGRESS metadata on walk legs
+     * - stores ACCESS/TRANSFER/EGRESS metadata on walk legs
+     * - inserts empty walking ACCESS/TRANSFER/EGRESS legs, if they're missing
      *
      * @param path the ResponsePath to augment. modified in place
      */
