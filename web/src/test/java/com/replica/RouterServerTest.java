@@ -66,9 +66,11 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-15T13:30:00Z").toEpochMilli() / 1000).build();
     private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467, -121.29023848101498}; // Roseville area
     private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281, -121.48746937746185}; // Sacramento area
+    private static final double[] REQUEST_ORIGIN_3 = {38.60641317625813,-121.44842859546773}; // North of Sacramento, directly on SRT Blue line stop
     private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914, -121.43714698730038}; // Sacramento area
     private static final double[] REQUEST_DESTINATION_2 = {38.69871256445126, -121.27320348867218}; // South of Roseville
     private static final double[] REQUEST_DESTINATION_3 = {38.68163283946138,-121.15723016671839}; // Folsom
+    private static final double[] REQUEST_DESTINATION_4 = {38.5698294,-121.4888139}; // Sacramento, directly on SRT Blue line stop
 
     // Should force a transfer between routes from 2 distinct feeds
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_DIFF_FEEDS = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1);
@@ -78,6 +80,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE = createPtRequest(REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, "car", "foot");
     // Tests park-and-ride routing for a longer route (with a transfer)
     private static final RouterOuterClass.PtRouteRequest PT_REQUEST_PARK_N_RIDE_W_TRANSFER = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION_3, "car", "foot");
+    // Tests insertion of empty access walk leg when origin is on top of existing transit stop
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_EMPTY_ACCESS_LEG = createPtRequest(REQUEST_ORIGIN_3, REQUEST_DESTINATION_1);
+    // Tests insertion of empty egress walk leg when destination is on top of existing transit stop
+    private static final RouterOuterClass.PtRouteRequest PT_REQUEST_EMPTY_EGRESS_LEG = createPtRequest(REQUEST_ORIGIN_2, REQUEST_DESTINATION_4);
 
     private static final String DEFAULT_CAR_PROFILE_NAME = "car_default";
     private static final String DEFAULT_TRUCK_PROFILE_NAME = "truck_default";
@@ -277,20 +283,23 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         );
     }
 
+
     @Test
     public void testIntraFeedPublicTransitQuery() {
         final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST_SAME_FEED);
 
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
         expectedModeCounts.put("car", 0);
-        expectedModeCounts.put("foot", 2);
+        expectedModeCounts.put("foot", 4);
 
-        // Transfers are so close that no transfer legs are returned in this query
-        checkTransitQuery(response, 3, 2,
-                Lists.newArrayList("ACCESS", "EGRESS"),
+        checkTransitQuery(response, 3, 4,
+                Lists.newArrayList("ACCESS", "TRANSFER", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(17, 208, 271, 49, 4)
+                Lists.newArrayList(17, 208, 0, 271, 0, 49, 4)
         );
+
+        // Check that empty walk transfer leg was inserted after first transit leg
+        assertEquals(0, response.getPaths(0).getLegs(2).getStableEdgeIdsCount());
     }
 
     @Test
@@ -324,6 +333,34 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         );
     }
 
+    @Test
+    public void testEmptyAccessEgressLegCreation() {
+
+        // todo: add comment describing this
+        // todo: mention how we check for empty transfer leg being added in testIntraFeedPublicTransitQuery()
+
+
+        final RouterOuterClass.PtRouteReply emptyAccessLegResponse = routerStub.routePt(PT_REQUEST_EMPTY_ACCESS_LEG);
+
+        Map<String, Integer> expectedModeCounts = Maps.newHashMap();
+        expectedModeCounts.put("car", 0);
+        expectedModeCounts.put("foot", 3);
+        //
+        /*
+        checkTransitQuery(emptyAccessLegResponse, 2, 3,
+                Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
+                expectedModeCounts,
+                Lists.newArrayList(132, 109, 12, 53, 13)
+        );
+        */
+
+        final RouterOuterClass.PtRouteReply emptyEgressLegResponse = routerStub.routePt(PT_REQUEST_EMPTY_EGRESS_LEG);
+
+        expectedModeCounts = Maps.newHashMap();
+        expectedModeCounts.put("car", 0);
+        expectedModeCounts.put("foot", 2);
+    }
+
     private void checkTransitQuery(RouterOuterClass.PtRouteReply response,
                                    int expectedPtLegs, int expectedStreetLegs,
                                    List<String> expectedTravelSegmentTypes,
@@ -350,11 +387,11 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         int observedStableEdgeIdCount = 0;
         double observedDistanceMeters = 0;
         for (RouterOuterClass.PtLeg streetLeg : streetLegs) {
-            assertTrue(streetLeg.getStableEdgeIdsCount() > 0);
+            assertTrue(streetLeg.getStableEdgeIdsCount() >= 0);
             observedStableEdgeIdCount += streetLeg.getStableEdgeIdsCount();
             observedStableEdgeIds.addAll(streetLeg.getStableEdgeIdsList());
-            assertTrue(streetLeg.getArrivalTime().getSeconds() > streetLeg.getDepartureTime().getSeconds());
-            assertTrue(streetLeg.getDistanceMeters() > 0);
+            assertTrue(streetLeg.getArrivalTime().getSeconds() >= streetLeg.getDepartureTime().getSeconds());
+            assertTrue(streetLeg.getDistanceMeters() >= 0.0);
             assertFalse(streetLeg.getTravelSegmentType().isEmpty());
             observedTravelSegmentTypes.add(streetLeg.getTravelSegmentType());
             observedModeCounts.put(streetLeg.getMode(), observedModeCounts.get(streetLeg.getMode()) + 1);
@@ -398,6 +435,9 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         for (int i = 0; i < path.getLegsList().size(); i++) {
             assertEquals(expectedStableEdgeIdCount.get(i), path.getLegsList().get(i).getStableEdgeIdsCount());
         }
+
+        // Check number of transfers is correct
+        assertEquals(expectedTravelSegmentTypes.stream().filter(t -> t.equals("TRANSFER")).count(), path.getTransfers());
     }
 
     @Test
