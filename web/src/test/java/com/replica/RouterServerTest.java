@@ -273,7 +273,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST_DIFF_FEEDS);
 
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
-        expectedModeCounts.put("car", 0);
         expectedModeCounts.put("foot", 3);
 
         checkTransitQuery(response, 2, 3,
@@ -289,7 +288,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         final RouterOuterClass.PtRouteReply response = routerStub.routePt(PT_REQUEST_SAME_FEED);
 
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
-        expectedModeCounts.put("car", 0);
         expectedModeCounts.put("foot", 4);
 
         // Ensure that 2 empty walk transfer legs are inserted between transit legs
@@ -338,7 +336,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         // in testIntraFeedPublicTransitQuery()
         final RouterOuterClass.PtRouteReply emptyAccessLegResponse = routerStub.routePt(PT_REQUEST_EMPTY_ACCESS_LEG);
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
-        expectedModeCounts.put("car", 0);
         expectedModeCounts.put("foot", 3);
 
         checkTransitQuery(emptyAccessLegResponse, 2, 3,
@@ -349,7 +346,6 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
         final RouterOuterClass.PtRouteReply emptyEgressLegResponse = routerStub.routePt(PT_REQUEST_EMPTY_EGRESS_LEG);
         expectedModeCounts = Maps.newHashMap();
-        expectedModeCounts.put("car", 0);
         expectedModeCounts.put("foot", 2);
 
         checkTransitQuery(emptyEgressLegResponse, 1, 2,
@@ -396,7 +392,14 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             observedDistanceMeters += streetLeg.getDistanceMeters();
         }
         assertEquals(expectedTravelSegmentTypes, observedTravelSegmentTypes);
-        assertEquals(expectedModeCounts, observedModeCounts);
+        for (String expectedMode: expectedModeCounts.keySet()) {
+            assertEquals(expectedModeCounts.get(expectedMode), observedModeCounts.get(expectedMode));
+        }
+        for (String observedMode: observedModeCounts.keySet()) {
+            if (observedModeCounts.get(observedMode) > 0) {
+                assertTrue(expectedModeCounts.containsKey(observedMode));
+            }
+        }
 
         // Check that PT legs contains proper info
         for (RouterOuterClass.PtLeg ptLeg : ptLegs) {
