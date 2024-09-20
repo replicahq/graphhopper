@@ -381,11 +381,16 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         int observedStableEdgeIdCount = 0;
         double observedDistanceMeters = 0;
         for (RouterOuterClass.PtLeg streetLeg : streetLegs) {
-            assertTrue(streetLeg.getStableEdgeIdsCount() >= 0);
+            // If stable edge ID list is emtpy, ensure leg was an empty leg we added on purpose (with distance/duration of 0)
+            if (streetLeg.getStableEdgeIdsCount() == 0) {
+                assertEquals(streetLeg.getArrivalTime().getSeconds(), streetLeg.getDepartureTime().getSeconds());
+                assertEquals(0.0, streetLeg.getDistanceMeters());
+            } else {
+                assertTrue(streetLeg.getArrivalTime().getSeconds() > streetLeg.getDepartureTime().getSeconds());
+                assertTrue(streetLeg.getDistanceMeters() > 0.0);
+            }
             observedStableEdgeIdCount += streetLeg.getStableEdgeIdsCount();
             observedStableEdgeIds.addAll(streetLeg.getStableEdgeIdsList());
-            assertTrue(streetLeg.getArrivalTime().getSeconds() >= streetLeg.getDepartureTime().getSeconds());
-            assertTrue(streetLeg.getDistanceMeters() >= 0.0);
             assertFalse(streetLeg.getTravelSegmentType().isEmpty());
             observedTravelSegmentTypes.add(streetLeg.getTravelSegmentType());
             observedModeCounts.put(streetLeg.getMode(), observedModeCounts.get(streetLeg.getMode()) + 1);
