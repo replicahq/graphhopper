@@ -174,7 +174,6 @@ public class TransitRouter {
             Trip.Leg leg = legs.get(i);
             // Note: graphhopper returns Trip.WalkLegs even if we requested different access/egress modes
             if (leg instanceof Trip.WalkLeg) {
-                lastSeenLeg = leg;
                 Trip.WalkLeg thisLeg = (Trip.WalkLeg) leg;
                 String travelSegmentType;
                 String legMode = "foot";
@@ -209,7 +208,6 @@ public class TransitRouter {
                             leg.getDepartureTime(), "TRANSFER", "foot"
                     ));
                 }
-                lastSeenLeg = leg;
 
                 long startTime = System.currentTimeMillis();
                 CustomPtLeg customPtLeg = RouterConverters.toCustomPtLeg(thisLeg, gtfsFeedIdMapping, gtfsLinkMappings, gtfsRouteInfo);
@@ -219,6 +217,7 @@ public class TransitRouter {
 
                 path.getLegs().add(customPtLeg);
             }
+            lastSeenLeg = leg;
         }
 
         // If no EGRESS walk leg exists, insert an empty one
