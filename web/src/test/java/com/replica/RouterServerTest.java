@@ -66,7 +66,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
             Timestamp.newBuilder().setSeconds(Instant.parse("2019-10-15T13:30:00Z").toEpochMilli() / 1000).build();
     private static final double[] REQUEST_ORIGIN_1 = {38.74891667931467, -121.29023848101498}; // Roseville area
     private static final double[] REQUEST_ORIGIN_2 = {38.59337420024281, -121.48746937746185}; // Sacramento area
-    private static final double[] REQUEST_ORIGIN_3 = {38.60641317625813,-121.44842859546773}; // North of Sacramento, directly on SRT Blue line stop
+    private static final double[] REQUEST_ORIGIN_3 = {38.60641117670378,-121.44792076378509}; // North of Sacramento, directly on SRT Blue line stop
     private static final double[] REQUEST_DESTINATION_1 = {38.55518457319914, -121.43714698730038}; // Sacramento area
     private static final double[] REQUEST_DESTINATION_2 = {38.69871256445126, -121.27320348867218}; // South of Roseville
     private static final double[] REQUEST_DESTINATION_3 = {38.68163283946138,-121.15723016671839}; // Folsom
@@ -292,14 +292,12 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         expectedModeCounts.put("car", 0);
         expectedModeCounts.put("foot", 4);
 
+        // Ensure that 2 empty walk transfer legs are inserted between transit legs
         checkTransitQuery(response, 3, 4,
                 Lists.newArrayList("ACCESS", "TRANSFER", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
                 Lists.newArrayList(17, 208, 0, 271, 0, 49, 4)
         );
-
-        // Check that empty walk transfer leg was inserted after first transit leg
-        assertEquals(0, response.getPaths(0).getLegs(2).getStableEdgeIdsCount());
     }
 
     @Test
@@ -335,30 +333,30 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
 
     @Test
     public void testEmptyAccessEgressLegCreation() {
-
-        // todo: add comment describing this
-        // todo: mention how we check for empty transfer leg being added in testIntraFeedPublicTransitQuery()
-
-
+        // Ensure empty walk access and egress legs are inserted in cases where they're missing from GraphHopper's response
+        // (ie, origin/destination are directly on top of a station). Insertion of empty walk transfer legs is tested
+        // in testIntraFeedPublicTransitQuery()
         final RouterOuterClass.PtRouteReply emptyAccessLegResponse = routerStub.routePt(PT_REQUEST_EMPTY_ACCESS_LEG);
-
         Map<String, Integer> expectedModeCounts = Maps.newHashMap();
         expectedModeCounts.put("car", 0);
         expectedModeCounts.put("foot", 3);
-        //
-        /*
+
         checkTransitQuery(emptyAccessLegResponse, 2, 3,
                 Lists.newArrayList("ACCESS", "TRANSFER", "EGRESS"),
                 expectedModeCounts,
-                Lists.newArrayList(132, 109, 12, 53, 13)
+                Lists.newArrayList(0, 98, 8, 202, 15)
         );
-        */
 
         final RouterOuterClass.PtRouteReply emptyEgressLegResponse = routerStub.routePt(PT_REQUEST_EMPTY_EGRESS_LEG);
-
         expectedModeCounts = Maps.newHashMap();
         expectedModeCounts.put("car", 0);
         expectedModeCounts.put("foot", 2);
+
+        checkTransitQuery(emptyEgressLegResponse, 1, 2,
+                Lists.newArrayList("ACCESS", "EGRESS"),
+                expectedModeCounts,
+                Lists.newArrayList(19, 63, 0)
+        );
     }
 
     private void checkTransitQuery(RouterOuterClass.PtRouteReply response,
