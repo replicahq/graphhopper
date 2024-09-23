@@ -18,7 +18,6 @@ public class CustomStreetLeg extends Trip.WalkLeg {
         super(leg.departureLocation, leg.getDepartureTime(), leg.geometry,
                 leg.distance, leg.instructions, leg.details, leg.getArrivalTime());
         this.stableEdgeIds = stableEdgeIds;
-        this.details.clear();
         this.travelSegmentType = travelSegmentType;
         this.mode = mode;
     }
