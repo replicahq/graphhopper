@@ -195,12 +195,12 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Download archived street functional test results
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: functional-test-street-results
 
       - name: Download transit functional test results
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: functional-test-transit-results
 
