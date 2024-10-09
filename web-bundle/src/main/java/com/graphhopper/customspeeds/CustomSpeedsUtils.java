@@ -7,6 +7,7 @@ import com.graphhopper.reader.ReaderWay;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileReader;
@@ -20,6 +21,7 @@ public class CustomSpeedsUtils {
     public static final String CUSTOM_SPEED_FILE_CONFIG_FIELD = "custom_speed_file";
     private static final String CUSTOM_SPEED_OSM_WAY_ID_COL_NAME = "osm_way_id";
     private static final String CUSTOM_SPEED_MAX_SPEED_KPH_COL_NAME = "max_speed_kph";
+    private static final String CUSTOM_SPEED_BWD_COL_NAME = "bwd";
 
     /**
      * Parses the custom speed files for any profiles using custom speeds. Each vehicle must be associated with the same
@@ -37,8 +39,8 @@ public class CustomSpeedsUtils {
     public static ImmutableMap<String, CustomSpeedsVehicle> getCustomSpeedVehiclesByName(List<Profile> profiles) {
         Map<String, File> vehicleNameToCustomSpeedFile = getVehicleNameToCustomSpeedFile(profiles);
         // wrap transformValues result in a HashMap to turn the live, lazy view into a traditional map
-        Map<String, ImmutableMap<Long, Double>> vehicleNameToCustomSpeeds = new HashMap<>(
-                Maps.transformValues(vehicleNameToCustomSpeedFile, CustomSpeedsUtils::parseOsmWayIdToMaxSpeed));
+        Map<String, ImmutableMap<Pair<Long, Boolean>, Double>> vehicleNameToCustomSpeeds = new HashMap<>(
+                Maps.transformValues(vehicleNameToCustomSpeedFile, CustomSpeedsUtils::parseOsmWayIdAndBwdToMaxSpeed));
 
         // validate all speeds before attempting to create CustomSpeedsVehicles so all invalid speeds will be logged
         // and users can address all errors instead of one-at-a-time
@@ -76,18 +78,29 @@ public class CustomSpeedsUtils {
                 .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, entry -> entry.getValue().get()));
     }
 
-    private static ImmutableMap<Long, Double> parseOsmWayIdToMaxSpeed(File customSpeedFile) {
-        ImmutableMap.Builder<Long, Double> osmWayIdToMaxSpeed = ImmutableMap.builder();
+    private static ImmutableMap<Pair<Long, Boolean>, Double> parseOsmWayIdAndBwdToMaxSpeed(File customSpeedFile) {
+        ImmutableMap.Builder<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed = ImmutableMap.builder();
 
         try {
             Reader in = new FileReader(customSpeedFile);
             // setHeader() with no args allows the column names to be automatically parsed from the first line of the
             // file
             CSVParser parser = CSVFormat.Builder.create().setHeader().build().parse(in);
+            boolean bwdColumnPresent = parser.getHeaderNames().contains(CUSTOM_SPEED_BWD_COL_NAME);
             for (CSVRecord record : parser) {
                 Long osmWayId = Long.parseLong(record.get(CUSTOM_SPEED_OSM_WAY_ID_COL_NAME));
                 Double maxSpeed = Double.parseDouble(record.get(CUSTOM_SPEED_MAX_SPEED_KPH_COL_NAME));
-                osmWayIdToMaxSpeed.put(osmWayId, maxSpeed);
+
+                // If `bwd` column is present, use it to store directional speed for the Way
+                if (bwdColumnPresent) {
+                    Boolean bwd = Boolean.parseBoolean(record.get(CUSTOM_SPEED_BWD_COL_NAME));
+                    osmWayIdAndBwdToMaxSpeed.put(Pair.of(osmWayId, bwd), maxSpeed);
+                }
+                // Otherwise, store the speed for the way in both directions
+                else {
+                    osmWayIdAndBwdToMaxSpeed.put(Pair.of(osmWayId, Boolean.TRUE), maxSpeed);
+                    osmWayIdAndBwdToMaxSpeed.put(Pair.of(osmWayId, Boolean.FALSE), maxSpeed);
+                }
             }
             parser.close();
         } catch (IOException e) {
@@ -95,18 +108,12 @@ public class CustomSpeedsUtils {
                     + ". Please ensure file exists and is in the correct format!", e);
         }
 
-        return osmWayIdToMaxSpeed.build();
+        return osmWayIdAndBwdToMaxSpeed.build();
     }
 
-    public static Optional<Double> getCustomMaxSpeed(ReaderWay way, ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed) {
+    public static Optional<Double> getCustomMaxSpeed(ReaderWay way, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomMaxSpeed, boolean bwd) {
         // n.b. CarAverageSpeedParser sets max speed to be 90% of the OSM's max speed for the way, but we don't apply the 90%
         // discount for the custom speeds we've been explicitly given
-        return Optional.ofNullable(osmWayIdToCustomMaxSpeed.get(way.getId()));
-    }
-
-    public static Optional<Double> getCustomBadSurfaceSpeed(ReaderWay way, ImmutableMap<Long, Double> osmWayIdToCustomMaxSpeed) {
-        // if we've been explicitly given a custom speed to use for the way, we should not apply any additional logic
-        // for bad road surfaces
-        return CustomSpeedsUtils.getCustomMaxSpeed(way, osmWayIdToCustomMaxSpeed);
+        return Optional.ofNullable(osmWayIdAndBwdToCustomMaxSpeed.get(Pair.of(way.getId(), bwd)));
     }
 }

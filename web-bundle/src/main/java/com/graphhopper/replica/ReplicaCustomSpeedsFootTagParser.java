@@ -7,9 +7,10 @@ import com.graphhopper.routing.ev.EdgeIntAccess;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.parsers.FootAverageSpeedParser;
 import com.graphhopper.util.PMap;
+import org.apache.commons.lang3.tuple.Pair;
 
 public class ReplicaCustomSpeedsFootTagParser extends FootAverageSpeedParser {
-    private final ImmutableMap<Long, Double> osmWayIdToMaxSpeed;
+    private final ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed;
 
     // Replica-specific limit for custom walking speeds
     public static final int FOOT_MAX_SPEED = 10;
@@ -18,9 +19,9 @@ public class ReplicaCustomSpeedsFootTagParser extends FootAverageSpeedParser {
     static final int SLOW_SPEED = 2;
     static final int MEAN_SPEED = 5;
 
-    public ReplicaCustomSpeedsFootTagParser(EncodedValueLookup lookup, PMap configuration, ImmutableMap<Long, Double> osmWayIdToMaxSpeed) {
+    public ReplicaCustomSpeedsFootTagParser(EncodedValueLookup lookup, PMap configuration, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed) {
         super(lookup, configuration);
-        this.osmWayIdToMaxSpeed = osmWayIdToMaxSpeed;
+        this.osmWayIdAndBwdToMaxSpeed = osmWayIdAndBwdToMaxSpeed;
     }
 
     // Copied directly from FootAverageSpeedParser, edited to call edited setSpeed() function
@@ -46,7 +47,7 @@ public class ReplicaCustomSpeedsFootTagParser extends FootAverageSpeedParser {
 
     // Overrides speed with custom speed, if one exists
     void setSpeed(int edgeId, EdgeIntAccess edgeIntAccess, boolean fwd, boolean bwd, double speed, ReaderWay way) {
-         double speedToSet = CustomSpeedsUtils.getCustomMaxSpeed(way, osmWayIdToMaxSpeed).orElse(speed);
+         double speedToSet = CustomSpeedsUtils.getCustomMaxSpeed(way, osmWayIdAndBwdToMaxSpeed, bwd).orElse(speed);
          setSpeed(edgeId, edgeIntAccess, fwd, bwd, speedToSet);
     }
 

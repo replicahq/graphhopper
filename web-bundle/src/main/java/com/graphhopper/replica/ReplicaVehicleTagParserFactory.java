@@ -29,6 +29,7 @@ import com.graphhopper.routing.util.DefaultVehicleTagParserFactory;
 import com.graphhopper.routing.util.VehicleTagParsers;
 import com.graphhopper.routing.util.parsers.*;
 import com.graphhopper.util.PMap;
+import org.apache.commons.lang3.tuple.Pair;
 
 import static com.graphhopper.http.TruckAverageSpeedParser.*;
 
@@ -47,12 +48,12 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
     @Override
     public VehicleTagParsers createParsers(EncodedValueLookup lookup, String vehicleName, PMap configuration) {
         // assume no custom speeds by default
-        ImmutableMap<Long, Double> osmWayIdToCustomSpeed = ImmutableMap.of();
+        ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed = ImmutableMap.of();
         CustomSpeedsVehicle.VehicleType baseCustomSpeedsVehicleType = null;
 
         if (customSpeedsVehiclesByName.containsKey(vehicleName)) {
             CustomSpeedsVehicle customSpeedsVehicle = customSpeedsVehiclesByName.get(vehicleName);
-            osmWayIdToCustomSpeed = customSpeedsVehicle.osmWayIdToCustomSpeed;
+            osmWayIdAndBwdToCustomSpeed = customSpeedsVehicle.osmWayIdAndBwdToCustomSpeed;
             baseCustomSpeedsVehicleType = customSpeedsVehicle.baseVehicleType;
             // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it
@@ -62,19 +63,19 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
         if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.CAR) {
             return new VehicleTagParsers(
                     new CarAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
-                    new ReplicaCustomSpeedsCarTagParser(lookup, configuration, osmWayIdToCustomSpeed),
+                    new ReplicaCustomSpeedsCarTagParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed),
                     null
             );
         } else if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.BIKE) {
             return new VehicleTagParsers(
                     new BikeAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
-                    new ReplicaCustomSpeedsBikeTagParser(lookup, configuration, osmWayIdToCustomSpeed),
+                    new ReplicaCustomSpeedsBikeTagParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed),
                     new BikePriorityParser(lookup, configuration)
             );
         } else if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.FOOT) {
             return new VehicleTagParsers(
                     new FootAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
-                    new ReplicaCustomSpeedsFootTagParser(lookup, configuration, osmWayIdToCustomSpeed),
+                    new ReplicaCustomSpeedsFootTagParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed),
                     new FootPriorityParser(lookup, configuration)
             );
         } else if (vehicleName.equals(RouterConstants.CAR_VEHICLE_NAME)
@@ -94,7 +95,7 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
                             setWeight(13.0 + 13.0).setAxes(3).setIsHGV(true).
                             initProperties().
                             init(configuration.getObject("date_range_parser", new DateRangeParser())),
-                    new TruckAverageSpeedParser(lookup, configuration, osmWayIdToCustomSpeed).
+                    new TruckAverageSpeedParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed).
                             setHeight(3.7).setWidth(2.6, 0.34).setLength(12).
                             setWeight(13.0 + 13.0).setAxes(3).setIsHGV(true).
                             initProperties(),
@@ -111,7 +112,7 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
                             setWeight(SMALL_TRUCK_WEIGHT).
                             initProperties().
                             init(configuration.getObject("date_range_parser", new DateRangeParser())),
-                    new TruckAverageSpeedParser(lookup, configuration, osmWayIdToCustomSpeed).
+                    new TruckAverageSpeedParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed).
                             setHeight(2.7).setWidth(2, 0.34).setLength(5.5).
                             setWeight(SMALL_TRUCK_WEIGHT)
                             .initProperties(),
