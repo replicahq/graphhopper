@@ -1,2 +1,3 @@
 osm_way_id,max_speed_kph,bwd
 10485465,90,False
+10485465,90,True
