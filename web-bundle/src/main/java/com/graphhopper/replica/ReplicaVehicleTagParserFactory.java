@@ -21,7 +21,6 @@ package com.graphhopper.replica;
 import com.google.common.collect.ImmutableMap;
 import com.graphhopper.RouterConstants;
 import com.graphhopper.customspeeds.CustomSpeedsVehicle;
-import com.graphhopper.http.TruckAccessParser;
 import com.graphhopper.http.TruckAverageSpeedParser;
 import com.graphhopper.reader.osm.conditional.DateRangeParser;
 import com.graphhopper.routing.ev.EncodedValueLookup;
@@ -50,11 +49,13 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
         // assume no custom speeds by default
         ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed = ImmutableMap.of();
         CustomSpeedsVehicle.VehicleType baseCustomSpeedsVehicleType = null;
+        boolean bwdColumnPresent = false;
 
         if (customSpeedsVehiclesByName.containsKey(vehicleName)) {
             CustomSpeedsVehicle customSpeedsVehicle = customSpeedsVehiclesByName.get(vehicleName);
             osmWayIdAndBwdToCustomSpeed = customSpeedsVehicle.osmWayIdAndBwdToCustomSpeed;
             baseCustomSpeedsVehicleType = customSpeedsVehicle.baseVehicleType;
+            bwdColumnPresent = customSpeedsVehicle.bwdColumnPresent;
             // vehicles with custom speeds use nonstandard vehicle names which must be added to the config for the GH
             // internals to tolerate it
             configuration.putObject("name", vehicleName);
@@ -62,19 +63,19 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
 
         if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.CAR) {
             return new VehicleTagParsers(
-                    new CarAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
+                    new ReplicaCustomSpeedsCarAccessParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed, bwdColumnPresent).init(configuration.getObject("date_range_parser", new DateRangeParser())),
                     new ReplicaCustomSpeedsCarTagParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed),
                     null
             );
         } else if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.BIKE) {
             return new VehicleTagParsers(
-                    new BikeAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
+                    new ReplicaCustomSpeedsBikeAccessParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed, bwdColumnPresent).init(configuration.getObject("date_range_parser", new DateRangeParser())),
                     new ReplicaCustomSpeedsBikeTagParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed),
                     new BikePriorityParser(lookup, configuration)
             );
         } else if (baseCustomSpeedsVehicleType == CustomSpeedsVehicle.VehicleType.FOOT) {
             return new VehicleTagParsers(
-                    new FootAccessParser(lookup, configuration).init(configuration.getObject("date_range_parser", new DateRangeParser())),
+                    new ReplicaCustomSpeedsFootAccessParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed, bwdColumnPresent).init(configuration.getObject("date_range_parser", new DateRangeParser())),
                     new ReplicaCustomSpeedsFootTagParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed),
                     new FootPriorityParser(lookup, configuration)
             );
@@ -90,7 +91,7 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
             if (!configuration.has("max_speed"))
                 configuration = new PMap(configuration).putObject("max_speed", EE_TRUCK_MAX_SPEED);
             return new VehicleTagParsers(
-                    new TruckAccessParser(lookup, configuration).
+                    new ReplicaCustomSpeedsTruckAccessParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed, bwdColumnPresent).
                             setHeight(3.7).setWidth(2.6, 0.34).setLength(12).
                             setWeight(13.0 + 13.0).setAxes(3).setIsHGV(true).
                             initProperties().
@@ -107,7 +108,7 @@ public class ReplicaVehicleTagParserFactory extends DefaultVehicleTagParserFacto
             if (!configuration.has("max_speed"))
                 configuration = new PMap(configuration).putObject("max_speed", EE_SMALL_TRUCK_MAX_SPEED);
             return new VehicleTagParsers(
-                    new TruckAccessParser(lookup, configuration).
+                    new ReplicaCustomSpeedsTruckAccessParser(lookup, configuration, osmWayIdAndBwdToCustomSpeed, bwdColumnPresent).
                             setHeight(2.7).setWidth(2, 0.34).setLength(5.5).
                             setWeight(SMALL_TRUCK_WEIGHT).
                             initProperties().

@@ -37,19 +37,21 @@ public class CustomSpeedsVehicle {
     public final VehicleType baseVehicleType;
     public final String customVehicleName;
     public final ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed;
+    public final boolean bwdColumnPresent;
 
-    private CustomSpeedsVehicle(String customVehicleName, VehicleType baseVehicleType, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed) {
+    private CustomSpeedsVehicle(String customVehicleName, VehicleType baseVehicleType, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed, boolean bwdColumnPresent) {
         this.customVehicleName = customVehicleName;
         this.baseVehicleType = baseVehicleType;
         this.osmWayIdAndBwdToCustomSpeed = osmWayIdAndBwdToCustomSpeed;
+        this.bwdColumnPresent = bwdColumnPresent;
     }
 
-    public static CustomSpeedsVehicle create(String customVehicleName, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed) {
-        if (!validateCustomSpeeds(customVehicleName, osmWayIdAndBwdToCustomSpeed)) {
+    public static CustomSpeedsVehicle create(String customVehicleName, Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> osmWayIdAndBwdToCustomSpeed) {
+        if (!validateCustomSpeeds(customVehicleName, osmWayIdAndBwdToCustomSpeed.getLeft())) {
             throw new IllegalArgumentException(String.format("Invalid speeds for vehicle %s. See logging for details", customVehicleName));
         }
 
-        return new CustomSpeedsVehicle(customVehicleName, CustomSpeedsVehicle.getBaseVehicleType(customVehicleName), osmWayIdAndBwdToCustomSpeed);
+        return new CustomSpeedsVehicle(customVehicleName, CustomSpeedsVehicle.getBaseVehicleType(customVehicleName), osmWayIdAndBwdToCustomSpeed.getLeft(), osmWayIdAndBwdToCustomSpeed.getRight());
     }
 
     public static boolean validateCustomSpeeds(String customVehicleName, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed) {
@@ -63,7 +65,6 @@ public class CustomSpeedsVehicle {
                     customVehicleName, baseVehicleType, baseVehicleType.getMaxValidSpeed(), invalidSpeeds);
             return false;
         }
-
         return true;
     }
 
