@@ -14,10 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 public class CustomSpeedsUtilsTest {
-    private static final ImmutableMap<Pair<Long, Boolean>, Double> TEST_CUSTOM_SPEEDS = ImmutableMap.of(Pair.of(1L, Boolean.TRUE), 2.0, Pair.of(3L, Boolean.FALSE), 4.0, Pair.of(123L, Boolean.TRUE), 45.6789);
-    private static final ImmutableMap<Pair<Long, Boolean>, Double> TEST_CUSTOM_SPEEDS_NO_BWD_COLUMN = ImmutableMap.of(Pair.of(10485465L, Boolean.TRUE), 90.0, Pair.of(10485465L, Boolean.FALSE), 90.0);
-    private static final ImmutableMap<Pair<Long, Boolean>, Double> FAST_THRUTON_DRIVE_SPEEDS = ImmutableMap.of(Pair.of(10485465L, Boolean.FALSE), 90.0, Pair.of(10485465L, Boolean.TRUE), 90.0);
-    private static final ImmutableMap<Pair<Long, Boolean>, Double> BASELINE_ROAD_CLOSURE_SPEEDS = ImmutableMap.of(Pair.of(76254223L, Boolean.FALSE), 0.0, Pair.of(76254223L, Boolean.TRUE), 0.0);
+    private static final Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> TEST_CUSTOM_SPEEDS = Pair.of(ImmutableMap.of(Pair.of(1L, Boolean.TRUE), 2.0, Pair.of(3L, Boolean.FALSE), 4.0, Pair.of(123L, Boolean.TRUE), 45.6789), true);
+    private static final Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> TEST_CUSTOM_SPEEDS_NO_BWD_COLUMN = Pair.of(ImmutableMap.of(Pair.of(10485465L, Boolean.TRUE), 90.0, Pair.of(10485465L, Boolean.FALSE), 90.0), false);
+    private static final Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> FAST_THRUTON_DRIVE_SPEEDS = Pair.of(ImmutableMap.of(Pair.of(10485465L, Boolean.FALSE), 90.0, Pair.of(10485465L, Boolean.TRUE), 90.0), true);
+    private static final Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> BASELINE_ROAD_CLOSURE_SPEEDS = Pair.of(ImmutableMap.of(Pair.of(76254223L, Boolean.FALSE), 0.0, Pair.of(76254223L, Boolean.TRUE), 0.0), false);
 
     @Test
     public void testGetCustomSpeedVehiclesByName() {

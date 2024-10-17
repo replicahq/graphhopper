@@ -30,6 +30,6 @@ public class CustomSpeedsVehicleTest {
         assertTrue(CustomSpeedsVehicle.validateCustomSpeeds("car_valid", validCarCustomSpeeds));
 
         // creating a CustomSpeedsVehicle with invalid speeds should be disallowed
-        assertThrows(IllegalArgumentException.class, () -> CustomSpeedsVehicle.create("car_invalid", invalidCarCustomSpeeds));
+        assertThrows(IllegalArgumentException.class, () -> CustomSpeedsVehicle.create("car_invalid", Pair.of(invalidCarCustomSpeeds, true)));
     }
 }

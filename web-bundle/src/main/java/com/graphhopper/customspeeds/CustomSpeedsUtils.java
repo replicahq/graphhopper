@@ -1,6 +1,7 @@
 package com.graphhopper.customspeeds;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.graphhopper.config.Profile;
 import com.graphhopper.reader.ReaderWay;
@@ -131,11 +132,14 @@ public class CustomSpeedsUtils {
 
     public static void validateCustomSpeedDirection(ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed, boolean bwdColumnPresent,
                                                     long wayId, BooleanEncodedValue accessEnc, int ghEdgeId, EdgeIntAccess edgeIntAccess) {
-        // If way ID -> custom speed mapping provided as input specifies a speed for the bwd direction of a road
-        // that doesn't allow travel in the bwd direction, throw an error
-        Pair<Long, Boolean> wayIdAndBwd = Pair.of(wayId, true);
-        if (osmWayIdAndBwdToMaxSpeed.containsKey(wayIdAndBwd) && bwdColumnPresent && !accessEnc.getBool(true, ghEdgeId, edgeIntAccess)) {
-            throw new RuntimeException("Input custom speeds specify a bwd speed for OSM Way " + wayId + ", but it doesn't allow travel in that direction!");
+        // If way ID -> custom speed mapping provided as input specifies a speed for a direction of a road that doesn't allow travel in that
+        // direction, throw an error
+        for (Boolean bwd : Lists.newArrayList(true, false)){
+            Pair<Long, Boolean> wayIdAndBwd = Pair.of(wayId, bwd);
+            if (osmWayIdAndBwdToMaxSpeed.containsKey(wayIdAndBwd) && bwdColumnPresent && !accessEnc.getBool(bwd, ghEdgeId, edgeIntAccess)) {
+                String direction = bwd ? "backward" : "forward";
+                throw new RuntimeException("Input custom speeds specify a " + direction + " speed for OSM Way " + wayId + ", but it doesn't allow travel in that direction!");
+            }
         }
     }
 }
