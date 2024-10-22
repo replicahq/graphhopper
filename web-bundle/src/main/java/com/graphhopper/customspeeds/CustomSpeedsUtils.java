@@ -106,7 +106,13 @@ public class CustomSpeedsUtils {
 
                 // If `bwd` column is present, use it to store directional speed for the Way
                 if (bwdColumnPresent) {
-                    Boolean bwd = Boolean.parseBoolean(record.get(CUSTOM_SPEED_BWD_COL_NAME));
+                    String bwdString;
+                    try {
+                        bwdString = record.get(CUSTOM_SPEED_BWD_COL_NAME);
+                    } catch (IllegalArgumentException e) {
+                        throw new IllegalArgumentException("bwd column was included in custom speed file, but no value was provided for OSM Way " + osmWayId);
+                    }
+                    Boolean bwd = Boolean.parseBoolean(bwdString);
                     osmWayIdAndBwdToMaxSpeed.put(Pair.of(osmWayId, bwd), maxSpeed);
                 }
                 // Otherwise, store the speed for the way in both directions
@@ -132,14 +138,19 @@ public class CustomSpeedsUtils {
 
     public static void validateCustomSpeedDirection(ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed, boolean bwdColumnPresent,
                                                     long wayId, BooleanEncodedValue accessEnc, int ghEdgeId, EdgeIntAccess edgeIntAccess) {
+        List<Pair<Long, String>> osmWayIdsWithInvalidDirection = Lists.newArrayList();
+
         // If way ID -> custom speed mapping provided as input specifies a speed for a direction of a road that
         // doesn't allow travel in that direction, throw an error
         for (Boolean bwd : Lists.newArrayList(true, false)){
             Pair<Long, Boolean> wayIdAndBwd = Pair.of(wayId, bwd);
             if (osmWayIdAndBwdToMaxSpeed.containsKey(wayIdAndBwd) && bwdColumnPresent && !accessEnc.getBool(bwd, ghEdgeId, edgeIntAccess)) {
                 String direction = bwd ? "backward" : "forward";
-                throw new RuntimeException("Input custom speeds specify a " + direction + " speed for OSM Way " + wayId + ", but it doesn't allow travel in that direction!");
+                osmWayIdsWithInvalidDirection.add(Pair.of(wayId, direction));
             }
+        }
+        if (osmWayIdsWithInvalidDirection.size() > 0) {
+            throw new IllegalArgumentException("Input custom speeds specify directional speeds for OSM Ways that don't allow travel in that direction: " + osmWayIdsWithInvalidDirection);
         }
     }
 }

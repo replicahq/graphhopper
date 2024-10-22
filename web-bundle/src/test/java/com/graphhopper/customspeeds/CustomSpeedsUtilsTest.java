@@ -3,6 +3,10 @@ package com.graphhopper.customspeeds;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.graphhopper.config.Profile;
+import com.graphhopper.routing.ev.BooleanEncodedValue;
+import com.graphhopper.routing.ev.EdgeIntAccess;
+import com.graphhopper.routing.ev.IntsRefEdgeIntAccess;
+import com.graphhopper.storage.IntsRef;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +15,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 
 public class CustomSpeedsUtilsTest {
@@ -89,6 +95,34 @@ public class CustomSpeedsUtilsTest {
         );
         assertThrows(IllegalArgumentException.class, () ->
                 CustomSpeedsUtils.getCustomSpeedVehiclesByName(invalidProfiles2));
+    }
+
+    @Test
+    public void testValidateCustomSpeedDirection() {
+        // if bwd column is present but no value is provided for a row, an error is thrown while parsing custom speed file
+        List<Profile> invalidProfile = ImmutableList.of(
+                createProfile("prof1", "car_custom", "../web/test-data/custom_speeds/test_custom_speeds_empty_bwd_column.csv")
+        );
+        assertThrows(IllegalArgumentException.class, () ->
+                CustomSpeedsUtils.getCustomSpeedVehiclesByName(invalidProfile));
+
+        // Test that access constraints are enforced for directional custom speeds in validateCustomSpeedDirection()
+        EdgeIntAccess edgeIntAccess  = new IntsRefEdgeIntAccess(new IntsRef(1));
+        int ghEdgeId = 456;
+        ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed = ImmutableMap.of(Pair.of(123L, true), 5.0);
+        final BooleanEncodedValue accessEnc = mock(BooleanEncodedValue.class);
+
+        // When no bwd column is present, direction check is skipped (no error is thrown)
+        CustomSpeedsUtils.validateCustomSpeedDirection(osmWayIdAndBwdToMaxSpeed, false, 123L, accessEnc, ghEdgeId, edgeIntAccess);
+
+        // If bwd column is present and directional speed is set for OSM Way that's accessible in that direction, no error is thrown
+        when(accessEnc.getBool(true, ghEdgeId, edgeIntAccess)).thenReturn(true);
+        CustomSpeedsUtils.validateCustomSpeedDirection(osmWayIdAndBwdToMaxSpeed, true, 123L, accessEnc, ghEdgeId, edgeIntAccess);
+
+        // If bwd column is present and directional speed is set for OSM Way that's not accessible in that direction, error is thrown
+        when(accessEnc.getBool(true, ghEdgeId, edgeIntAccess)).thenReturn(false);
+        assertThrows(IllegalArgumentException.class, () ->
+                CustomSpeedsUtils.validateCustomSpeedDirection(osmWayIdAndBwdToMaxSpeed, true, 123L, accessEnc, ghEdgeId, edgeIntAccess));
     }
 
     private static Profile createProfile(String profileName, String vehicleName, @Nullable String customSpeedsFilePath) {
