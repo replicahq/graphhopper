@@ -45,17 +45,17 @@ public class StreetRouter {
         ProfilesStreetRouteRequest profilesStreetRouteRequest = RouterConverters.toProfilesStreetRouteRequest(request, graphHopper);
         // for backcompat, use a metric tag of "mode". clients typically send modes within the profile field, and these
         // are translated into profiles using prefix matching
-        String profileMetricTags = "mode:" + request.getProfile();
-        routeStreetProfiles(profilesStreetRouteRequest, responseObserver, profileMetricTags);
+        String profileMetricTag = "mode:" + request.getProfile();
+        routeStreetProfiles(profilesStreetRouteRequest, responseObserver, profileMetricTag);
     }
 
     public void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
-        String profileMetricTags = "profiles:" + request.getProfilesList();
-        routeStreetProfiles(request, responseObserver, profileMetricTags);
+        String profileMetricTag = "profiles:" + request.getProfilesList();
+        routeStreetProfiles(request, responseObserver, profileMetricTag);
     }
 
     private void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver,
-                                     String profileMetricTags) {
+                                     String profileMetricTag) {
         long startTime = System.currentTimeMillis();
 
         Point origin = request.getPoints(0);
@@ -99,7 +99,7 @@ public class StreetRouter {
                 logger.error(message, e);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                String[] tags = {profileMetricTags, "api:grpc", "routes_found:error"};
+                String[] tags = {profileMetricTag, "api:grpc", "routes_found:error"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
@@ -118,7 +118,7 @@ public class StreetRouter {
                     + origin.getLat() + "," + origin.getLon() + " to " + dest.getLat() + "," + dest.getLon();
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {profileMetricTags, "api:grpc", "routes_found:false"};
+            String[] tags = {profileMetricTag, "api:grpc", "routes_found:false"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
             MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, 0);
 
@@ -129,7 +129,7 @@ public class StreetRouter {
             responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         } else {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {profileMetricTags, "api:grpc", "routes_found:true"};
+            String[] tags = {profileMetricTag, "api:grpc", "routes_found:true"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
             MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, pathsFound);
 
