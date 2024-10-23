@@ -85,6 +85,11 @@ public class RouterImpl extends router.RouterGrpc.RouterImplBase {
     }
 
     @Override
+    public void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<router.RouterOuterClass.StreetRouteReply> responseObserver) {
+        streetRouter.routeStreetProfiles(request, responseObserver);
+    }
+
+    @Override
     public void routeCustom(CustomRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
         customStreetRouter.routeCustom(request, responseObserver);
     }
