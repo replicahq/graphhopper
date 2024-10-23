@@ -89,7 +89,7 @@ public class CustomSpeedsUtils {
      *
      * @param customSpeedFile input custom speed file to be parsed
      * @return Pair containing the mapping of (OSM Way Id, `bwd`) -> speed, and a boolean representing whether or not
-     * the `bwd` column was present in the input file
+     * directional custom speeds were provided in the input file (ie the `bwd` column was present)
      */
     private static Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> parseOsmWayIdAndBwdToMaxSpeed(File customSpeedFile) {
         ImmutableMap.Builder<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed = ImmutableMap.builder();
