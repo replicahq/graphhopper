@@ -12,17 +12,17 @@ import static com.graphhopper.customspeeds.CustomSpeedsUtils.validateCustomSpeed
 
 public class ReplicaCustomSpeedsFootAccessParser extends FootAccessParser {
     private final ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed;
-    private final boolean bwdColumnPresent;
+    private final boolean directionalCustomSpeedsProvided;
 
-    public ReplicaCustomSpeedsFootAccessParser(EncodedValueLookup lookup, PMap properties, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed, boolean bwdColumnPresent) {
+    public ReplicaCustomSpeedsFootAccessParser(EncodedValueLookup lookup, PMap properties, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed, boolean directionalCustomSpeedsProvided) {
         super(lookup, properties);
         this.osmWayIdAndBwdToMaxSpeed = osmWayIdAndBwdToMaxSpeed;
-        this.bwdColumnPresent = bwdColumnPresent;
+        this.directionalCustomSpeedsProvided = directionalCustomSpeedsProvided;
     }
 
     @Override
     public void handleWayTags(int edgeId, EdgeIntAccess edgeIntAccess, ReaderWay way) {
         super.handleWayTags(edgeId, edgeIntAccess, way);
-        validateCustomSpeedDirection(osmWayIdAndBwdToMaxSpeed, bwdColumnPresent, way.getId(), accessEnc, edgeId, edgeIntAccess);
+        validateCustomSpeedDirection(osmWayIdAndBwdToMaxSpeed, directionalCustomSpeedsProvided, way.getId(), accessEnc, edgeId, edgeIntAccess);
     }
 }

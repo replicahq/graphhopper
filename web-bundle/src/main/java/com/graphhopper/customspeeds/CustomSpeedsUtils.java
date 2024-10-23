@@ -93,19 +93,19 @@ public class CustomSpeedsUtils {
      */
     private static Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> parseOsmWayIdAndBwdToMaxSpeed(File customSpeedFile) {
         ImmutableMap.Builder<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed = ImmutableMap.builder();
-        boolean bwdColumnPresent;
+        boolean directionalCustomSpeedsProvided;
         try {
             Reader in = new FileReader(customSpeedFile);
             // setHeader() with no args allows the column names to be automatically parsed from the first line of the
             // file
             CSVParser parser = CSVFormat.Builder.create().setHeader().build().parse(in);
-            bwdColumnPresent = parser.getHeaderNames().contains(CUSTOM_SPEED_BWD_COL_NAME);
+            directionalCustomSpeedsProvided = parser.getHeaderNames().contains(CUSTOM_SPEED_BWD_COL_NAME);
             for (CSVRecord record : parser) {
                 Long osmWayId = Long.parseLong(record.get(CUSTOM_SPEED_OSM_WAY_ID_COL_NAME));
                 Double maxSpeed = Double.parseDouble(record.get(CUSTOM_SPEED_MAX_SPEED_KPH_COL_NAME));
 
                 // If `bwd` column is present, use it to store directional speed for the Way
-                if (bwdColumnPresent) {
+                if (directionalCustomSpeedsProvided) {
                     String bwdString;
                     try {
                         bwdString = record.get(CUSTOM_SPEED_BWD_COL_NAME);
@@ -127,7 +127,7 @@ public class CustomSpeedsUtils {
                     + ". Please ensure file exists and is in the correct format!", e);
         }
 
-        return Pair.of(osmWayIdAndBwdToMaxSpeed.build(), bwdColumnPresent);
+        return Pair.of(osmWayIdAndBwdToMaxSpeed.build(), directionalCustomSpeedsProvided);
     }
 
     public static Optional<Double> getCustomMaxSpeed(ReaderWay way, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomMaxSpeed, boolean bwd) {
@@ -136,7 +136,7 @@ public class CustomSpeedsUtils {
         return Optional.ofNullable(osmWayIdAndBwdToCustomMaxSpeed.get(Pair.of(way.getId(), bwd)));
     }
 
-    public static void validateCustomSpeedDirection(ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed, boolean bwdColumnPresent,
+    public static void validateCustomSpeedDirection(ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed, boolean directionalCustomSpeedsProvided,
                                                     long wayId, BooleanEncodedValue accessEnc, int ghEdgeId, EdgeIntAccess edgeIntAccess) {
         List<Pair<Long, String>> osmWayIdsWithInvalidDirection = Lists.newArrayList();
 
@@ -144,7 +144,7 @@ public class CustomSpeedsUtils {
         // doesn't allow travel in that direction, throw an error
         for (Boolean bwd : Lists.newArrayList(true, false)){
             Pair<Long, Boolean> wayIdAndBwd = Pair.of(wayId, bwd);
-            if (osmWayIdAndBwdToMaxSpeed.containsKey(wayIdAndBwd) && bwdColumnPresent && !accessEnc.getBool(bwd, ghEdgeId, edgeIntAccess)) {
+            if (osmWayIdAndBwdToMaxSpeed.containsKey(wayIdAndBwd) && directionalCustomSpeedsProvided && !accessEnc.getBool(bwd, ghEdgeId, edgeIntAccess)) {
                 String direction = bwd ? "backward" : "forward";
                 osmWayIdsWithInvalidDirection.add(Pair.of(wayId, direction));
             }

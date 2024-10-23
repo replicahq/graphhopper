@@ -37,13 +37,13 @@ public class CustomSpeedsVehicle {
     public final VehicleType baseVehicleType;
     public final String customVehicleName;
     public final ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed;
-    public final boolean bwdColumnPresent;
+    public final boolean directionalCustomSpeedsProvided;
 
-    private CustomSpeedsVehicle(String customVehicleName, VehicleType baseVehicleType, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed, boolean bwdColumnPresent) {
+    private CustomSpeedsVehicle(String customVehicleName, VehicleType baseVehicleType, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed, boolean directionalCustomSpeedsProvided) {
         this.customVehicleName = customVehicleName;
         this.baseVehicleType = baseVehicleType;
         this.osmWayIdAndBwdToCustomSpeed = osmWayIdAndBwdToCustomSpeed;
-        this.bwdColumnPresent = bwdColumnPresent;
+        this.directionalCustomSpeedsProvided = directionalCustomSpeedsProvided;
     }
 
     public static CustomSpeedsVehicle create(String customVehicleName, Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> osmWayIdAndBwdToCustomSpeed) {
