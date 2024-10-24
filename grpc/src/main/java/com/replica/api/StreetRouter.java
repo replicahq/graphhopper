@@ -21,10 +21,7 @@ import router.RouterOuterClass.ProfilesStreetRouteRequest;
 import router.RouterOuterClass.StreetRouteReply;
 import router.RouterOuterClass.StreetRouteRequest;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class StreetRouter {
@@ -51,7 +48,10 @@ public class StreetRouter {
     }
 
     public void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
-        String profilesMetricTag = "profiles:" + request.getProfilesList();
+        List<String> orderedRequestedProfiles = new ArrayList<>(request.getProfilesList());
+        Collections.sort(orderedRequestedProfiles);
+        String profilesMetricTag = "profiles:" + orderedRequestedProfiles;
+
         routeStreetProfiles(request, responseObserver, profilesMetricTag);
     }
 
