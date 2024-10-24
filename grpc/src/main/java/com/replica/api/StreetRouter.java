@@ -8,7 +8,6 @@ import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.ResponsePath;
 import com.graphhopper.config.Profile;
-import com.graphhopper.util.shapes.GHPoint;
 import com.replica.util.MetricUtils;
 import com.replica.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
@@ -22,9 +21,11 @@ import router.RouterOuterClass.ProfilesStreetRouteRequest;
 import router.RouterOuterClass.StreetRouteReply;
 import router.RouterOuterClass.StreetRouteRequest;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class StreetRouter {
 
@@ -50,6 +51,17 @@ public class StreetRouter {
     }
 
     public void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
+        Set<String> knownProfiles = graphHopper.getProfiles().stream().map(Profile::getName).collect(Collectors.toSet());
+        Set<String> unknownProfiles = new HashSet<>(request.getProfilesList());
+        unknownProfiles.removeAll(knownProfiles);
+        if (!unknownProfiles.isEmpty()) {
+            Status status = Status.newBuilder()
+                    .setCode(Code.INVALID_ARGUMENT.getNumber())
+                    .setMessage("Requested unknown profiles: " + unknownProfiles)
+                    .build();
+            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
+        }
+
         String profileMetricTag = "profiles:" + request.getProfilesList();
         routeStreetProfiles(request, responseObserver, profileMetricTag);
     }
