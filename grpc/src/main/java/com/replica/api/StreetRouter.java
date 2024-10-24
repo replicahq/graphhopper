@@ -46,29 +46,19 @@ public class StreetRouter {
         ProfilesStreetRouteRequest profilesStreetRouteRequest = RouterConverters.toProfilesStreetRouteRequest(request, graphHopper);
         // for backcompat, use a metric tag of "mode". clients typically send modes within the profile field, and these
         // are translated into profiles using prefix matching
-        String profileMetricTag = "mode:" + request.getProfile();
-        routeStreetProfiles(profilesStreetRouteRequest, responseObserver, profileMetricTag);
+        String profilesMetricTag = "mode:" + request.getProfile();
+        routeStreetProfiles(profilesStreetRouteRequest, responseObserver, profilesMetricTag);
     }
 
     public void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
-        Set<String> knownProfiles = graphHopper.getProfiles().stream().map(Profile::getName).collect(Collectors.toSet());
-        Set<String> unknownProfiles = new HashSet<>(request.getProfilesList());
-        unknownProfiles.removeAll(knownProfiles);
-        if (!unknownProfiles.isEmpty()) {
-            Status status = Status.newBuilder()
-                    .setCode(Code.INVALID_ARGUMENT.getNumber())
-                    .setMessage("Requested unknown profiles: " + unknownProfiles)
-                    .build();
-            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
-        }
-
-        String profileMetricTag = "profiles:" + request.getProfilesList();
-        routeStreetProfiles(request, responseObserver, profileMetricTag);
+        String profilesMetricTag = "profiles:" + request.getProfilesList();
+        routeStreetProfiles(request, responseObserver, profilesMetricTag);
     }
 
     private void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver,
-                                     String profileMetricTag) {
+                                     String profilesMetricTag) {
         long startTime = System.currentTimeMillis();
+        validateRequest(request, responseObserver);
 
         Point origin = request.getPoints(0);
         Point dest = request.getPoints(1);
@@ -111,7 +101,7 @@ public class StreetRouter {
                 logger.error(message, e);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                String[] tags = {profileMetricTag, "api:grpc", "routes_found:error"};
+                String[] tags = {profilesMetricTag, "api:grpc", "routes_found:error"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
@@ -130,7 +120,7 @@ public class StreetRouter {
                     + origin.getLat() + "," + origin.getLon() + " to " + dest.getLat() + "," + dest.getLon();
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {profileMetricTag, "api:grpc", "routes_found:false"};
+            String[] tags = {profilesMetricTag, "api:grpc", "routes_found:false"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
             MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, 0);
 
@@ -141,12 +131,25 @@ public class StreetRouter {
             responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         } else {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {profileMetricTag, "api:grpc", "routes_found:true"};
+            String[] tags = {profilesMetricTag, "api:grpc", "routes_found:true"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
             MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, pathsFound);
 
             responseObserver.onNext(replyBuilder.build());
             responseObserver.onCompleted();
+        }
+    }
+
+    private void validateRequest(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
+        Set<String> knownProfiles = graphHopper.getProfiles().stream().map(Profile::getName).collect(Collectors.toSet());
+        Set<String> unknownProfiles = new HashSet<>(request.getProfilesList());
+        unknownProfiles.removeAll(knownProfiles);
+        if (!unknownProfiles.isEmpty()) {
+            Status status = Status.newBuilder()
+                    .setCode(Code.INVALID_ARGUMENT.getNumber())
+                    .setMessage("Requested unknown profiles: " + unknownProfiles)
+                    .build();
+            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         }
     }
 }
