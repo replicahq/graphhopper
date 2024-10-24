@@ -43,10 +43,7 @@ import router.RouterOuterClass;
 
 import java.io.File;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -785,7 +782,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         */
     }
 
-    private static RouterOuterClass.ProfilesStreetRouteRequest createProfilesStreetRouteRequest(Set<String> profiles) {
+    private static RouterOuterClass.ProfilesStreetRouteRequest createProfilesStreetRouteRequest(Collection<String> profiles) {
         return RouterOuterClass.ProfilesStreetRouteRequest.newBuilder()
                 .addPoints(createPoint(REQUEST_ORIGIN_1))
                 .addPoints(createPoint(REQUEST_DESTINATION_1))
@@ -794,27 +791,27 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                 .build();
     }
 
-    private static Set<String> getProfiles(RouterOuterClass.StreetRouteReply response) {
+    private static List<String> getProfiles(RouterOuterClass.StreetRouteReply response) {
         return response.getPathsList().stream()
                 .map(RouterOuterClass.StreetPath::getProfile)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
     }
 
     @Test
     public void testRouteStreetProfiles() {
-        Set<String> requestedProfiles = Sets.newHashSet("car", "foot");
+        List<String> requestedProfiles = Lists.newArrayList("car", "foot");
         RouterOuterClass.ProfilesStreetRouteRequest request = createProfilesStreetRouteRequest(requestedProfiles);
         RouterOuterClass.StreetRouteReply response = routerStub.routeStreetProfiles(request);
         assertEquals(getProfiles(response), requestedProfiles);
 
         // multiple profiles within each mode
-        requestedProfiles = Sets.newHashSet("car", "car_freeway", "car_default", "foot", "foot_default");
+        requestedProfiles = Lists.newArrayList("car", "car_freeway", "car_default", "foot", "foot_default");
         request = createProfilesStreetRouteRequest(requestedProfiles);
         response = routerStub.routeStreetProfiles(request);
         assertEquals(getProfiles(response), requestedProfiles);
 
         String nonexistentProfile = "nonexistent_profile";
-        requestedProfiles = Sets.newHashSet(nonexistentProfile, "car");
+        requestedProfiles = Lists.newArrayList(nonexistentProfile, "car");
         RouterOuterClass.ProfilesStreetRouteRequest invalidRequest = createProfilesStreetRouteRequest(requestedProfiles);
         StatusRuntimeException exception =
                 assertThrows(StatusRuntimeException.class, () -> routerStub.routeStreetProfiles(invalidRequest));
