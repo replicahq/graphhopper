@@ -47,6 +47,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -130,10 +131,12 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
     private static final double THURTON_DRIVE_CUSTOM_SPEED = 90;
     private static final String CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME = "car_custom_fast_thurton_drive";
     private static final String CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME = "car_custom_closed_baseline_road";
+    private static final String CLOSED_BASELINE_ROAD_NO_BWD_COLUMN_CAR_PROFILE_NAME = "car_custom_no_bwd_column_closed_baseline_road";
+    private static final String CLOSED_BASELINE_ROAD_ONE_DIRECTION_CAR_PROFILE_NAME = "car_custom_one_direction_closed_baseline_road";
     private static final String CLOSED_BASELINE_ROAD_BIKE_PROFILE_NAME = "bike_custom_closed_baseline_road";
     private static final String CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME = "foot_custom_closed_baseline_road";
     private static final ImmutableSet<String> CAR_PROFILES =
-            ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME);
+            ImmutableSet.of("car", "car_freeway", DEFAULT_CAR_PROFILE_NAME, CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_NO_BWD_COLUMN_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_ONE_DIRECTION_CAR_PROFILE_NAME);
     private static final ImmutableSet<String> WALK_PROFILES = ImmutableSet.of("foot", DEFAULT_FOOT_PROFILE_NAME, CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME);
 
     private static final ImmutableMap<String, String> CUSTOM_THURTON_DRIVE_PROFILE_TO_DEFAULT_PROFILE = ImmutableMap.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, "truck_custom_fast_thurton_drive", DEFAULT_TRUCK_PROFILE_NAME, "small_truck_custom_fast_thurton_drive", DEFAULT_SMALL_TRUCK_PROFILE_NAME);
@@ -647,14 +650,33 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         double[] dest = {38.75181929375432, -121.30902559426471};
 
         Predicate<Long> onlyOnePathPredicate = pathCount -> pathCount == 1L;
+        // the road closure profile should take a roundabout route due to the closure, so its distance and travel time
+        // should be greater than the default
+        BiPredicate<RouterOuterClass.StreetPath, RouterOuterClass.StreetPath> closedRoadDistanceAndDurationPredicate = (closedRoad, defaultSpeedsRoad) ->
+                (closedRoad.getDistanceMeters() > defaultSpeedsRoad.getDistanceMeters() && closedRoad.getDurationMillis() > defaultSpeedsRoad.getDurationMillis());
 
-        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, origin, dest, onlyOnePathPredicate);
-        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_BIKE_PROFILE_NAME, DEFAULT_BIKE_PROFILE_NAME, origin, dest, onlyOnePathPredicate);
-        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME, DEFAULT_FOOT_PROFILE_NAME, origin, dest, onlyOnePathPredicate);
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, origin, dest, onlyOnePathPredicate, closedRoadDistanceAndDurationPredicate);
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_BIKE_PROFILE_NAME, DEFAULT_BIKE_PROFILE_NAME, origin, dest, onlyOnePathPredicate, closedRoadDistanceAndDurationPredicate);
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_FOOT_PROFILE_NAME, DEFAULT_FOOT_PROFILE_NAME, origin, dest, onlyOnePathPredicate, closedRoadDistanceAndDurationPredicate);
+
+        // check that directional closure results in longer distance/duration route when routing from origin to dest
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_ONE_DIRECTION_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, origin, dest, onlyOnePathPredicate, closedRoadDistanceAndDurationPredicate);
+
+        // when routing in reverse from dest to origin, the directional closure is not in place, so the route's distance + duration match the default profile
+        closedRoadDistanceAndDurationPredicate = (closedRoad, defaultSpeedsRoad) ->
+                (closedRoad.getDistanceMeters() == defaultSpeedsRoad.getDistanceMeters() && closedRoad.getDurationMillis() == defaultSpeedsRoad.getDurationMillis());
+
+        // check that directional closure results in longer distance/duration route when routing from origin to dest
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_ONE_DIRECTION_CAR_PROFILE_NAME, DEFAULT_CAR_PROFILE_NAME, dest, origin, onlyOnePathPredicate, closedRoadDistanceAndDurationPredicate);
+
+        // when a closure is defined without a bwd column included, it is applied in both directions, and is equivalent to a directional closure defined in both directions
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_NO_BWD_COLUMN_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, origin, dest, onlyOnePathPredicate, closedRoadDistanceAndDurationPredicate);
+        checkCustomSpeedRoadClosure(CLOSED_BASELINE_ROAD_NO_BWD_COLUMN_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, dest, origin, onlyOnePathPredicate, closedRoadDistanceAndDurationPredicate);
     }
 
     private static void checkCustomSpeedRoadClosure(String closedRoadProfileName, String defaultProfileName,
-                                                    double[] origin, double[] dest, Predicate<Long> onlyOnePathPredicate) {
+                                                    double[] origin, double[] dest, Predicate<Long> onlyOnePathPredicate,
+                                                    BiPredicate<RouterOuterClass.StreetPath, RouterOuterClass.StreetPath> closedRoadDistanceAndDurationPredicate) {
         final RouterOuterClass.StreetRouteReply customSpeedsResponse = routerStub.routeStreetMode(
                 createStreetRequest(closedRoadProfileName, false, origin, dest));
         checkStreetBasedResponse(customSpeedsResponse, ImmutableSet.of(closedRoadProfileName), onlyOnePathPredicate);
@@ -666,10 +688,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         RouterOuterClass.StreetPath customSpeedsPath = Iterables.getOnlyElement(customSpeedsResponse.getPathsList());
         RouterOuterClass.StreetPath defaultSpeedsPath = Iterables.getOnlyElement(defaultSpeedsResponse.getPathsList());
 
-        // the road closure profile should take a roundabout route due to the closure, so its distance and travel time
-        // should be greater than the default
-        assertTrue(customSpeedsPath.getDistanceMeters() > defaultSpeedsPath.getDistanceMeters());
-        assertTrue(customSpeedsPath.getDurationMillis() > defaultSpeedsPath.getDurationMillis());
+        assertTrue(closedRoadDistanceAndDurationPredicate.test(customSpeedsPath, defaultSpeedsPath));
     }
 
     @Test
@@ -701,7 +720,7 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         // When duplicate route filtering is on, routes from 2 profiles are removed due to redundancy with other routes
         // NOTE: which profile's routes get filtered out depends on the order of profiles specified in test_gh_config.yaml
         Set<String> expectedProfilesAfterDuplicatesFiltered = Sets.newHashSet(CAR_PROFILES);
-        expectedProfilesAfterDuplicatesFiltered.removeAll(Set.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME));
+        expectedProfilesAfterDuplicatesFiltered.removeAll(Set.of(CUSTOM_THURTON_DRIVE_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_NO_BWD_COLUMN_CAR_PROFILE_NAME, CLOSED_BASELINE_ROAD_ONE_DIRECTION_CAR_PROFILE_NAME));
         final RouterOuterClass.StreetRouteReply responseWithoutDuplicates = routerStub.routeStreetMode(
                 createStreetRequest("car", false, REQUEST_ORIGIN_1, REQUEST_DESTINATION_1, false, false));
         Set<String> responseWithoutDuplicatesProfiles = responseWithoutDuplicates.getPathsList().stream()

@@ -7,6 +7,7 @@ import com.graphhopper.http.TruckAverageSpeedParser;
 import com.graphhopper.replica.ReplicaCustomSpeedsFootTagParser;
 import com.graphhopper.routing.util.parsers.BikeAverageSpeedParser;
 import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,34 +36,35 @@ public class CustomSpeedsVehicle {
 
     public final VehicleType baseVehicleType;
     public final String customVehicleName;
-    public final ImmutableMap<Long, Double> osmWayIdToCustomSpeed;
+    public final ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed;
+    public final boolean directionalCustomSpeedsProvided;
 
-    private CustomSpeedsVehicle(String customVehicleName, VehicleType baseVehicleType, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
+    private CustomSpeedsVehicle(String customVehicleName, VehicleType baseVehicleType, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed, boolean directionalCustomSpeedsProvided) {
         this.customVehicleName = customVehicleName;
         this.baseVehicleType = baseVehicleType;
-        this.osmWayIdToCustomSpeed = osmWayIdToCustomSpeed;
+        this.osmWayIdAndBwdToCustomSpeed = osmWayIdAndBwdToCustomSpeed;
+        this.directionalCustomSpeedsProvided = directionalCustomSpeedsProvided;
     }
 
-    public static CustomSpeedsVehicle create(String customVehicleName, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
-        if (!validateCustomSpeeds(customVehicleName, osmWayIdToCustomSpeed)) {
+    public static CustomSpeedsVehicle create(String customVehicleName, Pair<ImmutableMap<Pair<Long, Boolean>, Double>, Boolean> osmWayIdAndBwdToCustomSpeed) {
+        if (!validateCustomSpeeds(customVehicleName, osmWayIdAndBwdToCustomSpeed.getLeft())) {
             throw new IllegalArgumentException(String.format("Invalid speeds for vehicle %s. See logging for details", customVehicleName));
         }
 
-        return new CustomSpeedsVehicle(customVehicleName, CustomSpeedsVehicle.getBaseVehicleType(customVehicleName), osmWayIdToCustomSpeed);
+        return new CustomSpeedsVehicle(customVehicleName, CustomSpeedsVehicle.getBaseVehicleType(customVehicleName), osmWayIdAndBwdToCustomSpeed.getLeft(), osmWayIdAndBwdToCustomSpeed.getRight());
     }
 
-    public static boolean validateCustomSpeeds(String customVehicleName, ImmutableMap<Long, Double> osmWayIdToCustomSpeed) {
+    public static boolean validateCustomSpeeds(String customVehicleName, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToCustomSpeed) {
         VehicleType baseVehicleType = CustomSpeedsVehicle.getBaseVehicleType(customVehicleName);
 
         // wrap filterValues result in a HashMap to turn live, lazy view into a traditional map
-        Map<Long, Double> invalidSpeeds = new HashMap<>(Maps.filterValues(osmWayIdToCustomSpeed,
+        Map<Pair<Long, Boolean>, Double> invalidSpeeds = new HashMap<>(Maps.filterValues(osmWayIdAndBwdToCustomSpeed,
                 speed -> speed < 0 || speed > baseVehicleType.getMaxValidSpeed()));
         if (!invalidSpeeds.isEmpty()) {
             logger.error("Invalid speeds found for vehicle {}. Custom speeds for base vehicle {} must be between 0 and {}. Full mapping of invalid speeds: {}",
                     customVehicleName, baseVehicleType, baseVehicleType.getMaxValidSpeed(), invalidSpeeds);
             return false;
         }
-
         return true;
     }
 
@@ -90,11 +92,11 @@ public class CustomSpeedsVehicle {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CustomSpeedsVehicle that = (CustomSpeedsVehicle) o;
-        return baseVehicleType == that.baseVehicleType && customVehicleName.equals(that.customVehicleName) && osmWayIdToCustomSpeed.equals(that.osmWayIdToCustomSpeed);
+        return baseVehicleType == that.baseVehicleType && customVehicleName.equals(that.customVehicleName) && osmWayIdAndBwdToCustomSpeed.equals(that.osmWayIdAndBwdToCustomSpeed);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(baseVehicleType, customVehicleName, osmWayIdToCustomSpeed);
+        return Objects.hash(baseVehicleType, customVehicleName, osmWayIdAndBwdToCustomSpeed);
     }
 }

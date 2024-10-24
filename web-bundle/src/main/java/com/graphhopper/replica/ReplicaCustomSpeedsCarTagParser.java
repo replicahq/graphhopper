@@ -6,22 +6,18 @@ import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.ev.EncodedValueLookup;
 import com.graphhopper.routing.util.parsers.CarAverageSpeedParser;
 import com.graphhopper.util.PMap;
+import org.apache.commons.lang3.tuple.Pair;
 
 public class ReplicaCustomSpeedsCarTagParser extends CarAverageSpeedParser {
-    private final ImmutableMap<Long, Double> osmWayIdToMaxSpeed;
+    private final ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed;
 
-    public ReplicaCustomSpeedsCarTagParser(EncodedValueLookup lookup, PMap configuration, ImmutableMap<Long, Double> osmWayIdToMaxSpeed) {
+    public ReplicaCustomSpeedsCarTagParser(EncodedValueLookup lookup, PMap configuration, ImmutableMap<Pair<Long, Boolean>, Double> osmWayIdAndBwdToMaxSpeed) {
         super(lookup, configuration);
-        this.osmWayIdToMaxSpeed = osmWayIdToMaxSpeed;
+        this.osmWayIdAndBwdToMaxSpeed = osmWayIdAndBwdToMaxSpeed;
     }
 
     @Override
     protected double applyMaxSpeed(ReaderWay way, double speed, boolean bwd) {
-        return CustomSpeedsUtils.getCustomMaxSpeed(way, osmWayIdToMaxSpeed).orElseGet(() -> super.applyMaxSpeed(way, speed, bwd));
-    }
-
-    @Override
-    protected double applyBadSurfaceSpeed(ReaderWay way, double speed) {
-        return CustomSpeedsUtils.getCustomBadSurfaceSpeed(way, osmWayIdToMaxSpeed).orElseGet(() -> super.applyBadSurfaceSpeed(way, speed));
+        return CustomSpeedsUtils.getCustomMaxSpeed(way, osmWayIdAndBwdToMaxSpeed, bwd).orElseGet(() -> super.applyMaxSpeed(way, speed, bwd));
     }
 }

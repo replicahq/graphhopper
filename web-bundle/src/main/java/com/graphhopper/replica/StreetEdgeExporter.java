@@ -28,7 +28,9 @@ public class StreetEdgeExporter {
     private static final Map<String, String> ACCESSIBILITY_MODE_MAP = Map.of(
             "car", "CAR",
             "bike", "BIKE",
-            "foot", "PEDESTRIAN"
+            "foot", "PEDESTRIAN",
+            "truck", "TRUCK",
+            "small_truck", "SMALL_TRUCK"
     );
     private static final List<String> HIGHWAY_FILTER_TAGS = Lists.newArrayList("bridleway", "steps");
     private static final List<String> INACCESSIBLE_MOTORWAY_TAGS = Lists.newArrayList("motorway", "motorway_link");
