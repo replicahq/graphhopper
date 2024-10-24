@@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.protobuf.Timestamp;
 import com.graphhopper.*;
+import com.graphhopper.config.Profile;
 import com.graphhopper.gtfs.Request;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.util.*;
@@ -147,25 +148,51 @@ public final class RouterConverters {
         }
     }
 
-    public static GHRequest toGHRequest(StreetRouteRequest request) {
-        GHRequest ghRequest = new GHRequest(
-                request.getPointsList().stream()
-                        .map(p -> new GHPoint(p.getLat(), p.getLon()))
-                        .collect(Collectors.toList()));
-        ghRequest.setProfile(request.getProfile());
-        ghRequest.setLocale(Locale.US);
-        ghRequest.setPathDetails(getRequestedStreetPathDetails(request.getReturnFullPathDetails()));
+    public static ProfilesStreetRouteRequest toProfilesStreetRouteRequest(StreetRouteRequest request, GraphHopper graphHopper) {
+        // For a given "base" profile requested (eg `car`), find all pre-loaded profiles associated with the base
+        // profile (eg `car_local`, `car_freeway`). Each such pre-loaded profile will get queried, and resulting paths
+        // will be combined in one response
+        List<String> profilesToQuery = graphHopper.getProfiles().stream()
+                .map(Profile::getName)
+                .filter(profile -> profile.startsWith(request.getProfile()))
+                .collect(Collectors.toList());
 
-        PMap hints = new PMap();
-        hints.putObject(INSTRUCTIONS, false);
-        if (request.getAlternateRouteMaxPaths() > 1) {
-            ghRequest.setAlgorithm("alternative_route");
-            hints.putObject("alternative_route.max_paths", request.getAlternateRouteMaxPaths());
-            hints.putObject("alternative_route.max_weight_factor", request.getAlternateRouteMaxWeightFactor());
-            hints.putObject("alternative_route.max_share_factor", request.getAlternateRouteMaxShareFactor());
+        return ProfilesStreetRouteRequest.newBuilder()
+                .addAllProfiles(profilesToQuery)
+                .addAllPoints(request.getPointsList())
+                .setAlternateRouteMaxPaths(request.getAlternateRouteMaxPaths())
+                .setAlternateRouteMaxWeightFactor(request.getAlternateRouteMaxWeightFactor())
+                .setAlternateRouteMaxShareFactor(request.getAlternateRouteMaxShareFactor())
+                .setReturnFullPathDetails(request.getReturnFullPathDetails())
+                .setIncludeDuplicateRoutes(request.getIncludeDuplicateRoutes())
+                .build();
+    }
+
+    public static List<GHRequest> toGHRequests(ProfilesStreetRouteRequest request) {
+        List<GHRequest> ghRequests = new ArrayList<>();
+
+        for (String profile : request.getProfilesList()) {
+            GHRequest ghRequest = new GHRequest(
+                    request.getPointsList().stream()
+                            .map(p -> new GHPoint(p.getLat(), p.getLon()))
+                            .collect(Collectors.toList()));
+            ghRequest.setProfile(profile);
+            ghRequest.setLocale(Locale.US);
+            ghRequest.setPathDetails(getRequestedStreetPathDetails(request.getReturnFullPathDetails()));
+
+            PMap hints = new PMap();
+            hints.putObject(INSTRUCTIONS, false);
+            if (request.getAlternateRouteMaxPaths() > 1) {
+                ghRequest.setAlgorithm("alternative_route");
+                hints.putObject("alternative_route.max_paths", request.getAlternateRouteMaxPaths());
+                hints.putObject("alternative_route.max_weight_factor", request.getAlternateRouteMaxWeightFactor());
+                hints.putObject("alternative_route.max_share_factor", request.getAlternateRouteMaxShareFactor());
+            }
+            ghRequest.getHints().putAll(hints);
+            ghRequests.add(ghRequest);
         }
-        ghRequest.getHints().putAll(hints);
-        return ghRequest;
+
+        return ghRequests;
     }
 
     public static GHRequest toGHRequest(CustomRouteRequest request) {

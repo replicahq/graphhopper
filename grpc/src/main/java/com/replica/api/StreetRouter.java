@@ -8,7 +8,6 @@ import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.ResponsePath;
 import com.graphhopper.config.Profile;
-import com.graphhopper.util.shapes.GHPoint;
 import com.replica.util.MetricUtils;
 import com.replica.util.RouterConverters;
 import com.timgroup.statsd.StatsDClient;
@@ -17,12 +16,12 @@ import io.grpc.stub.StreamObserver;
 import org.glassfish.jersey.internal.guava.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import router.RouterOuterClass.Point;
+import router.RouterOuterClass.ProfilesStreetRouteRequest;
 import router.RouterOuterClass.StreetRouteReply;
 import router.RouterOuterClass.StreetRouteRequest;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class StreetRouter {
@@ -41,27 +40,33 @@ public class StreetRouter {
     }
 
     public void routeStreetMode(StreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
+        ProfilesStreetRouteRequest profilesStreetRouteRequest = RouterConverters.toProfilesStreetRouteRequest(request, graphHopper);
+        // for backcompat, use a metric tag of "mode". clients typically send modes within the profile field, and these
+        // are translated into profiles using prefix matching
+        String profilesMetricTag = "mode:" + request.getProfile();
+        routeStreetProfiles(profilesStreetRouteRequest, responseObserver, profilesMetricTag);
+    }
+
+    public void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
+        List<String> orderedRequestedProfiles = new ArrayList<>(request.getProfilesList());
+        Collections.sort(orderedRequestedProfiles);
+        String profilesMetricTag = "profiles:" + orderedRequestedProfiles;
+
+        routeStreetProfiles(request, responseObserver, profilesMetricTag);
+    }
+
+    private void routeStreetProfiles(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver,
+                                     String profilesMetricTag) {
         long startTime = System.currentTimeMillis();
+        validateRequest(request, responseObserver);
 
-        // For a given "base" profile requested (eg `car`), find all pre-loaded profiles associated
-        // with the base profile (eg `car_local`, `car_freeway`). Each such pre-loaded profile will get
-        // queried, and resulting paths will be combined in one response
-        List<String> profilesToQuery = graphHopper.getProfiles().stream()
-                .map(Profile::getName)
-                .filter(profile -> profile.startsWith(request.getProfile()))
-                .collect(Collectors.toList());
-
-        // Construct query object with settings shared across all profilesToQuery
-        GHRequest ghRequest = RouterConverters.toGHRequest(request);
-
-        GHPoint origin = ghRequest.getPoints().get(0);
-        GHPoint dest = ghRequest.getPoints().get(1);
+        Point origin = request.getPoints(0);
+        Point dest = request.getPoints(1);
 
         StreetRouteReply.Builder replyBuilder = StreetRouteReply.newBuilder();
         int pathsFound = 0;
         Set<Integer> pathHashesInReturnSet = Sets.newHashSet();
-        for (String profile : profilesToQuery) {
-            ghRequest.setProfile(profile);
+        for (GHRequest ghRequest : RouterConverters.toGHRequests(request)) {
             try {
                 GHResponse ghResponse = graphHopper.route(ghRequest);
                 // ghResponse.hasErrors() means that the router returned no results
@@ -86,17 +91,17 @@ public class StreetRouter {
 
                     // Add filtered set of paths to full response set
                     pathsToReturn.stream()
-                            .map(responsePath -> RouterConverters.toStreetPath(responsePath, profile, request.getReturnFullPathDetails()))
+                            .map(responsePath -> RouterConverters.toStreetPath(responsePath, ghRequest.getProfile(), request.getReturnFullPathDetails()))
                             .forEach(replyBuilder::addPaths);
                 }
             } catch (Exception e) {
                 String message = "GH internal error! Path could not be found between "
-                        + origin.lat + "," + origin.lon + " to " + dest.lat + "," + dest.lon +
-                        " using profile " + profile;
+                        + origin.getLat() + "," + origin.getLon() + " to " + dest.getLat() + "," + dest.getLon() +
+                        " using profile " + ghRequest.getProfile();
                 logger.error(message, e);
 
                 double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:error"};
+                String[] tags = {profilesMetricTag, "api:grpc", "routes_found:error"};
                 tags = MetricUtils.applyCustomTags(tags, customTags);
                 MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds);
 
@@ -112,10 +117,10 @@ public class StreetRouter {
         // return the standard NOT_FOUND grpc error code
         if (pathsFound == 0) {
             String message = "Path could not be found between "
-                    + origin.lat + "," + origin.lon + " to " + dest.lat + "," + dest.lon;
+                    + origin.getLat() + "," + origin.getLon() + " to " + dest.getLat() + "," + dest.getLon();
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:false"};
+            String[] tags = {profilesMetricTag, "api:grpc", "routes_found:false"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
             MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, 0);
 
@@ -126,12 +131,25 @@ public class StreetRouter {
             responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         } else {
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            String[] tags = {"mode:" + request.getProfile(), "api:grpc", "routes_found:true"};
+            String[] tags = {profilesMetricTag, "api:grpc", "routes_found:true"};
             tags = MetricUtils.applyCustomTags(tags, customTags);
             MetricUtils.sendRoutingStats(statsDClient, tags, durationSeconds, pathsFound);
 
             responseObserver.onNext(replyBuilder.build());
             responseObserver.onCompleted();
+        }
+    }
+
+    private void validateRequest(ProfilesStreetRouteRequest request, StreamObserver<StreetRouteReply> responseObserver) {
+        Set<String> knownProfiles = graphHopper.getProfiles().stream().map(Profile::getName).collect(Collectors.toSet());
+        Set<String> unknownProfiles = new HashSet<>(request.getProfilesList());
+        unknownProfiles.removeAll(knownProfiles);
+        if (!unknownProfiles.isEmpty()) {
+            Status status = Status.newBuilder()
+                    .setCode(Code.INVALID_ARGUMENT.getNumber())
+                    .setMessage("Requested unknown profiles: " + unknownProfiles)
+                    .build();
+            responseObserver.onError(StatusProto.toStatusRuntimeException(status));
         }
     }
 }

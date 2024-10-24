@@ -43,10 +43,7 @@ import router.RouterOuterClass;
 
 import java.io.File;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -182,6 +179,10 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         routerStub = router.RouterGrpc.newBlockingStub(channel);
     }
 
+    private static RouterOuterClass.Point createPoint(double[] latLon) {
+        return RouterOuterClass.Point.newBuilder().setLat(latLon[0]).setLon(latLon[1]).build();
+    }
+
     private static RouterOuterClass.StreetRouteRequest createStreetRequest(String mode, boolean alternatives,
                                                                            double[] from, double[] to) {
         return createStreetRequest(mode, alternatives, from, to, true, true);
@@ -192,14 +193,8 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
                                                                            boolean returnFullPathDetails,
                                                                            boolean includeDuplicateRoutes) {
         return RouterOuterClass.StreetRouteRequest.newBuilder()
-                .addPoints(0, RouterOuterClass.Point.newBuilder()
-                        .setLat(from[0])
-                        .setLon(from[1])
-                        .build())
-                .addPoints(1, RouterOuterClass.Point.newBuilder()
-                        .setLat(to[0])
-                        .setLon(to[1])
-                        .build())
+                .addPoints(createPoint(from))
+                .addPoints(createPoint(to))
                 .setProfile(mode)
                 .setAlternateRouteMaxPaths(alternatives ? 5 : 0)
                 // below factors allow for long or very similar alternate routes for the sake of testing
@@ -785,5 +780,42 @@ public class RouterServerTest extends ReplicaGraphHopperTest {
         MultiPolygon reverseFlowInnerBucket = (MultiPolygon) wktReader.read(reverseFlowResponse.getBuckets(0).getGeometry());
         assertNotEquals(reverseFlowInnerBucket.getArea(), threeBucketInnerBucket.getArea());
         */
+    }
+
+    private static RouterOuterClass.ProfilesStreetRouteRequest createProfilesStreetRouteRequest(Collection<String> profiles) {
+        return RouterOuterClass.ProfilesStreetRouteRequest.newBuilder()
+                .addPoints(createPoint(REQUEST_ORIGIN_1))
+                .addPoints(createPoint(REQUEST_DESTINATION_1))
+                .setIncludeDuplicateRoutes(true)
+                .addAllProfiles(profiles)
+                .build();
+    }
+
+    private static List<String> getProfiles(RouterOuterClass.StreetRouteReply response) {
+        return response.getPathsList().stream()
+                .map(RouterOuterClass.StreetPath::getProfile)
+                .collect(Collectors.toList());
+    }
+
+    @Test
+    public void testRouteStreetProfiles() {
+        List<String> requestedProfiles = Lists.newArrayList("car", "foot");
+        RouterOuterClass.ProfilesStreetRouteRequest request = createProfilesStreetRouteRequest(requestedProfiles);
+        RouterOuterClass.StreetRouteReply response = routerStub.routeStreetProfiles(request);
+        assertEquals(getProfiles(response), requestedProfiles);
+
+        // multiple profiles within each mode
+        requestedProfiles = Lists.newArrayList("car", "car_freeway", "car_default", "foot", "foot_default");
+        request = createProfilesStreetRouteRequest(requestedProfiles);
+        response = routerStub.routeStreetProfiles(request);
+        assertEquals(getProfiles(response), requestedProfiles);
+
+        String nonexistentProfile = "nonexistent_profile";
+        requestedProfiles = Lists.newArrayList(nonexistentProfile, "car");
+        RouterOuterClass.ProfilesStreetRouteRequest invalidRequest = createProfilesStreetRouteRequest(requestedProfiles);
+        StatusRuntimeException exception =
+                assertThrows(StatusRuntimeException.class, () -> routerStub.routeStreetProfiles(invalidRequest));
+        assertEquals(exception.getStatus().getCode(), Status.Code.INVALID_ARGUMENT);
+        assertTrue(exception.getMessage().contains(nonexistentProfile));
     }
 }
